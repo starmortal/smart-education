@@ -120,7 +120,7 @@ exports.uploadFile = async (req, res) => {
 
 // 发送消息并获取AI回复
 exports.sendMessage = async (req, res) => {
-  const { topicId, message, attachments = [] } = req.body;
+  const { topicId, message, attachments = [], temporaryKnowledgeBases = [] } = req.body;
 
   if (!topicId) {
     throw new AppError('话题ID不能为空', 400);
@@ -151,14 +151,91 @@ exports.sendMessage = async (req, res) => {
   };
   topic.messages.push(userMessage);
 
-  // 构建对话历史（包含系统提示词）
+  // 确定要使用的知识库（优先使用对话级别，否则使用助手级别）
+  const knowledgeBasesToUse = temporaryKnowledgeBases.length > 0 
+    ? temporaryKnowledgeBases 
+    : (assistant.knowledgeBases || []);
+
+  // 检索知识库内容
+  let knowledgeContext = '';
+  if (knowledgeBasesToUse.length > 0 && message) {
+    try {
+      const Knowledge = require('../models/Knowledge');
+      const { searchKnowledge } = require('./knowledgeController');
+      
+      // 从所有关联的知识库中检索相关内容
+      const searchResults = [];
+      for (const kbId of knowledgeBasesToUse) {
+        const kb = await Knowledge.findById(kbId);
+        if (kb && kb.vectorCount > 0) {
+          // 模拟 req/res 对象来调用 searchKnowledge
+          const mockReq = {
+            params: { knowledgeId: kbId },
+            body: { query: message, topK: 3 }
+          };
+          const mockRes = {
+            json: (data) => data
+          };
+          
+          try {
+            // 直接调用知识库搜索逻辑
+            const KnowledgeFile = require('../models/KnowledgeFile');
+            const Vectorizer = require('../utils/vectorizer');
+            
+            const files = await KnowledgeFile.find({ 
+              knowledgeId: kbId, 
+              status: 'completed' 
+            });
+            
+            if (files.length > 0) {
+              const queryEmbedding = await Vectorizer.generateEmbedding(message);
+              const allVectors = [];
+              files.forEach(file => {
+                file.vectors.forEach(vector => {
+                  allVectors.push({
+                    ...vector.toObject(),
+                    fileName: file.name,
+                    fileId: file._id
+                  });
+                });
+              });
+              
+              const results = await Vectorizer.searchSimilar(queryEmbedding, allVectors, 3);
+              searchResults.push(...results);
+            }
+          } catch (searchError) {
+            logger.warn(`知识库 ${kbId} 检索失败:`, searchError);
+          }
+        }
+      }
+      
+      // 构建知识库上下文
+      if (searchResults.length > 0) {
+        knowledgeContext = '\n\n【参考知识库内容】\n';
+        searchResults.slice(0, 5).forEach((result, index) => {
+          knowledgeContext += `${index + 1}. ${result.text}\n`;
+        });
+        knowledgeContext += '\n请基于以上知识库内容回答用户问题。\n';
+      }
+    } catch (error) {
+      logger.error('知识库检索失败:', error);
+      // 检索失败不影响正常对话，继续执行
+    }
+  }
+
+  // 构建对话历史（包含系统提示词和知识库上下文）
   const history = [];
   
-  // 添加系统提示词
-  if (assistant.prompt) {
+  // 添加系统提示词（包含知识库上下文）
+  let systemPrompt = assistant.prompt || '';
+  if (knowledgeContext) {
+    systemPrompt += knowledgeContext;
+  }
+  
+  if (systemPrompt) {
     history.push({
       role: 'system',
-      content: assistant.prompt
+      content: systemPrompt
     });
   }
 

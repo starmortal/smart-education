@@ -224,6 +224,58 @@
                   style="display: none"
                   @change="handleFileChange"
                 />
+                <!-- 对话级别知识库选择按钮 -->
+                <el-popover
+                  v-if="selectedAssistantForTopics"
+                  placement="top"
+                  :width="300"
+                  trigger="click"
+                >
+                  <template #reference>
+                    <el-badge 
+                      :value="temporaryKnowledgeBases.length || null" 
+                      :hidden="temporaryKnowledgeBases.length === 0"
+                      type="primary"
+                    >
+                      <el-button 
+                        :icon="FolderOpened" 
+                        circle 
+                        size="small"
+                        title="选择知识库"
+                      />
+                    </el-badge>
+                  </template>
+                  <div class="knowledge-popover">
+                    <div class="popover-title">选择知识库</div>
+                    <el-select
+                      v-model="temporaryKnowledgeBases"
+                      multiple
+                      filterable
+                      placeholder="为本次对话选择知识库"
+                      style="width: 100%"
+                      clearable
+                    >
+                      <el-option
+                        v-for="kb in knowledgeBases"
+                        :key="kb._id"
+                        :label="kb.name"
+                        :value="kb._id"
+                      >
+                        <span>{{ kb.name }}</span>
+                        <span style="float: right; color: #8492a6; font-size: 12px">
+                          {{ kb.fileCount }}个文件
+                        </span>
+                      </el-option>
+                    </el-select>
+                    <div 
+                      v-if="selectedAssistantForTopics.knowledgeBases && selectedAssistantForTopics.knowledgeBases.length > 0" 
+                      class="assistant-kb-hint"
+                    >
+                      <el-icon><Cpu /></el-icon>
+                      <span>助手默认: {{ selectedAssistantForTopics.knowledgeBases.length }}个知识库</span>
+                    </div>
+                  </div>
+                </el-popover>
               </div>
               <el-button type="primary" :icon="Promotion" @click="handleSendMessage" :loading="isLoading">
                 发送
@@ -252,6 +304,25 @@
             placeholder="请输入系统提示词（可选）"
           />
         </el-form-item>
+        <el-form-item label="关联知识库">
+          <el-select
+            v-model="assistantForm.knowledgeBases"
+            multiple
+            filterable
+            placeholder="选择默认使用的知识库"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="kb in knowledgeBases"
+              :key="kb._id"
+              :label="`${kb.name} (${kb.fileCount}个文件)`"
+              :value="kb._id"
+            />
+          </el-select>
+          <div style="color: #909399; font-size: 12px; margin-top: 4px;">
+            使用此助手时将自动检索这些知识库
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="assistantDialogVisible = false">取消</el-button>
@@ -273,7 +344,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, MoreFilled, ChatDotRound, Cpu, Promotion, Paperclip, Close, Document, Picture } from '@element-plus/icons-vue';
+import { Plus, MoreFilled, ChatDotRound, Cpu, Promotion, Paperclip, Close, Document, Picture, FolderOpened } from '@element-plus/icons-vue';
 import { marked } from 'marked';
 import {
   getAssistants,
@@ -292,6 +363,7 @@ import {
   clearMessages,
   uploadFile
 } from '@/api/chat';
+import { getKnowledgeBases } from '@/api/knowledge';
 
 const userId = ref(localStorage.getItem('edu-user-id'));
 const userAvatar = ref(localStorage.getItem('edu-avatar') || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png');
@@ -307,6 +379,8 @@ const isLoading = ref(false);
 const messageListRef = ref(null);
 const fileInputRef = ref(null);
 const selectedFiles = ref([]);
+const knowledgeBases = ref([]); // 知识库列表
+const temporaryKnowledgeBases = ref([]); // 对话级别选择的知识库
 
 // 标签状态
 const activeTab = ref('assistants');
@@ -316,7 +390,8 @@ const assistantDialogVisible = ref(false);
 const isEditingAssistant = ref(false);
 const assistantForm = ref({ 
   name: '', 
-  prompt: ''
+  prompt: '',
+  knowledgeBases: []
 });
 const editingAssistantId = ref(null);
 
@@ -326,6 +401,7 @@ const renamingTopicId = ref(null);
 
 onMounted(async () => {
   await loadAssistants();
+  await loadKnowledgeBases();
   // 默认选择第一个助手并切换到对话标签
   if (assistants.value.length > 0) {
     await selectAssistantAndSwitchToTopics(assistants.value[0]);
@@ -366,11 +442,24 @@ const loadAssistants = async () => {
   }
 };
 
+// 加载知识库列表
+const loadKnowledgeBases = async () => {
+  try {
+    const res = await getKnowledgeBases(userId.value);
+    if (res.data.code === 200) {
+      knowledgeBases.value = res.data.data;
+    }
+  } catch (error) {
+    console.error('加载知识库失败:', error);
+  }
+};
+
 // 选择助手并切换到对话标签
 const selectAssistantAndSwitchToTopics = async (assistant) => {
   selectedAssistantForTopics.value = assistant;
   currentTopic.value = null;
   messages.value = [];
+  temporaryKnowledgeBases.value = []; // 清空对话级别的知识库选择
   await loadTopics(assistant._id);
   activeTab.value = 'topics'; // 切换到对话标签
   
@@ -418,7 +507,8 @@ const handleCreateAssistant = () => {
   isEditingAssistant.value = false;
   assistantForm.value = { 
     name: '', 
-    prompt: ''
+    prompt: '',
+    knowledgeBases: []
   };
   assistantDialogVisible.value = true;
 };
@@ -456,7 +546,8 @@ const handleAssistantCommand = async (command, assistant) => {
     editingAssistantId.value = assistant._id;
     assistantForm.value = {
       name: assistant.name,
-      prompt: assistant.prompt || ''
+      prompt: assistant.prompt || '',
+      knowledgeBases: assistant.knowledgeBases || []
     };
     assistantDialogVisible.value = true;
   } else if (command === 'delete') {
@@ -614,7 +705,12 @@ const handleSendMessage = async () => {
   isLoading.value = true;
 
   try {
-    const res = await sendMessage(currentTopic.value._id, message, attachments);
+    const res = await sendMessage(
+      currentTopic.value._id, 
+      message, 
+      attachments,
+      temporaryKnowledgeBases.value
+    );
     if (res.data.code === 200) {
       messages.value.push(res.data.data.userMessage);
       messages.value.push(res.data.data.assistantMessage);
@@ -1033,6 +1129,33 @@ const previewImage = (url) => {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.knowledge-popover {
+  padding: 4px 0;
+}
+
+.popover-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.assistant-kb-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 8px 4px 0;
+  border-top: 1px solid #f0f0f0;
+  font-size: 12px;
+  color: #909399;
+}
+
+.assistant-kb-hint .el-icon {
+  font-size: 14px;
 }
 
 .file-preview-area {

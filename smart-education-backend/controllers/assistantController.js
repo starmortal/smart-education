@@ -59,7 +59,7 @@ exports.getAssistant = async (req, res) => {
 // 更新助手
 exports.updateAssistant = async (req, res) => {
   const { id } = req.params;
-  const { name, prompt, model, temperature, topP, maxTokens } = req.body;
+  const { name, prompt, model, temperature, topP, maxTokens, knowledgeBases } = req.body;
 
   const assistant = await Assistant.findById(id);
   
@@ -73,6 +73,7 @@ exports.updateAssistant = async (req, res) => {
   if (temperature !== undefined) assistant.temperature = temperature;
   if (topP !== undefined) assistant.topP = topP;
   if (maxTokens !== undefined) assistant.maxTokens = maxTokens;
+  if (knowledgeBases !== undefined) assistant.knowledgeBases = knowledgeBases;
 
   await assistant.save();
   logger.info(`助手更新成功: ${id}`);

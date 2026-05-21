@@ -28,8 +28,13 @@ export const deleteTopic = (id) => {
 };
 
 // 发送消息
-export const sendMessage = (topicId, message, attachments = []) => {
-  return request.post(`${BASE_URL}/message/send`, { topicId, message, attachments });
+export const sendMessage = (topicId, message, attachments = [], temporaryKnowledgeBases = []) => {
+  return request.post(`${BASE_URL}/message/send`, { 
+    topicId, 
+    message, 
+    attachments,
+    temporaryKnowledgeBases
+  });
 };
 
 // 上传文件
