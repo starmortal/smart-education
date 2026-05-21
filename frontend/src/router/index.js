@@ -29,18 +29,6 @@ const routes = [
     name: "注册页",
     meta: { title: "注册 - 智慧教育平台" }
   },
-  { 
-    path: "/home", 
-    component: () => import("../views/HomePage.vue"), 
-    name: "首页",
-    meta: { title: "首页 - 智慧教育平台", requiresAuth: true }
-  },
-  { 
-    path: "/ai-answer", 
-    component: () => import("../views/AIAnswer.vue"), 
-    name: "AI答题",
-    meta: { title: "AI答题 - 智慧教育平台", requiresAuth: true }
-  },
   // 暂时注释万能计算器页面
   // { 
   //   path: "/resource", 

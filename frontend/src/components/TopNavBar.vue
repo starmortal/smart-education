@@ -125,10 +125,6 @@ const nickname = ref('默认用户');
 const userAvatar = ref('https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png');
 
 const navItems = [
-  { path: '/home', label: '首页' },
-  { path: '/ai-answer', label: 'AI答题' },
-  // 暂时注释万能计算器
-  // { path: '/resource', label: '万能计算' },
   { path: '/error-book', label: '错题集' },
   { path: '/study-plan', label: '学习计划' },
   { path: '/note', label: '我的笔记' },
@@ -166,7 +162,7 @@ const goToPage = (path) => {
 };
 
 const goToHome = () => {
-  router.push('/home');
+  router.push('/ai-chat');
 };
 
 const goToPageMobile = (path) => {
@@ -180,8 +176,6 @@ const goToProfile = () => {
 
 const getNavIcon = (path) => {
   const iconMap = {
-    '/home': House,
-    '/ai-answer': ChatDotRound,
     '/error-book': Notebook,
     '/study-plan': Calendar,
     '/note': Document,

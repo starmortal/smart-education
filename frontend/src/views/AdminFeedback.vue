@@ -408,7 +408,7 @@ const handleLogout = () => {
 
 // 回到首页
 const goToHome = () => {
-  router.push('/home');
+  router.push('/ai-chat');
 };
 
 // 获取类型标签样式

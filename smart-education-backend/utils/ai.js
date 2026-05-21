@@ -1,46 +1,46 @@
-// AI工具类 - 封装deepseek-chat接口
+// AI工具类 - 封装OpenAI兼容接口
 const OpenAI = require("openai");
 
 /**
  * AI工具类
  * 提供智能对话和答题功能
  * 
- * 认证方式：使用 API Key 直接认证
- * 官方文档：https://platform.deepseek.com/api-docs/
+ * 使用 SiliconFlow 提供的 DeepSeek-V4-Flash 模型
+ * 兼容 OpenAI SDK
  */
 class AI {
   constructor() {
-    // DeepSeek API Key
-    this.apiKey = process.env.DEEPSEEK_API_KEY;
+    // 从环境变量读取配置
+    this.apiKey = process.env.OPENAI_API_KEY || process.env.DEEPSEEK_API_KEY;
+    this.baseURL = process.env.OPENAI_BASE_URL || 'https://api.deepseek.com';
+    this.model = process.env.OPENAI_MODEL || 'deepseek-chat';
     
     if (!this.apiKey) {
-      console.warn('⚠️ DEEPSEEK_API_KEY 未配置，请在 .env 文件中设置');
+      console.warn('⚠️ OPENAI_API_KEY 未配置，请在 .env 文件中设置');
     }
     
-    // 初始化 OpenAI 客户端（DeepSeek 兼容 OpenAI SDK）
+    // 初始化 OpenAI 客户端
     this.client = new OpenAI({
       apiKey: this.apiKey,
-      baseURL: 'https://api.deepseek.com',
+      baseURL: this.baseURL,
     });
     
-    console.log('🔧 DeepSeek AI服务初始化完成');
+    console.log('🔧 AI服务初始化完成');
     console.log('📝 API Key:', this.apiKey ? this.apiKey.substring(0, 10) + '...' : '未配置');
+    console.log('🌐 Base URL:', this.baseURL);
+    console.log('🤖 Model:', this.model);
   }
 
   /**
-   * DeepSeek 对话接口
+   * AI 对话接口
    * @param {string} message - 用户输入的问题
    * @param {Array} history - 历史对话记录（可选）
    * @returns {Promise<string>} - AI回复内容
    */
   async chat(message, history = []) {
     try {
-      console.log('🔄 调用 DeepSeek API...');
-      
-      // 使用 deepseek-chat 模型
-      const model = "deepseek-chat";
-      
-      console.log(`🔄 使用模型: ${model}`);
+      console.log('🔄 调用 AI API...');
+      console.log(`🔄 使用模型: ${this.model}`);
 
       // 构建对话消息列表
       const messages = [];
@@ -49,28 +49,28 @@ class AI {
       }
       messages.push({ role: "user", content: message });
 
-      // 调用 DeepSeek API
+      // 调用 AI API
       const chatCompletion = await this.client.chat.completions.create({
         messages: messages,
-        model: model,
+        model: this.model,
       });
 
       // 提取 AI 回复内容
       if (chatCompletion.choices && chatCompletion.choices.length > 0) {
         const result = chatCompletion.choices[0].message.content;
-        console.log(`✅ 调用成功（模型：${model}）`);
+        console.log(`✅ 调用成功（模型：${this.model}）`);
         return result;
       }
 
       throw new Error("AI 未返回有效回复");
     } catch (error) {
-      console.error('❌ DeepSeek 调用失败:', error.message);
+      console.error('❌ AI 调用失败:', error.message);
       throw error;
     }
   }
 
   /**
-   * DeepSeek 流式对话接口（逐字返回，提升用户体验）
+   * AI 流式对话接口（逐字返回，提升用户体验）
    * @param {string} message - 用户输入的问题
    * @param {Array} history - 历史对话记录（可选）
    * @param {Function} onChunk - 流式数据回调函数
@@ -78,8 +78,7 @@ class AI {
    */
   async chatStream(message, history = [], onChunk = null) {
     try {
-      const model = "deepseek-chat";
-      console.log(`🤖 开始流式调用，模型: ${model}`);
+      console.log(`🤖 开始流式调用，模型: ${this.model}`);
 
       // 构建对话消息列表
       const messages = [];
@@ -91,7 +90,7 @@ class AI {
       // 创建流式请求
       const stream = await this.client.chat.completions.create({
         messages: messages,
-        model: model,
+        model: this.model,
         stream: true,
       });
 

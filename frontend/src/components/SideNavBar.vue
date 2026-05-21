@@ -75,8 +75,6 @@ const userAvatar = ref('https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c672
 const navItems = [
   { path: '/ai-chat', label: 'AI助手', icon: ChatDotRound },
   { path: '/knowledge-base', label: '知识库', icon: FolderOpened },
-  { path: '/home', label: '首页', icon: House },
-  { path: '/ai-answer', label: 'AI答题', icon: Cpu },
   { path: '/error-book', label: '错题集', icon: Notebook },
   { path: '/study-plan', label: '学习计划', icon: Calendar },
   { path: '/note', label: '我的笔记', icon: Document },

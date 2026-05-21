@@ -191,7 +191,7 @@
             </div>
             <div class="footer-column">
               <h4>产品</h4>
-              <a @click="handleProductClick('ai-answer')">AI 答疑</a>
+              <a @click="handleProductClick('ai-chat')">AI 助手</a>
               <a @click="handleProductClick('study-plan')">学习计划</a>
               <a @click="handleProductClick('error-book')">错题本</a>
             </div>
