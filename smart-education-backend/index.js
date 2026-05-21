@@ -2,6 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const logger = require("./utils/logger");
+const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
 
 // 导入路由模块
 const userRouter = require("./routes/user");
@@ -37,8 +39,15 @@ app.use(cors({
 // 连接 MongoDB 数据库
 mongoose
   .connect(process.env.MONGODB_URL)
-  .then(() => console.log("✅ MongoDB数据库连接成功"))
-  .catch((err) => console.error("❌ MongoDB连接失败：", err));
+  .then(() => {
+    console.log("✅ MongoDB数据库连接成功");
+    logger.info("MongoDB数据库连接成功");
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB连接失败：", err);
+    logger.error("MongoDB连接失败", err);
+    process.exit(1);
+  });
 
 // 路由挂载
 app.use("/api/user", userRouter);
@@ -52,19 +61,25 @@ app.use("/api/community", communityRouter);
 
 // 健康检查接口
 app.get("/api/test", (req, res) => {
-  res.json({ message: "后端服务器运行正常！" });
-});
-
-// 全局错误处理中间件
-app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  res.status(statusCode).json({
-    message: err.message || "服务器内部错误",
-    stack: process.env.NODE_ENV === "production" ? null : err.stack,
+  res.json({ 
+    code: 200,
+    message: "后端服务器运行正常",
+    data: {
+      status: "healthy",
+      timestamp: Date.now(),
+      environment: process.env.NODE_ENV || "development"
+    }
   });
 });
+
+// 404 错误处理
+app.use(notFoundHandler);
+
+// 全局错误处理中间件
+app.use(errorHandler);
 
 // 启动服务器
 app.listen(PORT, () => {
   console.log(`🚀 后端服务器运行在 http://localhost:${PORT}`);
+  logger.info(`后端服务器启动成功，端口：${PORT}`);
 });

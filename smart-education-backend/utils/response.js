@@ -1,6 +1,8 @@
+const logger = require('./logger');
+
 /**
  * 统一响应格式工具类
- * 确保所有API返回格式一致
+ * 确保所有API返回格式一致：{ code, message, data, timestamp }
  */
 class ResponseUtil {
   /**
@@ -11,12 +13,16 @@ class ResponseUtil {
    * @param {Number} code - 状态码
    */
   static success(res, data = null, message = '操作成功', code = 200) {
-    return res.status(200).json({
+    const response = {
       code,
       message,
       data,
       timestamp: Date.now()
-    });
+    };
+    
+    logger.info(`${message} - ${res.req.method} ${res.req.originalUrl}`);
+    
+    return res.status(200).json(response);
   }
   
   /**
@@ -27,12 +33,16 @@ class ResponseUtil {
    * @param {Number} httpStatus - HTTP状态码
    */
   static error(res, message = '操作失败', code = 500, httpStatus = 500) {
-    return res.status(httpStatus).json({
+    const response = {
       code,
       message,
       data: null,
       timestamp: Date.now()
-    });
+    };
+    
+    logger.warn(`${message} - ${res.req.method} ${res.req.originalUrl}`);
+    
+    return res.status(httpStatus).json(response);
   }
   
   /**
@@ -85,8 +95,8 @@ class ResponseUtil {
       list,
       pagination: {
         total,
-        page,
-        pageSize,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize),
         totalPages: Math.ceil(total / pageSize)
       }
     }, message);

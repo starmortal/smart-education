@@ -1,5 +1,5 @@
 // vue.config.js - Vue 项目配置文件
 module.exports = {
-  // 核心配置：关闭编译时的 ESLint 校验，彻底绕过 ESLint 阻断项目启动
-  lintOnSave: false,
+  // ESLint 配置：warning 模式，只在有错误时阻止编译，警告不会阻断
+  lintOnSave: 'warning',
 };

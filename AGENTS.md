@@ -23,6 +23,7 @@
 - **邮件服务**: Nodemailer 7.0.13
 - **文件上传**: Multer 2.1.1
 - **AI 集成**: OpenAI 4.0.0
+- **日志系统**: Winston 3.x
 
 ## 🎯 核心开发原则
 
@@ -223,10 +224,12 @@ smart-education-backend/
 - 及时测试验证
 
 ### 错误处理
-- 添加适当的 try-catch
+- 使用统一的错误处理中间件
+- 添加适当的 try-catch 或使用 asyncHandler 包装器
 - 提供友好的错误提示
-- 记录关键错误日志
+- 使用 logger 记录关键错误日志
 - 避免暴露敏感信息
+- 返回统一的错误响应格式：{ code, message, data, timestamp }
 
 ### 性能优化
 - 避免不必要的数据库查询
@@ -259,3 +262,99 @@ smart-education-backend/
 ---
 
 **最后更新**: 2026-05-21
+
+
+## 🔍 ESLint 配置说明
+
+### 前端 ESLint 规则
+项目采用平衡的 ESLint 配置，既保证代码质量，又不影响开发效率：
+
+#### 配置模式
+- **lintOnSave**: `'warning'` - 只在有错误时阻止编译，警告不会阻断
+
+#### 规则说明
+- `no-console`: `off` - 允许使用 console.log，方便调试
+- `no-debugger`: `warn` - debugger 语句仅警告，不阻止编译
+- `no-unused-vars`: `warn` - 未使用的变量仅警告
+- `vue/multi-word-component-names`: `off` - 允许单词组件名
+- `vue/no-unused-components`: `warn` - 未使用的组件仅警告
+- `no-undef`: `error` - 未定义的变量报错（防止拼写错误）
+- `no-unreachable`: `error` - 不可达代码报错
+- `no-dupe-keys`: `error` - 重复的对象键报错
+
+#### 修改规则
+如需调整规则，编辑 `frontend/package.json` 中的 `eslintConfig.rules` 部分。
+
+## 📊 日志系统说明
+
+### 后端日志配置
+项目使用 Winston 日志系统，提供统一的日志记录：
+
+#### 日志级别
+- `error`: 错误信息（记录到 error.log）
+- `warn`: 警告信息
+- `info`: 一般信息
+- `debug`: 调试信息
+
+#### 日志文件
+- `logs/error.log`: 错误日志（最大 5MB，保留 5 个文件）
+- `logs/combined.log`: 所有日志（最大 5MB，保留 5 个文件）
+
+#### 使用方法
+```javascript
+const logger = require('./utils/logger');
+
+logger.info('操作成功');
+logger.warn('警告信息');
+logger.error('错误信息', error);
+```
+
+#### 环境配置
+- 开发环境：同时输出到控制台和文件
+- 生产环境：仅输出到文件
+
+## 🔄 API 响应格式规范
+
+### 统一响应格式
+所有 API 接口返回统一的 JSON 格式：
+
+```javascript
+{
+  "code": 200,           // 状态码
+  "message": "操作成功",  // 提示信息
+  "data": {},            // 返回数据（可为 null）
+  "timestamp": 1234567890 // 时间戳
+}
+```
+
+### 使用响应工具类
+```javascript
+const Response = require('./utils/response');
+
+// 成功响应
+Response.success(res, data, '操作成功');
+
+// 错误响应
+Response.error(res, '操作失败', 500);
+Response.badRequest(res, '参数错误');
+Response.unauthorized(res, '未授权');
+Response.notFound(res, '资源不存在');
+
+// 分页响应
+Response.page(res, list, total, page, pageSize);
+```
+
+### 错误处理
+使用统一的错误处理中间件和自定义错误类：
+
+```javascript
+const { AppError, asyncHandler } = require('./middleware/errorHandler');
+
+// 抛出自定义错误
+throw new AppError('错误信息', 400, 'ERROR_CODE');
+
+// 包装异步路由
+router.get('/path', asyncHandler(async (req, res) => {
+  // 异步代码，错误会自动被捕获
+}));
+```
