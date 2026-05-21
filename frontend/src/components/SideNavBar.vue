@@ -18,7 +18,7 @@
           :class="['nav-item', { active: currentPath === item.path }]"
           @click="goToPage(item.path)"
         >
-          <el-icon :size="24">
+          <el-icon :size="18">
             <component :is="item.icon" />
           </el-icon>
         </div>
@@ -29,7 +29,7 @@
     <div class="user-section">
       <el-dropdown trigger="click" @command="handleCommand">
         <div class="user-avatar">
-          <el-avatar :size="40" :src="userAvatar" />
+          <el-avatar :size="32" :src="userAvatar" />
         </div>
         <template #dropdown>
           <el-dropdown-menu>
@@ -120,7 +120,7 @@ const handleCommand = (command) => {
 
 <style scoped>
 .side-nav-bar {
-  width: 70px;
+  width: 60px;
   height: 100vh;
   background: #0969da;
   display: flex;
@@ -135,7 +135,7 @@ const handleCommand = (command) => {
 
 .logo-section {
   width: 100%;
-  height: 70px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -149,9 +149,9 @@ const handleCommand = (command) => {
 }
 
 .nav-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   object-fit: contain;
 }
 
@@ -174,7 +174,7 @@ const handleCommand = (command) => {
 
 .nav-item {
   width: 100%;
-  height: 60px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -228,25 +228,25 @@ const handleCommand = (command) => {
 /* 移动端适配 */
 @media (max-width: 768px) {
   .side-nav-bar {
-    width: 60px;
+    width: 55px;
   }
 
   .logo-section {
-    height: 60px;
+    height: 55px;
   }
 
   .nav-logo {
-    width: 32px;
-    height: 32px;
+    width: 24px;
+    height: 24px;
   }
 
   .nav-item {
-    height: 50px;
+    height: 45px;
   }
 
   .user-avatar {
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
   }
 }
 </style>

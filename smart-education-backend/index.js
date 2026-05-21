@@ -30,6 +30,9 @@ const PORT = process.env.PORT || 3001;
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+// 静态文件服务（用于访问上传的文件）
+app.use('/uploads', express.static('uploads'));
+
 // CORS 跨域配置（允许前端访问）
 app.use(cors({
   origin: ['http://localhost:8080', 'http://localhost:8081', 'http://127.0.0.1:8080'],

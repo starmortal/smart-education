@@ -101,12 +101,33 @@ exports.deleteTopic = async (req, res) => {
   Response.success(res, null, '话题删除成功');
 };
 
+// 上传文件
+exports.uploadFile = async (req, res) => {
+  if (!req.file) {
+    throw new AppError('请选择文件', 400);
+  }
+
+  const fileInfo = {
+    filename: req.file.originalname,
+    type: req.file.mimetype,
+    size: req.file.size,
+    url: `/uploads/chat/${req.file.filename}`
+  };
+
+  logger.info(`文件上传成功: ${req.file.originalname}`);
+  Response.success(res, fileInfo, '文件上传成功');
+};
+
 // 发送消息并获取AI回复
 exports.sendMessage = async (req, res) => {
-  const { topicId, message } = req.body;
+  const { topicId, message, attachments = [] } = req.body;
 
-  if (!topicId || !message) {
-    throw new AppError('话题ID和消息内容不能为空', 400);
+  if (!topicId) {
+    throw new AppError('话题ID不能为空', 400);
+  }
+
+  if (!message && attachments.length === 0) {
+    throw new AppError('消息内容或附件不能为空', 400);
   }
 
   // 获取话题
@@ -124,7 +145,8 @@ exports.sendMessage = async (req, res) => {
   // 添加用户消息
   const userMessage = {
     role: 'user',
-    content: message,
+    content: message || '',
+    attachments: attachments || [],
     timestamp: new Date()
   };
   topic.messages.push(userMessage);

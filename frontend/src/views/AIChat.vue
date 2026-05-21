@@ -134,6 +134,31 @@
             </div>
             <div class="message-content">
               <div class="message-text" v-html="renderMarkdown(message.content)"></div>
+              <!-- 附件显示 -->
+              <div v-if="message.attachments && message.attachments.length > 0" class="message-attachments">
+                <div
+                  v-for="(attachment, idx) in message.attachments"
+                  :key="idx"
+                  class="attachment-item"
+                >
+                  <img
+                    v-if="attachment.type.startsWith('image/')"
+                    :src="`http://localhost:3001${attachment.url}`"
+                    :alt="attachment.filename"
+                    class="attachment-image"
+                    @click="previewImage(`http://localhost:3001${attachment.url}`)"
+                  />
+                  <a
+                    v-else
+                    :href="`http://localhost:3001${attachment.url}`"
+                    target="_blank"
+                    class="attachment-document"
+                  >
+                    <el-icon :size="24"><Document /></el-icon>
+                    <span>{{ attachment.filename }}</span>
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -152,6 +177,28 @@
         <!-- 输入区域 -->
         <div class="input-area">
           <div class="input-wrapper">
+            <!-- 文件预览区域 -->
+            <div v-if="selectedFiles.length > 0" class="file-preview-area">
+              <div
+                v-for="(fileInfo, index) in selectedFiles"
+                :key="index"
+                class="file-preview-item"
+              >
+                <div v-if="fileInfo.type.startsWith('image/')" class="image-preview">
+                  <img :src="fileInfo.preview" :alt="fileInfo.name" />
+                  <el-icon class="remove-file" @click="removeFile(index)"><Close /></el-icon>
+                </div>
+                <div v-else class="document-preview">
+                  <el-icon :size="32" color="#409eff"><Document /></el-icon>
+                  <div class="file-info">
+                    <div class="file-name">{{ fileInfo.name }}</div>
+                    <div class="file-size">{{ formatFileSize(fileInfo.size) }}</div>
+                  </div>
+                  <el-icon class="remove-file" @click="removeFile(index)"><Close /></el-icon>
+                </div>
+              </div>
+            </div>
+
             <el-input
               v-model="inputMessage"
               type="textarea"
@@ -173,6 +220,7 @@
                   ref="fileInputRef"
                   type="file"
                   accept="image/*,.pdf,.doc,.docx,.txt"
+                  multiple
                   style="display: none"
                   @change="handleFileChange"
                 />
@@ -225,7 +273,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, MoreFilled, ChatDotRound, Cpu, Promotion, Paperclip } from '@element-plus/icons-vue';
+import { Plus, MoreFilled, ChatDotRound, Cpu, Promotion, Paperclip, Close, Document, Picture } from '@element-plus/icons-vue';
 import { marked } from 'marked';
 import {
   getAssistants,
@@ -241,7 +289,8 @@ import {
   updateTopic,
   deleteTopic,
   sendMessage,
-  clearMessages
+  clearMessages,
+  uploadFile
 } from '@/api/chat';
 
 const userId = ref(localStorage.getItem('edu-user-id'));
@@ -257,6 +306,7 @@ const inputMessage = ref('');
 const isLoading = ref(false);
 const messageListRef = ref(null);
 const fileInputRef = ref(null);
+const selectedFiles = ref([]);
 
 // 标签状态
 const activeTab = ref('assistants');
@@ -528,8 +578,8 @@ const handleRenameTopic = async () => {
 
 // 发送消息
 const handleSendMessage = async () => {
-  if (!inputMessage.value.trim()) {
-    ElMessage.warning('请输入消息');
+  if (!inputMessage.value.trim() && selectedFiles.value.length === 0) {
+    ElMessage.warning('请输入消息或选择文件');
     return;
   }
 
@@ -539,11 +589,32 @@ const handleSendMessage = async () => {
   }
 
   const message = inputMessage.value.trim();
+  const attachments = [];
+  
+  // 上传文件
+  if (selectedFiles.value.length > 0) {
+    isLoading.value = true;
+    try {
+      for (const fileInfo of selectedFiles.value) {
+        const res = await uploadFile(fileInfo.file);
+        if (res.data.code === 200) {
+          attachments.push(res.data.data);
+        }
+      }
+    } catch (error) {
+      console.error('文件上传失败:', error);
+      ElMessage.error('文件上传失败');
+      isLoading.value = false;
+      return;
+    }
+  }
+  
   inputMessage.value = '';
+  selectedFiles.value = [];
   isLoading.value = true;
 
   try {
-    const res = await sendMessage(currentTopic.value._id, message);
+    const res = await sendMessage(currentTopic.value._id, message, attachments);
     if (res.data.code === 200) {
       messages.value.push(res.data.data.userMessage);
       messages.value.push(res.data.data.assistantMessage);
@@ -579,23 +650,77 @@ const handleUploadClick = () => {
 };
 
 // 处理文件选择
-const handleFileChange = (event) => {
-  const file = event.target.files[0];
-  if (file) {
+const handleFileChange = async (event) => {
+  const files = Array.from(event.target.files);
+  
+  for (const file of files) {
     // 检查文件大小（限制为 10MB）
     if (file.size > 10 * 1024 * 1024) {
-      ElMessage.error('文件大小不能超过 10MB');
-      return;
+      ElMessage.error(`文件 ${file.name} 大小超过 10MB`);
+      continue;
     }
     
-    // 这里可以添加文件上传逻辑
-    ElMessage.info(`已选择文件: ${file.name}，文件上传功能开发中...`);
+    // 检查文件类型
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 
+                          'application/pdf', 'application/msword', 
+                          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                          'text/plain'];
     
-    // 清空文件输入
-    if (fileInputRef.value) {
-      fileInputRef.value.value = '';
+    if (!allowedTypes.includes(file.type)) {
+      ElMessage.error(`不支持的文件类型: ${file.name}`);
+      continue;
     }
+    
+    // 创建文件预览
+    const fileInfo = {
+      file,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      preview: null
+    };
+    
+    // 如果是图片，生成预览
+    if (file.type.startsWith('image/')) {
+      try {
+        const preview = await readFileAsDataURL(file);
+        fileInfo.preview = preview;
+      } catch (error) {
+        console.error('读取图片失败:', error);
+        ElMessage.error(`读取图片 ${file.name} 失败`);
+        continue;
+      }
+    }
+    
+    selectedFiles.value.push(fileInfo);
   }
+  
+  // 清空文件输入
+  if (fileInputRef.value) {
+    fileInputRef.value.value = '';
+  }
+};
+
+// 读取文件为 DataURL
+const readFileAsDataURL = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = (e) => reject(e);
+    reader.readAsDataURL(file);
+  });
+};
+
+// 移除选中的文件
+const removeFile = (index) => {
+  selectedFiles.value.splice(index, 1);
+};
+
+// 格式化文件大小
+const formatFileSize = (bytes) => {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
 };
 
 // 工具函数
@@ -607,6 +732,11 @@ const scrollToBottom = () => {
   if (messageListRef.value) {
     messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
   }
+};
+
+// 预览图片
+const previewImage = (url) => {
+  window.open(url, '_blank');
 };
 </script>
 
@@ -903,6 +1033,127 @@ const scrollToBottom = () => {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.file-preview-area {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.file-preview-item {
+  position: relative;
+}
+
+.image-preview {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e4e7ed;
+}
+
+.image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.document-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  background: #f5f7fa;
+  position: relative;
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  font-size: 14px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+
+.file-size {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.remove-file {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border-radius: 50%;
+  padding: 2px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.remove-file:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.message-attachments {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.attachment-item {
+  max-width: 200px;
+}
+
+.attachment-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.attachment-image:hover {
+  transform: scale(1.05);
+}
+
+.attachment-document {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  background: #f5f7fa;
+  text-decoration: none;
+  color: #409eff;
+  transition: all 0.3s;
+}
+
+.attachment-document:hover {
+  background: #e8f4ff;
+  border-color: #409eff;
+}
+
+.attachment-document span {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 

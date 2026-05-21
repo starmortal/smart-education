@@ -28,8 +28,19 @@ export const deleteTopic = (id) => {
 };
 
 // 发送消息
-export const sendMessage = (topicId, message) => {
-  return request.post(`${BASE_URL}/message/send`, { topicId, message });
+export const sendMessage = (topicId, message, attachments = []) => {
+  return request.post(`${BASE_URL}/message/send`, { topicId, message, attachments });
+};
+
+// 上传文件
+export const uploadFile = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request.post(`${BASE_URL}/upload`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
 };
 
 // 清空话题消息
