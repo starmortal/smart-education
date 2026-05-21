@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const Note = require("../models/Note");
+const Response = require("../utils/response");
+const logger = require("../utils/logger");
+const { asyncHandler, AppError } = require("../middleware/errorHandler");
 
 /**
  * 学习笔记路由模块
@@ -9,129 +12,121 @@ const Note = require("../models/Note");
  */
 
 // 获取笔记列表
-router.get("/list", async (req, res) => {
-  try {
-    const { userId, pageNum = 1, pageSize = 12, noteCategory, noteTag, searchKey } = req.query;
-    
-    const query = { userId };
-    if (noteCategory) query.noteCategory = noteCategory;
-    if (noteTag) {
-      const tags = noteTag.split(",").filter(t => t);
-      if (tags.length > 0) {
-        query.noteTag = { $in: tags };
-      }
+router.get("/list", asyncHandler(async (req, res) => {
+  const { userId, pageNum = 1, pageSize = 12, noteCategory, noteTag, searchKey } = req.query;
+  
+  logger.info(`获取笔记列表: userId=${userId}, pageNum=${pageNum}, pageSize=${pageSize}`);
+  
+  const query = { userId };
+  if (noteCategory) query.noteCategory = noteCategory;
+  if (noteTag) {
+    const tags = noteTag.split(",").filter(t => t);
+    if (tags.length > 0) {
+      query.noteTag = { $in: tags };
     }
-    if (searchKey) {
-      query.$or = [
-        { noteTitle: { $regex: searchKey, $options: "i" } },
-        { noteContent: { $regex: searchKey, $options: "i" } },
-      ];
-    }
-    
-    const total = await Note.countDocuments(query);
-    
-    const notes = await Note.find(query)
-      .sort({ createTime: -1 })
-      .skip((pageNum - 1) * pageSize)
-      .limit(parseInt(pageSize));
-    
-    const formattedNotes = notes.map(note => ({
-      id: note._id.toString(),
-      _id: note._id,
-      userId: note.userId,
-      noteTitle: note.noteTitle,
-      noteCategory: note.noteCategory,
-      noteTag: note.noteTag,
-      noteContent: note.noteContent,
-      createTime: note.createTime,
-      updateTime: note.updateTime
-    }));
-    
-    res.json({
-      notes: formattedNotes,
-      count: total,
-      message: "获取笔记列表成功",
-    });
-  } catch (error) {
-    console.error("获取笔记列表失败：", error);
-    res.status(500).json({ message: "获取笔记列表失败" });
   }
-});
+  if (searchKey) {
+    query.$or = [
+      { noteTitle: { $regex: searchKey, $options: "i" } },
+      { noteContent: { $regex: searchKey, $options: "i" } },
+    ];
+  }
+  
+  const total = await Note.countDocuments(query);
+  
+  const notes = await Note.find(query)
+    .sort({ createTime: -1 })
+    .skip((pageNum - 1) * pageSize)
+    .limit(parseInt(pageSize));
+  
+  const formattedNotes = notes.map(note => ({
+    id: note._id.toString(),
+    _id: note._id,
+    userId: note.userId,
+    noteTitle: note.noteTitle,
+    noteCategory: note.noteCategory,
+    noteTag: note.noteTag,
+    noteContent: note.noteContent,
+    createTime: note.createTime,
+    updateTime: note.updateTime
+  }));
+  
+  Response.success(res, {
+    notes: formattedNotes,
+    count: total,
+  }, "获取笔记列表成功");
+}));
 
 // 新增笔记
-router.post("/add", async (req, res) => {
-  try {
-    const { userId, noteTitle, noteCategory, noteTag, noteContent } = req.body;
-    
-    if (!userId || !noteTitle || !noteCategory || !noteContent) {
-      return res.status(400).json({ message: "必填字段不能为空" });
-    }
-    
-    const newNote = new Note({
-      userId,
-      noteTitle,
-      noteCategory,
-      noteTag: noteTag || [],
-      noteContent,
-    });
-    
-    await newNote.save();
-    
-    res.status(201).json({
-      message: "新增笔记成功",
-      noteId: newNote._id,
-    });
-  } catch (error) {
-    console.error("新增笔记失败：", error);
-    res.status(500).json({ message: "新增笔记失败" });
+router.post("/add", asyncHandler(async (req, res) => {
+  const { userId, noteTitle, noteCategory, noteTag, noteContent } = req.body;
+  
+  if (!userId || !noteTitle || !noteCategory || !noteContent) {
+    throw new AppError("必填字段不能为空", 400);
   }
-});
+  
+  logger.info(`新增笔记: userId=${userId}, noteTitle=${noteTitle}`);
+  
+  const newNote = new Note({
+    userId,
+    noteTitle,
+    noteCategory,
+    noteTag: noteTag || [],
+    noteContent,
+  });
+  
+  await newNote.save();
+  
+  logger.info(`笔记创建成功: noteId=${newNote._id}`);
+  
+  Response.success(res, {
+    noteId: newNote._id,
+  }, "新增笔记成功", 201);
+}));
 
 // 更新笔记
-router.put("/update/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { noteTitle, noteCategory, noteTag, noteContent } = req.body;
-    
-    const note = await Note.findByIdAndUpdate(
-      id,
-      {
-        noteTitle,
-        noteCategory,
-        noteTag,
-        noteContent,
-        updateTime: new Date(),
-      },
-      { new: true }
-    );
-    
-    if (!note) {
-      return res.status(404).json({ message: "笔记不存在" });
-    }
-    
-    res.json({ message: "更新笔记成功" });
-  } catch (error) {
-    console.error("更新笔记失败：", error);
-    res.status(500).json({ message: "更新笔记失败" });
+router.put("/update/:id", asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { noteTitle, noteCategory, noteTag, noteContent } = req.body;
+  
+  logger.info(`更新笔记: id=${id}`);
+  
+  const note = await Note.findByIdAndUpdate(
+    id,
+    {
+      noteTitle,
+      noteCategory,
+      noteTag,
+      noteContent,
+      updateTime: new Date(),
+    },
+    { new: true }
+  );
+  
+  if (!note) {
+    throw new AppError("笔记不存在", 404);
   }
-});
+  
+  logger.info(`笔记更新成功: id=${id}`);
+  
+  Response.success(res, null, "更新笔记成功");
+}));
 
 // 删除笔记
-router.delete("/delete/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const note = await Note.findByIdAndDelete(id);
-    
-    if (!note) {
-      return res.status(404).json({ message: "笔记不存在" });
-    }
-    
-    res.json({ message: "删除笔记成功" });
-  } catch (error) {
-    console.error("删除笔记失败：", error);
-    res.status(500).json({ message: "删除笔记失败" });
+router.delete("/delete/:id", asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  
+  logger.info(`删除笔记: id=${id}`);
+  
+  const note = await Note.findByIdAndDelete(id);
+  
+  if (!note) {
+    throw new AppError("笔记不存在", 404);
   }
-});
+  
+  logger.info(`笔记删除成功: id=${id}`);
+  
+  Response.success(res, null, "删除笔记成功");
+}));
 
 module.exports = router;

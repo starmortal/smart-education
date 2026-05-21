@@ -36,18 +36,53 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id']
 }));
 
-// 连接 MongoDB 数据库
-mongoose
-  .connect(process.env.MONGODB_URL)
-  .then(() => {
-    console.log("✅ MongoDB数据库连接成功");
-    logger.info("MongoDB数据库连接成功");
-  })
-  .catch((err) => {
-    console.error("❌ MongoDB连接失败：", err);
-    logger.error("MongoDB连接失败", err);
-    process.exit(1);
-  });
+// 连接 MongoDB 数据库（带重试机制）
+const connectDB = async (retries = 5) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await mongoose.connect(process.env.MONGODB_URL, {
+        serverSelectionTimeoutMS: 5000,
+      });
+      console.log("✅ MongoDB数据库连接成功");
+      logger.info("MongoDB数据库连接成功");
+      return;
+    } catch (err) {
+      const attempt = i + 1;
+      const delay = Math.pow(2, i) * 1000; // 指数退避：1s, 2s, 4s, 8s, 16s
+      
+      console.error(`❌ MongoDB连接失败 (尝试 ${attempt}/${retries}):`, err.message);
+      logger.error(`MongoDB连接失败 (尝试 ${attempt}/${retries})`, err);
+      
+      if (attempt < retries) {
+        console.log(`⏳ ${delay / 1000}秒后重试...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        console.error("❌ MongoDB连接失败，已达到最大重试次数");
+        logger.error("MongoDB连接失败，已达到最大重试次数");
+        process.exit(1);
+      }
+    }
+  }
+};
+
+// 监听 MongoDB 连接事件
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️ MongoDB连接断开');
+  logger.warn('MongoDB连接断开');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✅ MongoDB重新连接成功');
+  logger.info('MongoDB重新连接成功');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('❌ MongoDB连接错误:', err.message);
+  logger.error('MongoDB连接错误', err);
+});
+
+// 执行数据库连接
+connectDB();
 
 // 路由挂载
 app.use("/api/user", userRouter);
