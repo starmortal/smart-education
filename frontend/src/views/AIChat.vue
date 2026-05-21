@@ -2,102 +2,119 @@
   <div class="ai-chat-container">
     <!-- 左侧面板（标签切换） -->
     <div class="left-panel">
-      <el-tabs v-model="activeTab" class="panel-tabs">
-        <el-tab-pane label="助手" name="assistants">
-          <div class="panel-header">
-            <el-button type="primary" :icon="Plus" @click="handleCreateAssistant" style="width: 100%;">
-              新建助手
+      <!-- 自定义标签按钮 -->
+      <div class="tab-buttons">
+        <button 
+          :class="['tab-btn', { active: activeTab === 'assistants' }]"
+          @click="activeTab = 'assistants'"
+        >
+          助手
+        </button>
+        <button 
+          :class="['tab-btn', { active: activeTab === 'topics' }]"
+          @click="activeTab = 'topics'"
+        >
+          对话
+        </button>
+      </div>
+
+      <!-- 助手标签内容 -->
+      <div v-show="activeTab === 'assistants'" class="tab-content">
+        <div class="panel-header">
+          <el-button type="primary" :icon="Plus" @click="handleCreateAssistant" style="width: 100%;">
+            新建助手
+          </el-button>
+        </div>
+
+        <div class="item-list">
+          <div
+            v-for="assistant in assistants"
+            :key="assistant._id"
+            :class="['list-item', { active: selectedAssistantForTopics?._id === assistant._id }]"
+            @click="selectAssistantAndSwitchToTopics(assistant)"
+          >
+            <div class="item-info">
+              <div class="item-name">{{ assistant.name }}</div>
+            </div>
+            <el-dropdown trigger="click" @command="(cmd) => handleAssistantCommand(cmd, assistant)">
+              <el-icon class="more-icon" @click.stop>
+                <MoreFilled />
+              </el-icon>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="edit">编辑助手</el-dropdown-item>
+                  <el-dropdown-item command="delete" divided>删除助手</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
+        </div>
+      </div>
+
+      <!-- 对话标签内容 -->
+      <div v-show="activeTab === 'topics'" class="tab-content">
+        <div class="panel-header">
+          <el-button
+            type="primary"
+            :icon="Plus"
+            @click="handleCreateTopic"
+            :disabled="!selectedAssistantForTopics"
+            style="width: 100%;"
+          >
+            新建对话
+          </el-button>
+        </div>
+
+        <div class="item-list">
+          <div
+            v-for="topic in topics"
+            :key="topic._id"
+            :class="['list-item', { active: currentTopic?._id === topic._id }]"
+            @click="selectTopic(topic)"
+          >
+            <div class="item-info">
+              <div class="item-name">{{ topic.title }}</div>
+            </div>
+            <el-dropdown trigger="click" @command="(cmd) => handleTopicCommand(cmd, topic)">
+              <el-icon class="more-icon" @click.stop>
+                <MoreFilled />
+              </el-icon>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="rename">重新命名</el-dropdown-item>
+                  <el-dropdown-item command="clear">清空消息</el-dropdown-item>
+                  <el-dropdown-item command="delete" divided>删除对话</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
+
+          <div v-if="topics.length === 0 && selectedAssistantForTopics" class="empty-state">
+            <el-icon :size="48" color="#e4e7ed"><ChatDotRound /></el-icon>
+            <p>还没有对话</p>
+            <el-button type="primary" size="small" @click="handleCreateTopic">
+              创建新对话
             </el-button>
           </div>
 
-          <div class="item-list">
-            <div
-              v-for="assistant in assistants"
-              :key="assistant._id"
-              :class="['list-item', { active: selectedAssistantForTopics?._id === assistant._id }]"
-              @click="selectAssistantAndSwitchToTopics(assistant)"
-            >
-              <div class="item-info">
-                <div class="item-name">{{ assistant.name }}</div>
-                <div class="item-meta">{{ getTopicCount(assistant._id) }} 个对话</div>
-              </div>
-              <el-dropdown trigger="click" @command="(cmd) => handleAssistantCommand(cmd, assistant)">
-                <el-icon class="more-icon" @click.stop>
-                  <MoreFilled />
-                </el-icon>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="edit">编辑</el-dropdown-item>
-                    <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
+          <div v-if="!selectedAssistantForTopics" class="empty-state">
+            <el-icon :size="48" color="#e4e7ed"><Cpu /></el-icon>
+            <p>请先选择一个助手</p>
           </div>
-        </el-tab-pane>
-
-        <el-tab-pane label="对话" name="topics">
-          <div class="panel-header">
-            <el-button
-              type="primary"
-              :icon="Plus"
-              @click="handleCreateTopic"
-              :disabled="!selectedAssistantForTopics"
-              style="width: 100%;"
-            >
-              新建对话
-            </el-button>
-          </div>
-
-          <div v-if="selectedAssistantForTopics" class="assistant-info-bar">
-            <el-icon><Cpu /></el-icon>
-            <span>{{ selectedAssistantForTopics.name }}</span>
-          </div>
-
-          <div class="item-list">
-            <div
-              v-for="topic in topics"
-              :key="topic._id"
-              :class="['list-item', { active: currentTopic?._id === topic._id }]"
-              @click="selectTopic(topic)"
-            >
-              <div class="item-info">
-                <div class="item-name">{{ topic.title }}</div>
-                <div class="item-meta">{{ formatTime(topic.updatedAt) }}</div>
-              </div>
-              <el-dropdown trigger="click" @command="(cmd) => handleTopicCommand(cmd, topic)">
-                <el-icon class="more-icon" @click.stop>
-                  <MoreFilled />
-                </el-icon>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="rename">重命名</el-dropdown-item>
-                    <el-dropdown-item command="clear">清空消息</el-dropdown-item>
-                    <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-
-            <div v-if="topics.length === 0 && selectedAssistantForTopics" class="empty-state">
-              <el-icon :size="48" color="#e4e7ed"><ChatDotRound /></el-icon>
-              <p>还没有对话</p>
-              <el-button type="primary" size="small" @click="handleCreateTopic">
-                创建新对话
-              </el-button>
-            </div>
-
-            <div v-if="!selectedAssistantForTopics" class="empty-state">
-              <el-icon :size="48" color="#e4e7ed"><Cpu /></el-icon>
-              <p>请先选择一个助手</p>
-            </div>
-          </div>
-        </el-tab-pane>
-      </el-tabs>
+        </div>
+      </div>
     </div>
 
     <!-- 右侧对话区域 -->
     <div class="chat-panel">
+      <!-- 对话框顶部助手信息 -->
+      <div v-if="selectedAssistantForTopics" class="chat-header">
+        <div class="chat-header-info">
+          <el-icon :size="20" color="#0969da"><Cpu /></el-icon>
+          <span class="chat-header-title">{{ selectedAssistantForTopics.name }}</span>
+        </div>
+      </div>
+
       <div v-if="!currentTopic" class="empty-chat">
         <el-icon :size="80" color="#e4e7ed"><ChatDotRound /></el-icon>
         <p>选择或创建一个对话开始聊天</p>
@@ -117,7 +134,6 @@
             </div>
             <div class="message-content">
               <div class="message-text" v-html="renderMarkdown(message.content)"></div>
-              <div class="message-time">{{ formatMessageTime(message.timestamp) }}</div>
             </div>
           </div>
 
@@ -135,17 +151,36 @@
 
         <!-- 输入区域 -->
         <div class="input-area">
-          <el-input
-            v-model="inputMessage"
-            type="textarea"
-            :rows="3"
-            placeholder="输入消息... (Ctrl+Enter 发送)"
-            @keydown.ctrl.enter="handleSendMessage"
-          />
-          <div class="input-actions">
-            <el-button type="primary" :icon="Promotion" @click="handleSendMessage" :loading="isLoading">
-              发送
-            </el-button>
+          <div class="input-wrapper">
+            <el-input
+              v-model="inputMessage"
+              type="textarea"
+              :rows="2"
+              placeholder="输入消息... (Enter 发送，Shift+Enter 换行)"
+              @keydown="handleKeyDown"
+              class="message-input"
+            />
+            <div class="input-actions">
+              <div class="input-tools">
+                <el-button 
+                  :icon="Paperclip" 
+                  circle 
+                  size="small"
+                  @click="handleUploadClick"
+                  title="上传文件或图片"
+                />
+                <input
+                  ref="fileInputRef"
+                  type="file"
+                  accept="image/*,.pdf,.doc,.docx,.txt"
+                  style="display: none"
+                  @change="handleFileChange"
+                />
+              </div>
+              <el-button type="primary" :icon="Promotion" @click="handleSendMessage" :loading="isLoading">
+                发送
+              </el-button>
+            </div>
           </div>
         </div>
       </template>
@@ -157,15 +192,15 @@
       :title="isEditingAssistant ? '编辑助手' : '创建助手'"
       width="500px"
     >
-      <el-form :model="assistantForm" label-width="80px">
+      <el-form :model="assistantForm" label-width="100px">
         <el-form-item label="助手名称">
           <el-input v-model="assistantForm.name" placeholder="请输入助手名称" />
         </el-form-item>
-        <el-form-item label="提示词">
+        <el-form-item label="系统提示词">
           <el-input
             v-model="assistantForm.prompt"
             type="textarea"
-            :rows="4"
+            :rows="8"
             placeholder="请输入系统提示词（可选）"
           />
         </el-form-item>
@@ -190,7 +225,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, MoreFilled, ChatDotRound, Cpu, Promotion } from '@element-plus/icons-vue';
+import { Plus, MoreFilled, ChatDotRound, Cpu, Promotion, Paperclip } from '@element-plus/icons-vue';
 import { marked } from 'marked';
 import {
   getAssistants,
@@ -221,6 +256,7 @@ const currentTopic = ref(null);
 const inputMessage = ref('');
 const isLoading = ref(false);
 const messageListRef = ref(null);
+const fileInputRef = ref(null);
 
 // 标签状态
 const activeTab = ref('assistants');
@@ -228,7 +264,10 @@ const activeTab = ref('assistants');
 // 对话框
 const assistantDialogVisible = ref(false);
 const isEditingAssistant = ref(false);
-const assistantForm = ref({ name: '', prompt: '' });
+const assistantForm = ref({ 
+  name: '', 
+  prompt: ''
+});
 const editingAssistantId = ref(null);
 
 const renameDialogVisible = ref(false);
@@ -240,6 +279,14 @@ onMounted(async () => {
   // 默认选择第一个助手并切换到对话标签
   if (assistants.value.length > 0) {
     await selectAssistantAndSwitchToTopics(assistants.value[0]);
+    
+    // 如果没有对话，自动创建一个
+    if (topics.value.length === 0) {
+      await handleCreateTopic();
+    } else {
+      // 选择第一个对话
+      await selectTopic(topics.value[0]);
+    }
   }
 });
 
@@ -276,6 +323,14 @@ const selectAssistantAndSwitchToTopics = async (assistant) => {
   messages.value = [];
   await loadTopics(assistant._id);
   activeTab.value = 'topics'; // 切换到对话标签
+  
+  // 如果没有对话，自动创建一个
+  if (topics.value.length === 0) {
+    await handleCreateTopic();
+  } else {
+    // 选择第一个对话
+    await selectTopic(topics.value[0]);
+  }
 };
 
 // 加载话题列表
@@ -311,7 +366,10 @@ const loadMessages = async (topicId) => {
 // 创建助手
 const handleCreateAssistant = () => {
   isEditingAssistant.value = false;
-  assistantForm.value = { name: '', prompt: '' };
+  assistantForm.value = { 
+    name: '', 
+    prompt: ''
+  };
   assistantDialogVisible.value = true;
 };
 
@@ -504,29 +562,43 @@ const handleSendMessage = async () => {
   }
 };
 
+// 处理键盘事件
+const handleKeyDown = (event) => {
+  // Enter 发送，Shift+Enter 换行
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    handleSendMessage();
+  }
+};
+
+// 处理文件上传点击
+const handleUploadClick = () => {
+  if (fileInputRef.value) {
+    fileInputRef.value.click();
+  }
+};
+
+// 处理文件选择
+const handleFileChange = (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    // 检查文件大小（限制为 10MB）
+    if (file.size > 10 * 1024 * 1024) {
+      ElMessage.error('文件大小不能超过 10MB');
+      return;
+    }
+    
+    // 这里可以添加文件上传逻辑
+    ElMessage.info(`已选择文件: ${file.name}，文件上传功能开发中...`);
+    
+    // 清空文件输入
+    if (fileInputRef.value) {
+      fileInputRef.value.value = '';
+    }
+  }
+};
+
 // 工具函数
-const getTopicCount = (assistantId) => {
-  return topics.value.filter(t => t.assistantId === assistantId).length;
-};
-
-const formatTime = (time) => {
-  const date = new Date(time);
-  const now = new Date();
-  const diff = now - date;
-  
-  if (diff < 60000) return '刚刚';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-  if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
-  
-  return `${date.getMonth() + 1}/${date.getDate()}`;
-};
-
-const formatMessageTime = (time) => {
-  const date = new Date(time);
-  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-};
-
 const renderMarkdown = (content) => {
   return marked(content);
 };
@@ -554,40 +626,52 @@ const scrollToBottom = () => {
   flex-direction: column;
 }
 
-.panel-tabs {
-  height: 100%;
+/* 自定义标签按钮 */
+.tab-buttons {
   display: flex;
-  flex-direction: column;
-}
-
-.panel-tabs :deep(.el-tabs__header) {
-  margin: 0;
-  padding: 12px 16px 0;
+  padding: 12px;
+  gap: 0;
   background: #ffffff;
-}
-
-.panel-tabs :deep(.el-tabs__content) {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.panel-tabs :deep(.el-tab-pane) {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.assistant-info-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: #f5f7fa;
   border-bottom: 1px solid #e4e7ed;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px 0;
+  border: 1px solid #dcdfe6;
+  background: #ffffff;
+  color: #606266;
   font-size: 14px;
-  color: #666;
+  cursor: pointer;
+  transition: all 0.3s;
+  outline: none;
+}
+
+.tab-btn:first-child {
+  border-radius: 4px 0 0 4px;
+  border-right: none;
+}
+
+.tab-btn:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.tab-btn:hover {
+  color: #0969da;
+  background: #f5f7fa;
+}
+
+.tab-btn.active {
+  background: #0969da;
+  color: #ffffff;
+  border-color: #0969da;
+}
+
+.tab-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .panel-header {
@@ -647,20 +731,17 @@ const scrollToBottom = () => {
   white-space: nowrap;
 }
 
-.item-meta {
-  font-size: 12px;
-  color: #999;
-  margin-top: 4px;
-}
-
 .more-icon {
   color: #999;
   cursor: pointer;
   padding: 4px;
+  font-size: 20px;
+  transition: all 0.3s;
 }
 
 .more-icon:hover {
   color: #0969da;
+  transform: scale(1.1);
 }
 
 .empty-state {
@@ -682,6 +763,24 @@ const scrollToBottom = () => {
   display: flex;
   flex-direction: column;
   background: #ffffff;
+}
+
+.chat-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e4e7ed;
+  background: #ffffff;
+}
+
+.chat-header-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-header-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
 }
 
 .empty-chat {
@@ -710,42 +809,29 @@ const scrollToBottom = () => {
   margin-bottom: 20px;
 }
 
-.message-item.user {
-  flex-direction: row-reverse;
-}
-
 .message-avatar {
   flex-shrink: 0;
 }
 
 .message-content {
-  max-width: 70%;
-}
-
-.message-item.user .message-content {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex: 1;
+  max-width: 80%;
 }
 
 .message-text {
   padding: 12px 16px;
   border-radius: 8px;
-  background: #f5f7fa;
   color: #333;
   line-height: 1.6;
   word-wrap: break-word;
 }
 
 .message-item.user .message-text {
-  background: #0969da;
-  color: #ffffff;
+  background: #e8f4ff;
 }
 
-.message-time {
-  font-size: 12px;
-  color: #999;
-  margin-top: 4px;
+.message-item.assistant .message-text {
+  background: #f5f7fa;
 }
 
 .loading-dots {
@@ -781,14 +867,45 @@ const scrollToBottom = () => {
 
 .input-area {
   border-top: 1px solid #e4e7ed;
-  padding: 16px;
+  padding: 16px 20px;
+  background: #fafafa;
+}
+
+.input-wrapper {
+  background: #ffffff;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.message-input :deep(.el-textarea__inner) {
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  resize: none;
+}
+
+.message-input :deep(.el-textarea__inner):focus {
+  box-shadow: none;
 }
 
 .input-actions {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
 }
+
+.input-tools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+
 
 /* 响应式 */
 @media (max-width: 1200px) {
