@@ -1,9 +1,6 @@
-<!-- ProfilePage.vue :: 个人中心页面 -->
+﻿<!-- ProfilePage.vue :: 个人中心页面 -->
 <template>
-  <!-- 顶部导航栏 -->
-  <TopNavBar />
-
-  <!-- 主内容区 -->
+    <!-- 主内容区 -->
   <div class="profile-container">
     <!-- 左侧：个人信息 -->
     <el-card class="profile-card">
@@ -787,7 +784,6 @@ import {
 } from '@element-plus/icons-vue';
 import axios from 'axios';
 import * as echarts from 'echarts';
-import TopNavBar from '@/components/TopNavBar.vue';
 import eventBus from '@/utils/eventBus';
 import { marked } from 'marked';
 

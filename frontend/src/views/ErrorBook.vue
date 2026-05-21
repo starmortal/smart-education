@@ -1,10 +1,7 @@
-<template>
+﻿<template>
   <!-- 最外层容器 -->
   <div class="error-book-container">
-    <!-- 顶部导航栏 -->
-    <TopNavBar />
-
-    <!-- ================= 1. 实时数据统计 ================= -->
+        <!-- ================= 1. 实时数据统计 ================= -->
     <div class="stats-bar">
       <div class="stat-item">
         <el-icon size="24" color="#e74c3c"><Warning /></el-icon>
@@ -548,7 +545,6 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import { Plus, Refresh, Filter, Notebook, Warning, Clock, Check, DataAnalysis, Edit, Setting, Delete, Reading } from "@element-plus/icons-vue";
 // 【新增】引入 axios，对接后端接口
 import axios from "axios";
-import TopNavBar from "@/components/TopNavBar.vue";
 // 【新增】引入用户科目工具
 import { getUserSubjects, generateSubjectOptions, hasUserSubjects, getSubjectCode } from "@/utils/userSubjects";
 

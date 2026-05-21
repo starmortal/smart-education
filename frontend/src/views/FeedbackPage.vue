@@ -1,9 +1,6 @@
-<!-- FeedbackPage.vue :: 意见反馈页面 - 简化版 -->
+﻿<!-- FeedbackPage.vue :: 意见反馈页面 - 简化版 -->
 <template>
-  <!-- 顶部导航栏 -->
-  <TopNavBar />
-
-  <!-- 主内容区 -->
+    <!-- 主内容区 -->
   <div class="feedback-container">
     <el-card class="feedback-card">
       <template #header>
@@ -191,8 +188,6 @@ import {
   ChatDotRound
 } from '@element-plus/icons-vue';
 import axios from 'axios';
-import TopNavBar from '@/components/TopNavBar.vue';
-
 const feedbackFormRef = ref(null);
 const feedbackLoading = ref(false);
 const historyLoading = ref(false);

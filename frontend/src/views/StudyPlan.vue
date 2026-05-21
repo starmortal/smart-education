@@ -1,11 +1,8 @@
-
+﻿
 <template>
   <!-- 最外层容器 -->
   <div class="study-plan-container">
-    <!-- 顶部导航栏 -->
-    <TopNavBar />
-
-    <!-- ================= 1. 实时数据统计 ================= -->
+        <!-- ================= 1. 实时数据统计 ================= -->
     <div class="stats-bar">
       <div class="stat-item">
         <el-icon size="24" color="#0969da"><Calendar /></el-icon>
@@ -505,7 +502,6 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import { Plus, Refresh, Filter, Calendar, Clock, Check, DataAnalysis, Edit, Setting, Delete } from "@element-plus/icons-vue";
 // 【新增】引入 axios，对接后端接口
 import axios from "axios";
-import TopNavBar from "@/components/TopNavBar.vue";
 // 【新增】引入用户科目工具
 import { getUserSubjects, generateSubjectOptions, hasUserSubjects } from "@/utils/userSubjects";
 

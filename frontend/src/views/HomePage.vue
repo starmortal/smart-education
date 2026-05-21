@@ -1,9 +1,6 @@
 <!-- Home.vue :: 登录后首页 – 深海蓝主题 + 固定卡片 + 背景图可调 -->
 <template>
   <div class="home-container">
-    <!-- 顶部导航栏 -->
-    <TopNavBar />
-
     <!-- 主内容区：左右分栏 + 固定卡片 -->
     <el-main class="main-content">
       <!-- 左侧：欢迎语（中文大头） -->
@@ -82,7 +79,6 @@ import { useRouter } from "vue-router";
 import { ElMessage } from 'element-plus';
 import { Calendar, Check, Document, Clock } from '@element-plus/icons-vue';
 import axios from 'axios';
-import TopNavBar from "@/components/TopNavBar.vue";
 
 const router = useRouter();
 

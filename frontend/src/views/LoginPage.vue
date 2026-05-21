@@ -936,7 +936,7 @@ const doLogin = async () => {
     localStorage.setItem("edu-email", email);
     ElMessage.success(data.message || "登录成功！即将跳转到首页");
     showLogin.value = false;
-    setTimeout(() => router.push("/home"), 600);
+    setTimeout(() => router.push("/ai-chat"), 600);
   } catch (error) {
     if (error.name === "ValidationError") {
       ElMessage.warning("请填写正确的登录信息");

@@ -1,9 +1,6 @@
-<template>
+﻿<template>
   <div class="study-data-container">
-    <!-- 顶部导航栏 -->
-    <TopNavBar />
-    
-    <!-- 操作按钮栏 -->
+        <!-- 操作按钮栏 -->
     <div class="action-bar">
       <el-button
         type="warning"
@@ -239,8 +236,6 @@ import {
   Clock,
   DataAnalysis,
 } from "@element-plus/icons-vue";
-import TopNavBar from "@/components/TopNavBar.vue";
-
 const router = useRouter();
 
 /* ============== 基础变量 ============== */

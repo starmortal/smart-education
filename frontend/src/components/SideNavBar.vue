@@ -1,0 +1,252 @@
+<template>
+  <div class="side-nav-bar">
+    <!-- Logo区域 -->
+    <div class="logo-section" @click="goToHome">
+      <img src="@/assets/logo.png" alt="Logo" class="nav-logo" />
+    </div>
+
+    <!-- 导航项 -->
+    <div class="nav-items">
+      <el-tooltip
+        v-for="item in navItems"
+        :key="item.path"
+        :content="item.label"
+        placement="right"
+        effect="dark"
+      >
+        <div
+          :class="['nav-item', { active: currentPath === item.path }]"
+          @click="goToPage(item.path)"
+        >
+          <el-icon :size="24">
+            <component :is="item.icon" />
+          </el-icon>
+        </div>
+      </el-tooltip>
+    </div>
+
+    <!-- 底部用户区域 -->
+    <div class="user-section">
+      <el-dropdown trigger="click" @command="handleCommand">
+        <div class="user-avatar">
+          <el-avatar :size="40" :src="userAvatar" />
+        </div>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="profile">
+              <el-icon><User /></el-icon>
+              <span>个人中心</span>
+            </el-dropdown-item>
+            <el-dropdown-item divided command="logout">
+              <el-icon><SwitchButton /></el-icon>
+              <span>退出登录</span>
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import {
+  ChatDotRound,
+  House,
+  Notebook,
+  Calendar,
+  Document,
+  DataAnalysis,
+  ChatLineRound,
+  Cpu,
+  User,
+  SwitchButton
+} from '@element-plus/icons-vue';
+import eventBus from '@/utils/eventBus';
+
+const router = useRouter();
+const route = useRoute();
+
+const userAvatar = ref('https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png');
+
+// 导航项配置
+const navItems = [
+  { path: '/ai-chat', label: 'AI助手', icon: ChatDotRound },
+  { path: '/home', label: '首页', icon: House },
+  { path: '/ai-answer', label: 'AI答题', icon: Cpu },
+  { path: '/error-book', label: '错题集', icon: Notebook },
+  { path: '/study-plan', label: '学习计划', icon: Calendar },
+  { path: '/note', label: '我的笔记', icon: Document },
+  { path: '/study-community', label: '学习社区', icon: DataAnalysis },
+  { path: '/feedback', label: '意见反馈', icon: ChatLineRound }
+];
+
+const currentPath = computed(() => route.path);
+
+onMounted(() => {
+  loadUserInfo();
+  eventBus.on('userInfoUpdated', loadUserInfo);
+});
+
+onBeforeUnmount(() => {
+  eventBus.off('userInfoUpdated', loadUserInfo);
+});
+
+const loadUserInfo = () => {
+  const savedAvatar = localStorage.getItem('edu-avatar');
+  if (savedAvatar) userAvatar.value = savedAvatar;
+};
+
+const goToPage = (path) => {
+  router.push(path);
+};
+
+const goToHome = () => {
+  router.push('/ai-chat');
+};
+
+const handleCommand = (command) => {
+  if (command === 'profile') {
+    router.push('/profile');
+  } else if (command === 'logout') {
+    localStorage.removeItem('edu-user-id');
+    localStorage.removeItem('edu-nickname');
+    localStorage.removeItem('edu-avatar');
+    router.push('/login');
+  }
+};
+</script>
+
+<style scoped>
+.side-nav-bar {
+  width: 70px;
+  height: 100vh;
+  background: #0969da;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.logo-section {
+  width: 100%;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s;
+}
+
+.logo-section:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.nav-items {
+  flex: 1;
+  width: 100%;
+  padding: 20px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.nav-items::-webkit-scrollbar {
+  width: 4px;
+}
+
+.nav-items::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.nav-item {
+  width: 100%;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.nav-item.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 30px;
+  background: #ffffff;
+  border-radius: 0 2px 2px 0;
+}
+
+.user-section {
+  width: 100%;
+  padding: 15px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-avatar {
+  cursor: pointer;
+  transition: all 0.3s;
+  border-radius: 50%;
+}
+
+.user-avatar:hover {
+  transform: scale(1.1);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .side-nav-bar {
+    width: 60px;
+  }
+
+  .logo-section {
+    height: 60px;
+  }
+
+  .nav-logo {
+    width: 32px;
+    height: 32px;
+  }
+
+  .nav-item {
+    height: 50px;
+  }
+
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+  }
+}
+</style>

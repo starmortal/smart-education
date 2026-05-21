@@ -1,8 +1,5 @@
 <!-- AIAnswer.vue :: 豆包风格布局 - 历史记录侧边栏 + 对话区 -->
 <template>
-  <!-- 顶部导航栏 -->
-  <TopNavBar />
-
   <!-- 主容器 -->
   <div class="ai-container">
     <!-- 左侧：历史记录侧边栏 -->
@@ -279,7 +276,6 @@ import {
   Plus
 } from "@element-plus/icons-vue";
 import axios from "axios";
-import TopNavBar from "@/components/TopNavBar.vue";
 // 【新增】引入用户科目工具
 import { getUserSubjects, hasUserSubjects, getSubjectCode } from "@/utils/userSubjects";
 

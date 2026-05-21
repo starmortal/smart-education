@@ -9,13 +9,19 @@ import LoginPage from "../views/LoginPage.vue";
 const routes = [
   { 
     path: "/", 
-    redirect: "/login" 
+    redirect: "/ai-chat" 
   },
   { 
     path: "/login", 
     component: LoginPage, 
     name: "登录页",
     meta: { title: "登录 - 智慧教育平台" }
+  },
+  { 
+    path: "/ai-chat", 
+    component: () => import("../views/AIChat.vue"), 
+    name: "AI助手",
+    meta: { title: "AI助手 - 智慧教育平台", requiresAuth: true }
   },
   { 
     path: "/register", 

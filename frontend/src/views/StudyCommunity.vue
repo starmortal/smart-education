@@ -1,9 +1,6 @@
-<template>
+﻿<template>
   <div class="study-community-container">
-    <!-- 顶部导航栏 -->
-    <TopNavBar />
-
-    <!-- 实时数据统计 -->
+        <!-- 实时数据统计 -->
     <div class="stats-bar">
       <div class="stat-item">
         <el-icon size="24" color="#e6a23c"><QuestionFilled /></el-icon>
@@ -557,7 +554,6 @@ import {
   Delete,
   Check
 } from '@element-plus/icons-vue';
-import TopNavBar from '@/components/TopNavBar.vue';
 // 【新增】引入用户科目工具
 import { getUserSubjects } from '@/utils/userSubjects';
 
