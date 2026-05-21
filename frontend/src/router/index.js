@@ -79,6 +79,12 @@ const routes = [
     meta: { title: "意见反馈 - 智慧教育平台", requiresAuth: true }
   },
   { 
+    path: "/knowledge-base", 
+    component: () => import("../views/KnowledgeBase.vue"), 
+    name: "知识库",
+    meta: { title: "知识库 - 智慧教育平台", requiresAuth: true }
+  },
+  { 
     path: "/changelog", 
     component: () => import("../views/ChangelogPage.vue"), 
     name: "更新日志",

@@ -61,7 +61,8 @@ import {
   ChatLineRound,
   Cpu,
   User,
-  SwitchButton
+  SwitchButton,
+  FolderOpened
 } from '@element-plus/icons-vue';
 import eventBus from '@/utils/eventBus';
 
@@ -73,6 +74,7 @@ const userAvatar = ref('https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c672
 // 导航项配置
 const navItems = [
   { path: '/ai-chat', label: 'AI助手', icon: ChatDotRound },
+  { path: '/knowledge-base', label: '知识库', icon: FolderOpened },
   { path: '/home', label: '首页', icon: House },
   { path: '/ai-answer', label: 'AI答题', icon: Cpu },
   { path: '/error-book', label: '错题集', icon: Notebook },

@@ -16,6 +16,7 @@ const feedbackRouter = require("./routes/feedback");
 const communityRouter = require("./routes/community");
 const assistantRouter = require("./routes/assistant");
 const chatRouter = require("./routes/chat");
+const knowledgeRouter = require("./routes/knowledge");
 
 /**
  * 智慧教育平台 - 后端服务器
@@ -100,6 +101,7 @@ app.use("/api/feedback", feedbackRouter);
 app.use("/api/community", communityRouter);
 app.use("/api/assistant", assistantRouter);
 app.use("/api/chat", chatRouter);
+app.use("/api/knowledge", knowledgeRouter);
 
 // 健康检查接口
 app.get("/api/test", (req, res) => {
