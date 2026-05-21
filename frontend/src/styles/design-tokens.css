@@ -1,0 +1,256 @@
+/**
+ * 设计令牌（Design Tokens）
+ * 定义全局设计变量，确保视觉一致性
+ */
+
+:root {
+  /* ========== 颜色系统 ========== */
+  
+  /* 主色调 - 深海蓝 */
+  --color-primary: #0969da;
+  --color-primary-light: #4dabf7;
+  --color-primary-dark: #0550ae;
+  --color-primary-bg: rgba(9, 105, 218, 0.1);
+  
+  /* 功能色 */
+  --color-success: #2da44e;
+  --color-success-light: #4ade80;
+  --color-success-bg: rgba(45, 164, 78, 0.1);
+  
+  --color-warning: #fb8500;
+  --color-warning-light: #fbbf24;
+  --color-warning-bg: rgba(251, 133, 0, 0.1);
+  
+  --color-danger: #cf222e;
+  --color-danger-light: #f87171;
+  --color-danger-bg: rgba(207, 34, 46, 0.1);
+  
+  --color-info: #0969da;
+  --color-info-light: #60a5fa;
+  --color-info-bg: rgba(9, 105, 218, 0.1);
+  
+  /* 中性色 */
+  --color-text-primary: #24292f;
+  --color-text-secondary: #57606a;
+  --color-text-tertiary: #8c959f;
+  --color-text-placeholder: #a8b1bb;
+  --color-text-disabled: #d0d7de;
+  
+  --color-border: #d0d7de;
+  --color-border-light: #e5e9ed;
+  --color-border-dark: #a8b1bb;
+  
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f6f8fa;
+  --color-bg-tertiary: #eef2f6;
+  --color-bg-overlay: rgba(0, 0, 0, 0.5);
+  
+  /* ========== 间距系统 ========== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+  
+  /* ========== 字体系统 ========== */
+  
+  /* 字体族 */
+  --font-family-base: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  --font-family-heading: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-family-code: 'Fira Code', 'Consolas', 'Monaco', monospace;
+  
+  /* 字号 */
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
+  --font-size-4xl: 36px;
+  
+  /* 字重 */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* 行高 */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+  
+  /* ========== 圆角系统 ========== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+  
+  /* ========== 阴影系统 ========== */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+  --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.25);
+  
+  /* ========== 动画系统 ========== */
+  
+  /* 时长 */
+  --duration-fast: 150ms;
+  --duration-base: 300ms;
+  --duration-slow: 500ms;
+  
+  /* 缓动函数 */
+  --easing-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --easing-decelerate: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --easing-accelerate: cubic-bezier(0.4, 0.0, 1, 1);
+  --easing-sharp: cubic-bezier(0.4, 0.0, 0.6, 1);
+  
+  /* ========== Z-index系统 ========== */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  
+  /* ========== 断点系统 ========== */
+  --breakpoint-xs: 0;
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-2xl: 1440px;
+}
+
+/* ========== 暗色主题 ========== */
+[data-theme='dark'] {
+  /* 颜色调整 */
+  --color-text-primary: #e6edf3;
+  --color-text-secondary: #8b949e;
+  --color-text-tertiary: #6e7681;
+  --color-text-placeholder: #484f58;
+  --color-text-disabled: #30363d;
+  
+  --color-border: #30363d;
+  --color-border-light: #21262d;
+  --color-border-dark: #484f58;
+  
+  --color-bg-primary: #0d1117;
+  --color-bg-secondary: #161b22;
+  --color-bg-tertiary: #21262d;
+  --color-bg-overlay: rgba(0, 0, 0, 0.7);
+  
+  /* 主色调在暗色模式下稍微调亮 */
+  --color-primary: #4dabf7;
+  --color-primary-light: #74c0fc;
+  --color-primary-dark: #339af0;
+}
+
+/* ========== 全局样式重置 ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-secondary);
+}
+
+/* 修复Element Plus输入框字符间距异常问题 */
+.el-input__inner,
+.el-textarea__inner,
+input,
+textarea {
+  letter-spacing: 0 !important;
+  font-variant-numeric: normal !important;
+  font-feature-settings: normal !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+/* 专门修复密码输入框 */
+.el-input--password .el-input__inner,
+input[type="password"] {
+  letter-spacing: 0 !important;
+  font-variant-numeric: normal !important;
+  font-feature-settings: normal !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+/* 强制重置所有可能影响字符间距的属性 */
+.el-form-item .el-input .el-input__wrapper .el-input__inner {
+  letter-spacing: 0 !important;
+  word-spacing: 0 !important;
+  text-indent: 0 !important;
+  font-variant: normal !important;
+  font-feature-settings: "kern" 0, "liga" 0, "clig" 0, "calt" 0 !important;
+}
+
+/* ========== 工具类 ========== */
+
+/* 文本截断 */
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-ellipsis-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Flexbox */
+.flex {
+  display: flex;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-dark);
+}
