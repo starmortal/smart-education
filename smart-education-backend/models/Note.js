@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 /**
  * 学习笔记数据模型
- * 功能：存储用户的学习笔记，支持Markdown格式
+ * 功能：存储用户的学习笔记，支持Markdown格式和文件夹嵌套
  */
 const noteSchema = new mongoose.Schema({
   userId: {
@@ -19,13 +19,17 @@ const noteSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-  noteCategory: {
-    type: String,
-    default: "未分类",
-  },
   noteTags: {
     type: [String],
     default: [],
+  },
+  isFolder: {
+    type: Boolean,
+    default: false,
+  },
+  parentId: {
+    type: String,
+    default: null,
   },
   createTime: {
     type: Date,

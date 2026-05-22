@@ -23,7 +23,6 @@ export const noteApi = {
   add: (data) => request.post("/api/note/add", data),
   update: (id, data) => request.put(`/api/note/update/${id}`, data),
   delete: (id) => request.delete(`/api/note/delete/${id}`),
-  getCategories: (params) => request.get("/api/note/categories", { params }),
   getTags: (params) => request.get("/api/note/tags", { params }),
 };
 

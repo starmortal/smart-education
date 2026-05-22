@@ -3,90 +3,47 @@
     <SideNavBar />
     
     <!-- 笔记列表区 -->
-    <div class="note-sidebar">
-      <!-- 顶部工具栏 - 图标样式 -->
+    <div class="note-sidebar" :class="{ collapsed: sidebarCollapsed }">
+      <!-- 顶部工具栏 -->
       <div class="sidebar-header">
-        <div class="toolbar-icons">
-          <el-tooltip content="新建笔记" placement="bottom">
-            <el-button 
-              :icon="DocumentAdd" 
-              circle
-              @click="handleAddNote"
-            />
-          </el-tooltip>
-          
-          <el-tooltip content="新建文件夹" placement="bottom">
-            <el-button 
-              :icon="FolderAdd" 
-              circle
-              @click="showCategoryDialog = true"
-            />
-          </el-tooltip>
-          
-          <el-tooltip content="排序" placement="bottom">
-            <el-button 
-              :icon="Sort" 
-              circle
-              @click="toggleSort"
-            />
-          </el-tooltip>
-          
-          <el-tooltip content="收藏" placement="bottom">
-            <el-button 
-              :icon="Star" 
-              circle
-              @click="toggleFavorite"
-            />
-          </el-tooltip>
-          
-          <el-tooltip content="搜索" placement="bottom">
-            <el-button 
-              :icon="Search" 
-              circle
-              @click="toggleSearch"
-            />
-          </el-tooltip>
-        </div>
+        <el-tooltip content="新建笔记" placement="bottom">
+          <el-button :icon="DocumentAdd" circle size="small" @click="handleAddNote" />
+        </el-tooltip>
+        
+        <el-tooltip content="新建文件夹" placement="bottom">
+          <el-button :icon="FolderAdd" circle size="small" @click="handleAddFolder" />
+        </el-tooltip>
+        
+        <el-tooltip content="排序" placement="bottom">
+          <el-button :icon="Sort" circle size="small" @click="toggleSort" />
+        </el-tooltip>
+        
+        <el-tooltip content="搜索" placement="bottom">
+          <el-button :icon="Search" circle size="small" @click="toggleSearch" />
+        </el-tooltip>
       </div>
 
-      <!-- 搜索框（可展开） -->
+      <!-- 搜索框 -->
       <div class="search-box" v-show="showSearch">
         <el-input
           v-model="searchKey"
           placeholder="搜索笔记..."
           :prefix-icon="Search"
           clearable
+          size="small"
           @input="handleSearch"
         />
       </div>
 
-      <!-- 分类和标签筛选 -->
-      <div class="filter-box">
-        <el-select
-          v-model="selectedCategory"
-          placeholder="选择分类"
-          clearable
-          @change="loadNoteList"
-          style="width: 100%; margin-bottom: 8px"
-          size="small"
-        >
-          <el-option label="全部分类" value="全部" />
-          <el-option
-            v-for="cat in categories"
-            :key="cat"
-            :label="cat"
-            :value="cat"
-          />
-        </el-select>
-
+      <!-- 标签筛选 -->
+      <div class="filter-box" v-if="tags.length > 0">
         <el-select
           v-model="selectedTags"
-          placeholder="选择标签"
+          placeholder="筛选标签"
           multiple
           clearable
-          @change="loadNoteList"
-          style="width: 100%"
           size="small"
+          @change="loadNoteList"
         >
           <el-option
             v-for="tag in tags"
@@ -97,104 +54,56 @@
         </el-select>
       </div>
 
-      <!-- 笔记列表 -->
-      <div class="note-list" v-loading="loading">
-        <div
-          v-for="note in noteList"
-          :key="note.id"
-          :class="['note-item', { active: currentNote?.id === note.id }]"
-          @click="handleSelectNote(note)"
+      <!-- 树形笔记列表 -->
+      <div class="note-tree" v-loading="loading">
+        <el-tree
+          ref="treeRef"
+          :data="treeData"
+          node-key="id"
+          :props="{ label: 'noteTitle', children: 'children' }"
+          :expand-on-click-node="false"
+          :highlight-current="true"
+          :current-node-key="currentNote?.id"
+          @node-click="handleNodeClick"
+          @node-contextmenu="handleContextMenu"
         >
-          <div class="note-item-header">
-            <span class="note-title">{{ note.noteTitle || '无标题笔记' }}</span>
-          </div>
-          <div class="note-item-meta">
-            <el-tag size="small" type="info">{{ note.noteCategory }}</el-tag>
-            <span class="note-time">{{ formatTime(note.updateTime) }}</span>
-          </div>
-          <div class="note-item-preview">
-            {{ getPreviewText(note.noteContent) }}
-          </div>
-          <div class="note-item-tags" v-if="note.noteTags && note.noteTags.length">
-            <el-tag
-              v-for="tag in note.noteTags.slice(0, 3)"
-              :key="tag"
-              size="small"
-              effect="plain"
-            >
-              {{ tag }}
-            </el-tag>
-          </div>
-        </div>
+          <template #default="{ node, data }">
+            <span class="tree-node" @contextmenu.prevent="(e) => handleContextMenu(e, data, node)">
+              <el-icon v-if="data.isFolder"><Folder /></el-icon>
+              <el-icon v-else><Document /></el-icon>
+              <span class="node-label">{{ node.label }}</span>
+            </span>
+          </template>
+        </el-tree>
 
         <el-empty 
-          v-if="noteList.length === 0 && !loading" 
+          v-if="treeData.length === 0 && !loading" 
           description="暂无笔记"
-          :image-size="80"
+          :image-size="60"
         />
       </div>
     </div>
 
     <!-- 编辑区 -->
-    <div class="editor-container">
+    <div class="editor-container" :class="{ expanded: sidebarCollapsed }">
       <div v-if="!currentNote" class="editor-empty">
         <el-empty description="请选择或创建一篇笔记" :image-size="120" />
       </div>
 
       <div v-else class="editor-content">
-        <!-- 标题栏 -->
+        <!-- 顶部栏 -->
         <div class="editor-header">
-          <el-input
-            v-model="currentNote.noteTitle"
-            placeholder="无标题笔记"
-            class="title-input"
-            @input="handleTitleChange"
+          <el-button 
+            :icon="sidebarCollapsed ? DArrowRight : DArrowLeft" 
+            circle 
+            size="small"
+            @click="toggleSidebar"
           />
-          <div class="header-actions">
-            <el-button :icon="Delete" @click="handleDeleteNote" text>
-              删除
-            </el-button>
-          </div>
-        </div>
-
-        <!-- 分类和标签 -->
-        <div class="editor-meta">
-          <el-select
-            v-model="currentNote.noteCategory"
-            placeholder="选择分类"
-            style="width: 200px; margin-right: 12px"
-            @change="handleMetaChange"
-          >
-            <el-option label="未分类" value="未分类" />
-            <el-option
-              v-for="cat in categories"
-              :key="cat"
-              :label="cat"
-              :value="cat"
-            />
-            <el-option label="+ 新建分类" value="__new__" />
-          </el-select>
-
-          <el-select
-            v-model="currentNote.noteTags"
-            placeholder="选择标签"
-            multiple
-            filterable
-            allow-create
-            style="flex: 1"
-            @change="handleMetaChange"
-          >
-            <el-option
-              v-for="tag in tags"
-              :key="tag"
-              :label="tag"
-              :value="tag"
-            />
-          </el-select>
+          <span class="file-name">{{ currentNote.noteTitle || '无标题笔记' }}</span>
         </div>
 
         <!-- Markdown编辑器 -->
-        <div class="editor-wrapper">
+        <div class="editor-wrapper" v-if="!currentNote.isFolder">
           <MdEditor
             v-model="currentNote.noteContent"
             language="zh-CN"
@@ -203,38 +112,130 @@
             placeholder="输入/调用命令"
           />
         </div>
+
+        <!-- 文件夹提示 -->
+        <div v-else class="folder-tip">
+          <el-empty description="这是一个文件夹" :image-size="100" />
+        </div>
       </div>
     </div>
 
-    <!-- 新建分类对话框 -->
+    <!-- 右键菜单 -->
+    <vue-context-menu
+      v-model:show="showContextMenu"
+      :options="contextMenuOptions"
+      @select="handleContextMenuSelect"
+    >
+      <template v-if="contextMenuNode && !contextMenuNode.isFolder">
+        <context-menu-item label="重命名" :value="'rename'">
+          <template #icon><el-icon><Edit /></el-icon></template>
+        </context-menu-item>
+        <context-menu-item label="编辑标签" :value="'tags'">
+          <template #icon><el-icon><PriceTag /></el-icon></template>
+        </context-menu-item>
+        <context-menu-sperator />
+        <context-menu-item label="删除" :value="'delete'" class="danger">
+          <template #icon><el-icon><Delete /></el-icon></template>
+        </context-menu-item>
+      </template>
+      <template v-else-if="contextMenuNode">
+        <context-menu-item label="重命名" :value="'rename'">
+          <template #icon><el-icon><Edit /></el-icon></template>
+        </context-menu-item>
+        <context-menu-sperator />
+        <context-menu-item label="删除" :value="'delete'" class="danger">
+          <template #icon><el-icon><Delete /></el-icon></template>
+        </context-menu-item>
+      </template>
+    </vue-context-menu>
+
+    <!-- 自定义右键菜单 -->
+    <div 
+      v-show="showContextMenu" 
+      class="custom-context-menu"
+      :style="{ left: contextMenuPos.x + 'px', top: contextMenuPos.y + 'px' }"
+      @click.stop
+    >
+      <div class="menu-item" @click="handleRename">
+        <el-icon><Edit /></el-icon>
+        <span>重命名</span>
+      </div>
+      <div 
+        v-if="contextMenuNode && !contextMenuNode.isFolder" 
+        class="menu-item" 
+        @click="handleEditTags"
+      >
+        <el-icon><PriceTag /></el-icon>
+        <span>编辑标签</span>
+      </div>
+      <div class="menu-divider"></div>
+      <div class="menu-item danger" @click="handleDelete">
+        <el-icon><Delete /></el-icon>
+        <span>删除</span>
+      </div>
+    </div>
+
+    <!-- 重命名对话框 -->
     <el-dialog
-      v-model="showCategoryDialog"
-      title="新建分类"
+      v-model="showRenameDialog"
+      title="重命名"
       width="400px"
     >
       <el-input
-        v-model="newCategory"
-        placeholder="请输入分类名称"
-        @keydown.enter="handleAddCategory"
+        v-model="renameValue"
+        placeholder="请输入名称"
+        @keydown.enter="confirmRename"
       />
       <template #footer>
-        <el-button @click="showCategoryDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleAddCategory">确定</el-button>
+        <el-button @click="showRenameDialog = false">取消</el-button>
+        <el-button type="primary" @click="confirmRename">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑标签对话框 -->
+    <el-dialog
+      v-model="showTagsDialog"
+      title="编辑标签"
+      width="500px"
+    >
+      <el-select
+        v-model="editingTags"
+        placeholder="添加标签"
+        multiple
+        filterable
+        allow-create
+        style="width: 100%"
+      >
+        <el-option
+          v-for="tag in tags"
+          :key="tag"
+          :label="tag"
+          :value="tag"
+        />
+      </el-select>
+      <template #footer>
+        <el-button @click="showTagsDialog = false">取消</el-button>
+        <el-button type="primary" @click="confirmEditTags">确定</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
   DocumentAdd, 
   FolderAdd, 
   Sort, 
-  Star, 
-  Search, 
-  Delete 
+  Search,
+  DArrowLeft,
+  DArrowRight,
+  Folder,
+  Document,
+  Edit,
+  Delete,
+  PriceTag
 } from '@element-plus/icons-vue';
 import { MdEditor } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
@@ -246,14 +247,25 @@ const noteList = ref([]);
 const currentNote = ref(null);
 const loading = ref(false);
 const searchKey = ref('');
-const selectedCategory = ref('全部');
 const selectedTags = ref([]);
-const categories = ref([]);
 const tags = ref([]);
-const showCategoryDialog = ref(false);
-const newCategory = ref('');
 const showSearch = ref(false);
-const sortOrder = ref('updateTime'); // updateTime, createTime, title
+const sidebarCollapsed = ref(false);
+const sortOrder = ref('updateTime');
+
+// 右键菜单
+const showContextMenu = ref(false);
+const contextMenuPos = ref({ x: 0, y: 0 });
+const contextMenuNode = ref(null);
+const contextMenuRef = ref(null);
+
+// 重命名
+const showRenameDialog = ref(false);
+const renameValue = ref('');
+
+// 编辑标签
+const showTagsDialog = ref(false);
+const editingTags = ref([]);
 
 // 自动保存定时器
 let saveTimer = null;
@@ -271,7 +283,26 @@ const toolbars = [
   'pageFullscreen', 'fullscreen', 'preview', 'catalog'
 ];
 
-// 切换搜索框显示
+// 构建树形数据
+const treeData = computed(() => {
+  const buildTree = (items, parentId = null) => {
+    return items
+      .filter(item => item.parentId === parentId)
+      .map(item => ({
+        ...item,
+        children: buildTree(items, item.id)
+      }));
+  };
+  
+  return buildTree(noteList.value);
+});
+
+// 切换侧边栏
+function toggleSidebar() {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+}
+
+// 切换搜索框
 function toggleSearch() {
   showSearch.value = !showSearch.value;
   if (!showSearch.value) {
@@ -282,14 +313,14 @@ function toggleSearch() {
 
 // 切换排序
 function toggleSort() {
-  const orders = ['updateTime', 'createTime', 'title'];
+  const orders = ['updateTime', 'createTime', 'noteTitle'];
   const currentIndex = orders.indexOf(sortOrder.value);
   sortOrder.value = orders[(currentIndex + 1) % orders.length];
   
   const sortNames = {
     updateTime: '按更新时间',
     createTime: '按创建时间',
-    title: '按标题'
+    noteTitle: '按标题'
   };
   
   ElMessage.success(`${sortNames[sortOrder.value]}排序`);
@@ -298,7 +329,7 @@ function toggleSort() {
 
 // 排序笔记列表
 function sortNoteList() {
-  if (sortOrder.value === 'title') {
+  if (sortOrder.value === 'noteTitle') {
     noteList.value.sort((a, b) => a.noteTitle.localeCompare(b.noteTitle));
   } else if (sortOrder.value === 'createTime') {
     noteList.value.sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
@@ -307,29 +338,16 @@ function sortNoteList() {
   }
 }
 
-// 切换收藏（预留功能）
-function toggleFavorite() {
-  ElMessage.info('收藏功能开发中...');
-}
-
 // 加载笔记列表
 async function loadNoteList() {
   try {
     loading.value = true;
     const userId = localStorage.getItem('edu-user-id');
     
-    const params = {
-      userId,
-      pageNum: 1,
-      pageSize: 999,
-    };
+    const params = { userId };
     
     if (searchKey.value) {
       params.searchKey = searchKey.value;
-    }
-    
-    if (selectedCategory.value && selectedCategory.value !== '全部') {
-      params.noteCategory = selectedCategory.value;
     }
     
     if (selectedTags.value.length > 0) {
@@ -338,6 +356,7 @@ async function loadNoteList() {
     
     const res = await noteApi.getList(params);
     noteList.value = res.data?.notes || [];
+    sortNoteList();
   } catch (error) {
     console.error('获取笔记列表失败：', error);
     ElMessage.error('获取笔记列表失败');
@@ -347,20 +366,14 @@ async function loadNoteList() {
   }
 }
 
-// 加载分类和标签
-async function loadCategoriesAndTags() {
+// 加载标签
+async function loadTags() {
   try {
     const userId = localStorage.getItem('edu-user-id');
-    
-    const [catRes, tagRes] = await Promise.all([
-      noteApi.getCategories({ userId }),
-      noteApi.getTags({ userId }),
-    ]);
-    
-    categories.value = catRes.data?.categories || [];
-    tags.value = tagRes.data?.tags || [];
+    const res = await noteApi.getTags({ userId });
+    tags.value = res.data?.tags || [];
   } catch (error) {
-    console.error('获取分类和标签失败：', error);
+    console.error('获取标签失败：', error);
   }
 }
 
@@ -373,8 +386,9 @@ async function handleAddNote() {
       userId,
       noteTitle: '无标题笔记',
       noteContent: '',
-      noteCategory: '未分类',
       noteTags: [],
+      isFolder: false,
+      parentId: currentNote.value?.isFolder ? currentNote.value.id : currentNote.value?.parentId || null,
     };
     
     const res = await noteApi.add(noteData);
@@ -385,7 +399,7 @@ async function handleAddNote() {
     // 自动选中新创建的笔记
     const newNote = noteList.value.find(n => n.id === res.data?.noteId);
     if (newNote) {
-      handleSelectNote(newNote);
+      currentNote.value = { ...newNote };
     }
   } catch (error) {
     console.error('新建笔记失败：', error);
@@ -393,73 +407,184 @@ async function handleAddNote() {
   }
 }
 
-// 选择笔记
-function handleSelectNote(note) {
+// 新建文件夹
+async function handleAddFolder() {
+  try {
+    const userId = localStorage.getItem('edu-user-id');
+    
+    const folderData = {
+      userId,
+      noteTitle: '新建文件夹',
+      noteContent: '',
+      noteTags: [],
+      isFolder: true,
+      parentId: currentNote.value?.isFolder ? currentNote.value.id : currentNote.value?.parentId || null,
+    };
+    
+    const res = await noteApi.add(folderData);
+    ElMessage.success('新建文件夹成功');
+    
+    await loadNoteList();
+    
+    // 自动选中新创建的文件夹
+    const newFolder = noteList.value.find(n => n.id === res.data?.noteId);
+    if (newFolder) {
+      currentNote.value = { ...newFolder };
+    }
+  } catch (error) {
+    console.error('新建文件夹失败：', error);
+    ElMessage.error(`新建文件夹失败：${error.response?.data?.message || error.message || '未知错误'}`);
+  }
+}
+
+// 节点点击
+function handleNodeClick(data) {
   // 保存当前笔记
   if (currentNote.value && saveTimer) {
     clearTimeout(saveTimer);
     saveCurrentNote();
   }
   
-  currentNote.value = { ...note };
+  currentNote.value = { ...data };
 }
 
-// 删除笔记
-async function handleDeleteNote() {
+// 右键菜单
+function handleContextMenu(event, data, node) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  contextMenuNode.value = data;
+  contextMenuPos.value = { x: event.clientX, y: event.clientY };
+  showContextMenu.value = true;
+  
+  // 点击其他地方关闭菜单
+  nextTick(() => {
+    const closeMenu = (e) => {
+      showContextMenu.value = false;
+      document.removeEventListener('click', closeMenu);
+    };
+    setTimeout(() => {
+      document.addEventListener('click', closeMenu);
+    }, 100);
+  });
+}
+
+// 重命名
+function handleRename() {
+  if (!contextMenuNode.value) return;
+  
+  showContextMenu.value = false;
+  renameValue.value = contextMenuNode.value.noteTitle;
+  showRenameDialog.value = true;
+}
+
+// 编辑标签
+function handleEditTags() {
+  if (!contextMenuNode.value) return;
+  
+  showContextMenu.value = false;
+  editingTags.value = [...(contextMenuNode.value.noteTags || [])];
+  showTagsDialog.value = true;
+}
+
+// 确认编辑标签
+async function confirmEditTags() {
+  if (!contextMenuNode.value) return;
+  
   try {
-    await ElMessageBox.confirm('确定要删除这篇笔记吗？', '提示', {
+    await noteApi.update(contextMenuNode.value.id, {
+      noteTitle: contextMenuNode.value.noteTitle,
+      noteTags: editingTags.value,
+      noteContent: contextMenuNode.value.noteContent,
+      parentId: contextMenuNode.value.parentId,
+    });
+    
+    ElMessage.success('标签更新成功');
+    showTagsDialog.value = false;
+    
+    await loadNoteList();
+    await loadTags();
+    
+    // 如果编辑的是当前笔记，更新当前笔记
+    if (currentNote.value?.id === contextMenuNode.value.id) {
+      currentNote.value.noteTags = [...editingTags.value];
+    }
+  } catch (error) {
+    console.error('更新标签失败：', error);
+    ElMessage.error('更新标签失败');
+  }
+}
+
+// 确认重命名
+async function confirmRename() {
+  if (!renameValue.value.trim()) {
+    ElMessage.warning('名称不能为空');
+    return;
+  }
+  
+  try {
+    await noteApi.update(contextMenuNode.value.id, {
+      noteTitle: renameValue.value.trim(),
+      noteTags: contextMenuNode.value.noteTags,
+      noteContent: contextMenuNode.value.noteContent,
+      parentId: contextMenuNode.value.parentId,
+    });
+    
+    ElMessage.success('重命名成功');
+    showRenameDialog.value = false;
+    
+    await loadNoteList();
+    
+    // 如果重命名的是当前笔记，更新当前笔记
+    if (currentNote.value?.id === contextMenuNode.value.id) {
+      currentNote.value.noteTitle = renameValue.value.trim();
+    }
+  } catch (error) {
+    console.error('重命名失败：', error);
+    ElMessage.error('重命名失败');
+  }
+}
+
+// 删除
+async function handleDelete() {
+  if (!contextMenuNode.value) return;
+  
+  try {
+    const message = contextMenuNode.value.isFolder 
+      ? '确定要删除这个文件夹吗？文件夹内的所有内容也会被删除。' 
+      : '确定要删除这篇笔记吗？';
+    
+    await ElMessageBox.confirm(message, '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning',
     });
     
-    await noteApi.delete(currentNote.value.id);
+    await noteApi.delete(contextMenuNode.value.id);
     ElMessage.success('删除成功');
     
-    currentNote.value = null;
+    // 如果删除的是当前笔记，清空当前笔记
+    if (currentNote.value?.id === contextMenuNode.value.id) {
+      currentNote.value = null;
+    }
+    
     await loadNoteList();
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('删除笔记失败：', error);
+      console.error('删除失败：', error);
       ElMessage.error('删除失败');
     }
   }
 }
 
-// 标题变化
-function handleTitleChange() {
+// 标签变化
+function handleMetaChange() {
   triggerAutoSave();
+  loadTags();
 }
 
 // 内容变化
 function handleContentChange() {
-  triggerAutoSave();
-}
-
-// 分类/标签变化
-function handleMetaChange() {
-  // 处理新建分类
-  if (currentNote.value.noteCategory === '__new__') {
-    showCategoryDialog.value = true;
-    currentNote.value.noteCategory = '未分类';
-    return;
-  }
-  
-  triggerAutoSave();
-}
-
-// 新建分类
-async function handleAddCategory() {
-  if (!newCategory.value.trim()) {
-    ElMessage.warning('请输入分类名称');
-    return;
-  }
-  
-  currentNote.value.noteCategory = newCategory.value.trim();
-  showCategoryDialog.value = false;
-  newCategory.value = '';
-  
-  await loadCategoriesAndTags();
   triggerAutoSave();
 }
 
@@ -471,20 +596,19 @@ function triggerAutoSave() {
   
   saveTimer = setTimeout(() => {
     saveCurrentNote();
-  }, 1000); // 1秒后自动保存
+  }, 1000);
 }
 
 // 保存当前笔记
 async function saveCurrentNote() {
-  if (!currentNote.value) return;
+  if (!currentNote.value || currentNote.value.isFolder) return;
   
   try {
     await noteApi.update(currentNote.value.id, {
-      userId: localStorage.getItem('edu-user-id'),
       noteTitle: currentNote.value.noteTitle || '无标题笔记',
-      noteCategory: currentNote.value.noteCategory,
       noteTags: currentNote.value.noteTags,
       noteContent: currentNote.value.noteContent,
+      parentId: currentNote.value.parentId,
     });
     
     // 更新列表中的笔记
@@ -497,7 +621,7 @@ async function saveCurrentNote() {
   }
 }
 
-// 搜索处理（防抖）
+// 搜索处理
 let searchTimer = null;
 function handleSearch() {
   if (searchTimer) {
@@ -509,38 +633,10 @@ function handleSearch() {
   }, 500);
 }
 
-// 获取预览文本
-function getPreviewText(content) {
-  if (!content) return '空白笔记';
-  
-  const plainText = content
-    .replace(/[#*`>\-\[\]()]/g, '')
-    .replace(/\n+/g, ' ')
-    .trim();
-  
-  return plainText.substring(0, 80) + (plainText.length > 80 ? '...' : '');
-}
-
-// 格式化时间
-function formatTime(time) {
-  if (!time) return '';
-  
-  const date = new Date(time);
-  const now = new Date();
-  const diff = now - date;
-  
-  if (diff < 60000) return '刚刚';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-  if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
-  
-  return date.toLocaleDateString();
-}
-
 // 页面加载
 onMounted(() => {
   loadNoteList();
-  loadCategoriesAndTags();
+  loadTags();
 });
 
 // 页面卸载前保存
@@ -573,43 +669,24 @@ window.addEventListener('beforeunload', () => {
   top: 0;
   bottom: 0;
   z-index: 100;
+  transition: transform 0.3s;
+}
+
+.note-sidebar.collapsed {
+  transform: translateX(-300px);
 }
 
 .sidebar-header {
-  padding: 16px;
+  padding: 12px;
   border-bottom: 1px solid #e4e7ed;
   background: #fff;
-}
-
-.toolbar-icons {
   display: flex;
-  justify-content: space-around;
-  align-items: center;
-  gap: 4px;
-}
-
-.toolbar-icons .el-button {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: #606266;
-  transition: all 0.3s;
-}
-
-.toolbar-icons .el-button:hover {
-  background: #f5f7fa;
-  color: #0969da;
-  transform: scale(1.1);
-}
-
-.toolbar-icons .el-button:active {
-  transform: scale(0.95);
+  gap: 8px;
+  justify-content: center;
 }
 
 .search-box {
-  padding: 12px 16px;
+  padding: 12px;
   background: #fff;
   border-bottom: 1px solid #e4e7ed;
   animation: slideDown 0.3s ease;
@@ -627,105 +704,116 @@ window.addEventListener('beforeunload', () => {
 }
 
 .filter-box {
-  padding: 0 16px 16px 16px;
+  padding: 0 12px 12px 12px;
   border-bottom: 1px solid #e4e7ed;
   background: #fff;
 }
 
-.note-list {
+.note-tree {
   flex: 1;
   overflow-y: auto;
   padding: 12px;
   background: #fafafa;
 }
 
-.note-list::-webkit-scrollbar {
+.note-tree::-webkit-scrollbar {
   width: 6px;
 }
 
-.note-list::-webkit-scrollbar-thumb {
+.note-tree::-webkit-scrollbar-thumb {
   background: #dcdfe6;
   border-radius: 3px;
 }
 
-.note-list::-webkit-scrollbar-thumb:hover {
-  background: #c0c4cc;
+.note-tree :deep(.el-tree-node__content) {
+  height: 36px;
+  padding: 0 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
 }
 
-.note-item {
-  padding: 14px;
-  margin-bottom: 10px;
-  background: #fff;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s;
-  border: 1px solid #e4e7ed;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+.note-tree :deep(.el-tree-node__content:hover) {
+  background: #f0f2f5;
 }
 
-.note-item:hover {
-  border-color: #0969da;
-  box-shadow: 0 2px 8px rgba(9, 105, 218, 0.15);
-  transform: translateY(-1px);
-}
-
-.note-item.active {
+.note-tree :deep(.el-tree-node.is-current > .el-tree-node__content) {
   background: #e8f4ff;
-  border-color: #0969da;
-  border-left: 4px solid #0969da;
-  padding-left: 11px;
-  box-shadow: 0 2px 8px rgba(9, 105, 218, 0.2);
+  color: #0969da;
+  font-weight: 500;
 }
 
-.note-item-header {
+.note-tree :deep(.el-tree-node.is-current > .el-tree-node__content:hover) {
+  background: #d0e8ff;
+}
+
+.tree-node {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-}
-
-.note-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #303133;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
-
-.note-item-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  gap: 8px;
-}
-
-.note-time {
-  font-size: 12px;
-  color: #909399;
-  white-space: nowrap;
-}
-
-.note-item-preview {
-  font-size: 13px;
-  color: #606266;
-  line-height: 1.6;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  margin-bottom: 10px;
-  word-break: break-word;
-}
-
-.note-item-tags {
-  display: flex;
   gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 8px;
+  font-size: 14px;
+  width: 100%;
+}
+
+.node-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 自定义右键菜单 */
+.custom-context-menu {
+  position: fixed;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  padding: 6px;
+  min-width: 160px;
+  z-index: 9999;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #303133;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.menu-item:hover {
+  background: #f0f2f5;
+}
+
+.menu-item.danger {
+  color: #f56c6c;
+}
+
+.menu-item.danger:hover {
+  background: #fef0f0;
+}
+
+.menu-divider {
+  height: 1px;
+  background: #e4e7ed;
+  margin: 6px 0;
 }
 
 /* 编辑区 */
@@ -738,6 +826,11 @@ window.addEventListener('beforeunload', () => {
   display: flex;
   flex-direction: column;
   background: #fff;
+  transition: left 0.3s;
+}
+
+.editor-container.expanded {
+  left: 60px;
 }
 
 .editor-empty {
@@ -757,40 +850,32 @@ window.addEventListener('beforeunload', () => {
 .editor-header {
   display: flex;
   align-items: center;
-  padding: 20px 24px;
+  padding: 16px 20px;
   border-bottom: 1px solid #e4e7ed;
   background: #fff;
+  gap: 12px;
 }
 
-.title-input {
-  flex: 1;
-  margin-right: 16px;
-}
-
-.title-input :deep(.el-input__wrapper) {
-  box-shadow: none;
-  font-size: 22px;
+.file-name {
+  font-size: 16px;
   font-weight: 600;
-  padding: 8px 0;
-}
-
-.title-input :deep(.el-input__inner) {
-  font-size: 22px;
-  font-weight: 600;
-}
-
-.header-actions {
-  display: flex;
-  gap: 8px;
+  color: #303133;
 }
 
 .editor-meta {
   display: flex;
   align-items: center;
-  padding: 16px 24px;
+  padding: 12px 20px;
   border-bottom: 1px solid #e4e7ed;
   background: #fafafa;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.meta-label {
+  font-size: 14px;
+  color: #606266;
+  font-weight: 500;
 }
 
 .editor-wrapper {
@@ -804,31 +889,11 @@ window.addEventListener('beforeunload', () => {
   border: none;
 }
 
-/* 响应式适配 */
-@media (max-width: 1200px) {
-  .note-sidebar {
-    width: 260px;
-  }
-  
-  .editor-container {
-    margin-left: 320px;
-  }
-}
-
-@media (max-width: 768px) {
-  .note-sidebar {
-    width: 100%;
-    left: 0;
-    transform: translateX(-100%);
-    transition: transform 0.3s;
-  }
-  
-  .note-sidebar.show {
-    transform: translateX(0);
-  }
-  
-  .editor-container {
-    margin-left: 60px;
-  }
+.folder-tip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
 }
 </style>
