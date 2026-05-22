@@ -4,34 +4,16 @@
     
     <!-- 左侧边栏 -->
     <div class="community-sidebar" :class="{ collapsed: sidebarCollapsed }">
-      <!-- 统计卡片 -->
+      <!-- 顶部标题栏 -->
       <div class="sidebar-header">
         <div class="section-title">
           <el-icon size="16"><DataAnalysis /></el-icon>
-          <span>数据统计</span>
+          <span>筛选</span>
         </div>
       </div>
 
       <div class="filter-list-section">
-        <!-- 统计卡片 -->
-        <div class="stat-card">
-          <div class="stat-label">疑问总数</div>
-          <div class="stat-value">{{ stats.totalQuestions }}</div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-label">未解决</div>
-          <div class="stat-value" style="color: #f56c6c;">{{ stats.unsolvedQuestions }}</div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-label">我的疑问</div>
-          <div class="stat-value" style="color: #0969da;">{{ stats.myQuestions }}</div>
-        </div>
-
         <!-- 状态筛选 -->
-        <div class="section-divider">筛选</div>
-        
         <div 
           class="filter-item"
           @click="toggleStatusFilter('unsolved')"
@@ -65,29 +47,6 @@
             <div class="user-meta">{{ getGradeLabel(userInfo.grade) }}</div>
           </div>
         </div>
-
-        <!-- 我的收藏 -->
-        <div class="section-divider">
-          <span>我的收藏</span>
-          <el-button text size="small" @click="showFavoritesDialog = true">管理</el-button>
-        </div>
-        
-        <div class="favorites-list">
-          <div 
-            v-for="fav in (Array.isArray(myFavorites) ? myFavorites.slice(0, 2) : [])" 
-            :key="fav.id"
-            class="favorite-item"
-            @click="handleQuestionDetail(fav)"
-          >
-            <div class="favorite-title">{{ fav.title }}</div>
-            <div class="favorite-meta">{{ fav.userName }}</div>
-          </div>
-          <el-empty 
-            v-if="!Array.isArray(myFavorites) || myFavorites.length === 0" 
-            description="暂无收藏" 
-            :image-size="60"
-          />
-        </div>
       </div>
     </div>
 
@@ -104,6 +63,7 @@
           />
           <span class="file-name">学习社区</span>
           <div class="header-spacer"></div>
+          <el-button :icon="Star" @click="showFavoritesDialog = true">管理收藏</el-button>
           <el-button type="primary" :icon="Plus" @click="showAskDialog = true">发起提问</el-button>
           <el-button :icon="Setting" @click="showManageDialog = true">管理我的疑问</el-button>
         </div>
@@ -444,13 +404,6 @@ const loading = ref(false);
 const sidebarCollapsed = ref(false);
 const userId = ref(localStorage.getItem('edu-user-id') || '');
 
-// 统计数据
-const stats = ref({
-  totalQuestions: 0,
-  unsolvedQuestions: 0,
-  myQuestions: 0
-});
-
 // 用户信息
 const userInfo = ref({
   nickname: localStorage.getItem('edu-nickname') || '默认用户',
@@ -615,18 +568,6 @@ function handlePageChange(page) {
   currentPage.value = page;
 }
 
-// 加载统计数据
-async function loadStats() {
-  try {
-    const res = await axios.get(`http://localhost:3001/api/community/stats`, {
-      params: { userId: userId.value }
-    });
-    stats.value = res.data || { totalQuestions: 0, unsolvedQuestions: 0, myQuestions: 0 };
-  } catch (error) {
-    console.error('加载统计数据失败：', error);
-  }
-}
-
 // 加载问题列表
 async function loadQuestions() {
   loading.value = true;
@@ -676,7 +617,6 @@ async function handleSubmitQuestion() {
     askForm.content = '';
     askForm.tags = [];
     
-    await loadStats();
     await loadQuestions();
   } catch (error) {
     console.error('提交问题失败：', error);
@@ -789,7 +729,6 @@ async function handleMarkSolved(questionId) {
     ElMessage.success('已标记为已解决');
     showDetailDialog.value = false;
     showManageDialog.value = false;
-    await loadStats();
     await loadQuestions();
   } catch (error) {
     console.error('标记失败：', error);
@@ -806,7 +745,6 @@ async function handleMarkUnsolved(questionId) {
     
     ElMessage.success('已标记为未解决');
     showDetailDialog.value = false;
-    await loadStats();
     await loadQuestions();
   } catch (error) {
     console.error('标记失败：', error);
@@ -824,7 +762,6 @@ async function handleDeleteQuestion(questionId) {
     });
     
     ElMessage.success('删除成功');
-    await loadStats();
     await loadQuestions();
   } catch (error) {
     if (error !== 'cancel') {
@@ -881,7 +818,6 @@ async function handleBatchDelete() {
     selectedQuestions.value = [];
     selectAll.value = false;
     showManageDialog.value = false;
-    await loadStats();
     await loadQuestions();
   } catch (error) {
     if (error !== 'cancel') {
@@ -949,7 +885,6 @@ async function handleBatchDeleteFavorites() {
 // 生命周期
 onMounted(async () => {
   userSubjects.value = await getUserSubjects();
-  await loadStats();
   await loadQuestions();
   await loadMyFavorites();
 });
@@ -988,6 +923,10 @@ onMounted(async () => {
   border-bottom: 1px solid #e4e7ed;
   background: #fff;
   flex-shrink: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .section-title {
@@ -1016,27 +955,6 @@ onMounted(async () => {
 .filter-list-section::-webkit-scrollbar-thumb {
   background: #dcdfe6;
   border-radius: 2px;
-}
-
-.stat-card {
-  background: #fff;
-  padding: 12px;
-  border-radius: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.stat-label {
-  font-size: 13px;
-  color: #666;
-}
-
-.stat-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: #2c3e50;
 }
 
 .section-divider {
@@ -1115,41 +1033,6 @@ onMounted(async () => {
   margin-bottom: 2px;
 }
 
-.favorites-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.favorite-item {
-  background: #fff;
-  padding: 10px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.favorite-item:hover {
-  background: #e8f4ff;
-  transform: translateX(2px);
-}
-
-.favorite-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: #2c3e50;
-  margin-bottom: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.favorite-meta {
-  font-size: 11px;
-  color: #909399;
-}
-
 /* 右侧主内容 */
 .community-content {
   position: fixed;
@@ -1183,6 +1066,8 @@ onMounted(async () => {
   background: #fff;
   gap: 12px;
   flex-shrink: 0;
+  height: 56px;
+  box-sizing: border-box;
 }
 
 .file-name {
