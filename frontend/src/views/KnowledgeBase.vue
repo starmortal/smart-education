@@ -291,8 +291,9 @@ onMounted(async () => {
 const loadKnowledgeBases = async () => {
   try {
     const res = await getKnowledgeBases(userId.value);
-    if (res.data.code === 200) {
-      knowledgeBases.value = res.data.data;
+    console.log('加载知识库响应:', res);
+    if (res.code === 200) {
+      knowledgeBases.value = res.data;
     }
   } catch (error) {
     console.error('加载知识库失败:', error);
@@ -309,8 +310,8 @@ const loadFiles = async (knowledgeId) => {
   try {
     filesLoading.value = true;
     const res = await getKnowledgeFiles(knowledgeId);
-    if (res.data.code === 200) {
-      files.value = res.data.data;
+    if (res.code === 200) {
+      files.value = res.data;
     }
   } catch (error) {
     console.error('加载文件失败:', error);
@@ -516,8 +517,8 @@ const performSearch = async () => {
   try {
     searching.value = true;
     const res = await searchKnowledge(currentKnowledge.value._id, searchQuery.value);
-    if (res.data.code === 200) {
-      searchResults.value = res.data.data;
+    if (res.code === 200) {
+      searchResults.value = res.data;
       searched.value = true;
     }
   } catch (error) {

@@ -427,8 +427,9 @@ watch(() => messages.value.length, () => {
 const loadAssistants = async () => {
   try {
     const res = await getAssistants(userId.value);
-    if (res.data.code === 200) {
-      assistants.value = res.data.data;
+    console.log('加载助手响应:', res);
+    if (res.code === 200) {
+      assistants.value = res.data;
       
       // 如果没有助手，创建默认助手
       if (assistants.value.length === 0) {
@@ -446,8 +447,9 @@ const loadAssistants = async () => {
 const loadKnowledgeBases = async () => {
   try {
     const res = await getKnowledgeBases(userId.value);
-    if (res.data.code === 200) {
-      knowledgeBases.value = res.data.data;
+    console.log('加载知识库响应:', res);
+    if (res.code === 200) {
+      knowledgeBases.value = res.data;
     }
   } catch (error) {
     console.error('加载知识库失败:', error);
@@ -476,8 +478,8 @@ const selectAssistantAndSwitchToTopics = async (assistant) => {
 const loadTopics = async (assistantId) => {
   try {
     const res = await getTopics(assistantId);
-    if (res.data.code === 200) {
-      topics.value = res.data.data;
+    if (res.code === 200) {
+      topics.value = res.data;
     }
   } catch (error) {
     console.error('加载话题失败:', error);
@@ -494,8 +496,8 @@ const selectTopic = async (topic) => {
 const loadMessages = async (topicId) => {
   try {
     const res = await getTopic(topicId);
-    if (res.data.code === 200) {
-      messages.value = res.data.data.messages || [];
+    if (res.code === 200) {
+      messages.value = res.data.messages || [];
     }
   } catch (error) {
     console.error('加载消息失败:', error);
@@ -513,6 +515,7 @@ const handleCreateAssistant = () => {
   assistantDialogVisible.value = true;
 };
 
+// 保存助手
 // 保存助手
 const handleSaveAssistant = async () => {
   if (!assistantForm.value.name) {
@@ -588,9 +591,9 @@ const handleCreateTopic = async () => {
       userId: userId.value,
       title: '新对话'
     });
-    if (res.data.code === 200) {
+    if (res.code === 200) {
       await loadTopics(selectedAssistantForTopics.value._id);
-      await selectTopic(res.data.data);
+      await selectTopic(res.data);
       ElMessage.success('对话创建成功');
     }
   } catch (error) {
@@ -688,8 +691,8 @@ const handleSendMessage = async () => {
     try {
       for (const fileInfo of selectedFiles.value) {
         const res = await uploadFile(fileInfo.file);
-        if (res.data.code === 200) {
-          attachments.push(res.data.data);
+        if (res.code === 200) {
+          attachments.push(res.data);
         }
       }
     } catch (error) {
@@ -711,13 +714,13 @@ const handleSendMessage = async () => {
       attachments,
       temporaryKnowledgeBases.value
     );
-    if (res.data.code === 200) {
-      messages.value.push(res.data.data.userMessage);
-      messages.value.push(res.data.data.assistantMessage);
+    if (res.code === 200) {
+      messages.value.push(res.data.userMessage);
+      messages.value.push(res.data.assistantMessage);
       
       // 更新话题标题
-      if (res.data.data.topic) {
-        currentTopic.value.title = res.data.data.topic.title;
+      if (res.data.topic) {
+        currentTopic.value.title = res.data.topic.title;
         await loadTopics(selectedAssistantForTopics.value._id);
       }
     }

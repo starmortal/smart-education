@@ -46,11 +46,6 @@ const assistantSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Knowledge'
   }],
-  knowledgeBases: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Knowledge',
-    default: []
-  }],
   isDefault: {
     type: Boolean,
     default: false

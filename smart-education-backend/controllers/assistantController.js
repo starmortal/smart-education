@@ -6,7 +6,7 @@ const logger = require('../utils/logger');
 
 // 创建助手
 exports.createAssistant = async (req, res) => {
-  const { userId, name, prompt, model, temperature, topP, maxTokens } = req.body;
+  const { userId, name, prompt, model, temperature, topP, maxTokens, knowledgeBases } = req.body;
 
   if (!userId || !name) {
     throw new AppError('用户ID和助手名称不能为空', 400);
@@ -19,7 +19,8 @@ exports.createAssistant = async (req, res) => {
     model: model || 'deepseek-chat',
     temperature: temperature !== undefined ? temperature : 0.7,
     topP: topP !== undefined ? topP : 1,
-    maxTokens: maxTokens || 2048
+    maxTokens: maxTokens || 2048,
+    knowledgeBases: knowledgeBases || []
   });
 
   await assistant.save();
