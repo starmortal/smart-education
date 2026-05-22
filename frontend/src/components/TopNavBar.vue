@@ -38,11 +38,7 @@
         </div>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item @click="goToProfile">
-              <el-icon><User /></el-icon>
-              个人中心
-            </el-dropdown-item>
-            <el-dropdown-item divided @click="handleLogout">
+            <el-dropdown-item @click="handleLogout">
               <el-icon><SwitchButton /></el-icon>
               退出登录
             </el-dropdown-item>
@@ -168,10 +164,6 @@ const goToHome = () => {
 const goToPageMobile = (path) => {
   router.push(path);
   showMobileMenu.value = false; // 跳转后关闭菜单
-};
-
-const goToProfile = () => {
-  router.push('/profile');
 };
 
 const getNavIcon = (path) => {

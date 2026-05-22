@@ -1,35 +1,50 @@
 ﻿<template>
   <!-- 最外层容器 -->
   <div class="error-book-container">
-        <!-- ================= 1. 实时数据统计 ================= -->
-    <div class="stats-bar">
-      <div class="stat-item">
-        <el-icon size="24" color="#e74c3c"><Warning /></el-icon>
-        <div class="stat-content">
-          <div class="stat-value">{{ globalStats.totalCount || 0 }}</div>
-          <div class="stat-label">错题总数</div>
-        </div>
-      </div>
-      <div class="stat-item">
-        <el-icon size="24" color="#ffc107"><Clock /></el-icon>
-        <div class="stat-content">
-          <div class="stat-value">{{ globalStats.unmasteredCount || 0 }}</div>
-          <div class="stat-label">未掌握</div>
-        </div>
-      </div>
-      <div class="stat-item">
-        <el-icon size="24" color="#35b778"><Check /></el-icon>
-        <div class="stat-content">
-          <div class="stat-value">{{ globalStats.masteredCount || 0 }}</div>
-          <div class="stat-label">已掌握</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ================= 2. 主内容区 ================= -->
+    <!-- 主内容区 -->
     <div class="error-content">
-      <!-- 左侧：错题列表 -->
-      <div class="left-section">
+      <!-- 左侧边栏：科目筛选 -->
+      <div class="error-sidebar">
+        <!-- 科目筛选 -->
+        <div class="subject-filter-section">
+          <div class="section-title">
+            <el-icon size="16"><Reading /></el-icon>
+            <span>科目筛选</span>
+          </div>
+          <el-button 
+            v-if="filterForm.subject"
+            size="small" 
+            type="primary" 
+            class="clear-filter-btn"
+            @click="clearSubjectFilter"
+          >
+            清除筛选
+          </el-button>
+          <div class="subject-list">
+            <div 
+              v-for="(subject, index) in userSubjects" 
+              :key="subject"
+              class="subject-item"
+              @click="filterBySubject(getSubjectCode(subject))"
+              :class="{ active: filterForm.subject === getSubjectCode(subject) }"
+            >
+              <div class="subject-label">
+                <span class="subject-dot" :style="{ background: getSubjectColor(index) }"></span>
+                {{ subject }}
+              </div>
+              <div class="subject-count">{{ getSubjectStatCount(subject) }}</div>
+            </div>
+            <el-empty 
+              v-if="!hasUserSubjects(userSubjects)" 
+              description="请先在个人中心设置学习科目" 
+              :image-size="60"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧：错题列表 -->
+      <div class="right-section">
         <div class="errors-container">
           <div class="section-header">
             <div class="header-left">
@@ -126,48 +141,6 @@
             </div>
             
             <el-empty v-if="errorList.length === 0 && !loading" description="暂无错题记录" />
-          </div>
-        </div>
-      </div>
-
-      <!-- 右侧：科目统计 -->
-      <div class="right-section">
-        <!-- 科目统计 -->
-        <div class="subject-stats-box">
-          <div class="box-header">
-            <div class="header-left">
-              <el-icon size="18"><Reading /></el-icon>
-              <span>科目统计</span>
-            </div>
-            <el-button 
-              v-if="filterForm.subject"
-              size="small" 
-              type="primary" 
-              text
-              @click="clearSubjectFilter"
-            >
-              清除筛选
-            </el-button>
-          </div>
-          <div class="subject-stats-list">
-            <div 
-              v-for="(subject, index) in userSubjects" 
-              :key="subject"
-              class="subject-stat-item"
-              @click="filterBySubject(getSubjectCode(subject))"
-              :class="{ active: filterForm.subject === getSubjectCode(subject) }"
-            >
-              <div class="subject-stat-label">
-                <span class="subject-dot" :style="{ background: getSubjectColor(index) }"></span>
-                {{ subject }}
-              </div>
-              <div class="subject-stat-value">{{ getSubjectStatCount(subject) }}</div>
-            </div>
-            <el-empty 
-              v-if="!hasUserSubjects(userSubjects)" 
-              description="请先在个人中心设置学习科目" 
-              :image-size="60"
-            />
           </div>
         </div>
       </div>
@@ -1184,92 +1157,141 @@ async function batchDeleteErrors() {
 
 <style scoped>
 .error-book-container {
-  min-height: 100vh;
-  background: #f5f7fa;
-}
-
-/* 实时数据统计 */
-.stats-bar {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  padding: 20px 40px;
-  background: #f8f9fa;
-}
-
-.stat-item {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 24px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s;
-  border: 2px solid #e4e7ed;
-}
-
-.stat-item:nth-child(1) {
-  border-color: #e74c3c;
-}
-
-.stat-item:nth-child(2) {
-  border-color: #ffc107;
-}
-
-.stat-item:nth-child(3) {
-  border-color: #35b778;
-}
-
-.stat-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: #2c3e50;
-  line-height: 1;
-  margin-bottom: 6px;
-}
-
-.stat-label {
-  font-size: 13px;
-  color: #666;
-  font-weight: 500;
+  height: 100vh;
+  background: #f5f7fa;
+  overflow: hidden;
 }
 
 /* 主内容区 */
 .error-content {
-  display: grid;
-  grid-template-columns: 3fr 1fr;
-  gap: 20px;
-  padding: 24px 40px 40px;
-  max-width: 1920px;
-  margin: 0 auto;
+  display: flex;
+  width: 100%;
 }
 
-/* 左侧：错题列表 */
-.left-section {
+/* 左侧边栏 */
+.error-sidebar {
+  width: 280px;
+  background: #fff;
+  border-right: 1px solid #e4e7ed;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.error-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.error-sidebar::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 3px;
+}
+
+/* 科目筛选区 */
+.subject-filter-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px 16px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e4e7ed;
+}
+
+.clear-filter-btn {
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.subject-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.subject-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.subject-list::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 2px;
+}
+
+.subject-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 2px solid transparent;
+}
+
+.subject-item:hover {
+  background: #e8f4ff;
+  transform: translateX(4px);
+}
+
+.subject-item.active {
+  background: #e8f4ff;
+  border-color: #0969da;
+  transform: translateX(4px);
+}
+
+.subject-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.subject-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.subject-count {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* 右侧：错题列表 */
+.right-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  overflow: hidden;
 }
 
 .errors-container {
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background: transparent;
   display: flex;
   flex-direction: column;
-  border: 2px solid #e74c3c;
-  height: 520px;
-  max-height: 520px;
+  flex: 1;
+  overflow: hidden;
 }
 
 .section-header {
@@ -1277,8 +1299,10 @@ async function batchDeleteErrors() {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e4e7ed;
+  padding: 16px 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
 }
 
@@ -1327,17 +1351,18 @@ async function batchDeleteErrors() {
 
 /* 彩色卡片样式 */
 .error-card {
-  border-radius: 16px;
+  border-radius: 12px;
   transition: all 0.3s;
   position: relative;
   height: 100%;
   overflow: visible;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   cursor: pointer;
 }
 
 .error-card:hover {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
 .card-content {
@@ -1390,17 +1415,16 @@ async function batchDeleteErrors() {
 .card-status,
 .card-subject {
   display: inline-block;
-  padding: 5px 12px;
-  background: #fff;
-  border-radius: 16px;
-  font-size: 12px;
-  font-weight: 700;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
   width: fit-content;
   color: #000;
   text-shadow: none;
-  border: 2px solid rgba(0, 0, 0, 0.15);
   flex-shrink: 0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .card-title {
@@ -1430,10 +1454,9 @@ async function batchDeleteErrors() {
 .card-type {
   padding: 4px 10px;
   background: rgba(255, 255, 255, 0.95);
-  border-radius: 14px;
+  border-radius: 12px;
   font-size: 11px;
   font-weight: 600;
-  border: 1px solid rgba(0, 0, 0, 0.1);
   color: rgba(0, 0, 0, 0.75);
   text-shadow: none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -1442,18 +1465,17 @@ async function batchDeleteErrors() {
 .card-edit-btn {
   cursor: pointer;
   transition: all 0.3s;
-  padding: 6px 16px;
+  padding: 6px 14px;
   border-radius: 8px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.95);
   color: #0969da;
-  border: 2px solid #0969da;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(9, 105, 218, 0.3);
+  box-shadow: 0 1px 4px rgba(9, 105, 218, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -1466,104 +1488,10 @@ async function batchDeleteErrors() {
   background: #0969da;
   color: #fff;
   transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(9, 105, 218, 0.5);
+  box-shadow: 0 2px 8px rgba(9, 105, 218, 0.4);
 }
 
-/* 右侧：科目统计 */
-.right-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
 
-.subject-stats-box {
-  background: #fff;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  border: 2px solid #ffc107;
-  flex-shrink: 0;
-  height: 520px;
-  max-height: 520px;
-  display: flex;
-  flex-direction: column;
-}
-
-.subject-stats-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
-.subject-stats-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.subject-stats-list::-webkit-scrollbar-thumb {
-  background: #dcdfe6;
-  border-radius: 3px;
-}
-
-.subject-stats-list::-webkit-scrollbar-thumb:hover {
-  background: #c0c4cc;
-}
-
-.subject-stat-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 14px;
-  background: #f8f9fa;
-  border-radius: 6px;
-  transition: all 0.3s;
-  cursor: pointer;
-}
-
-.subject-stat-item:hover {
-  background: #fff4e6;
-  transform: translateX(4px);
-}
-
-.subject-stat-item.active {
-  background: #e8f4fd;
-  border: 2px solid #0969da;
-  transform: translateX(4px);
-}
-
-.subject-stat-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #2c3e50;
-}
-
-.subject-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.subject-stat-value {
-  font-size: 16px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.box-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 12px;
-  flex-shrink: 0;
-}
 
 /* 错题详情样式 */
 .error-detail-content {
@@ -1754,5 +1682,26 @@ async function batchDeleteErrors() {
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+}
+
+/* 响应式适配 */
+@media (max-width: 1200px) {
+  .error-sidebar {
+    width: 240px;
+  }
+  
+  .error-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .error-sidebar {
+    width: 200px;
+  }
+  
+  .error-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 </style>

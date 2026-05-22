@@ -25,25 +25,9 @@
       </el-tooltip>
     </div>
 
-    <!-- 底部用户区域 -->
+    <!-- 底部用户头像 -->
     <div class="user-section">
-      <el-dropdown trigger="click" @command="handleCommand">
-        <div class="user-avatar">
-          <el-avatar :size="32" :src="userAvatar" />
-        </div>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item command="profile">
-              <el-icon><User /></el-icon>
-              <span>个人中心</span>
-            </el-dropdown-item>
-            <el-dropdown-item divided command="logout">
-              <el-icon><SwitchButton /></el-icon>
-              <span>退出登录</span>
-            </el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
+      <el-avatar :size="32" :src="userAvatar" />
     </div>
   </div>
 </template>
@@ -53,13 +37,11 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import {
   ChatDotRound,
-  House,
   Notebook,
   Calendar,
   Document,
   DataAnalysis,
   ChatLineRound,
-  Cpu,
   User,
   SwitchButton,
   FolderOpened
@@ -77,10 +59,11 @@ const navItems = [
   { path: '/knowledge-base', label: '知识库', icon: FolderOpened },
   { path: '/error-book', label: '错题集', icon: Notebook },
   { path: '/study-plan', label: '学习计划', icon: Calendar },
-
   { path: '/note', label: '我的笔记', icon: Document },
   { path: '/study-community', label: '学习社区', icon: DataAnalysis },
-  { path: '/feedback', label: '意见反馈', icon: ChatLineRound }
+  { path: '/feedback', label: '意见反馈', icon: ChatLineRound },
+  { path: '/profile', label: '个人中心', icon: User },
+  { path: 'logout', label: '退出登录', icon: SwitchButton }
 ];
 
 const currentPath = computed(() => route.path);
@@ -100,22 +83,22 @@ const loadUserInfo = () => {
 };
 
 const goToPage = (path) => {
-  router.push(path);
+  if (path === 'logout') {
+    handleLogout();
+  } else {
+    router.push(path);
+  }
 };
 
 const goToHome = () => {
   router.push('/ai-chat');
 };
 
-const handleCommand = (command) => {
-  if (command === 'profile') {
-    router.push('/profile');
-  } else if (command === 'logout') {
-    localStorage.removeItem('edu-user-id');
-    localStorage.removeItem('edu-nickname');
-    localStorage.removeItem('edu-avatar');
-    router.push('/login');
-  }
+const handleLogout = () => {
+  localStorage.removeItem('edu-user-id');
+  localStorage.removeItem('edu-nickname');
+  localStorage.removeItem('edu-avatar');
+  router.push('/login');
 };
 </script>
 
@@ -216,16 +199,6 @@ const handleCommand = (command) => {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.user-avatar {
-  cursor: pointer;
-  transition: all 0.3s;
-  border-radius: 50%;
-}
-
-.user-avatar:hover {
-  transform: scale(1.1);
-}
-
 /* 移动端适配 */
 @media (max-width: 768px) {
   .side-nav-bar {
@@ -245,9 +218,8 @@ const handleCommand = (command) => {
     height: 45px;
   }
 
-  .user-avatar {
-    width: 28px;
-    height: 28px;
+  .user-section {
+    padding: 12px 0;
   }
 }
 </style>
