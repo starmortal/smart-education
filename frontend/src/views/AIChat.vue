@@ -142,10 +142,40 @@
           >
             <div class="message-avatar">
               <el-avatar v-if="message.role === 'user'" :size="36" :src="userAvatar" />
-              <el-icon v-else :size="36" color="#0969da"><Cpu /></el-icon>
+              <el-avatar v-else :size="36" :src="require('@/assets/logo.png')" class="ai-avatar-img" />
             </div>
             <div class="message-content">
               <div class="message-text" v-html="renderMarkdown(message.content)"></div>
+              <!-- AI 消息快捷操作按钮 -->
+              <div v-if="message.role === 'assistant'" class="message-actions">
+                <el-tooltip content="保存到笔记" placement="top">
+                  <el-button 
+                    size="small" 
+                    :icon="Document" 
+                    @click="saveToNote(message.content)"
+                    text
+                    circle
+                  />
+                </el-tooltip>
+                <el-tooltip content="保存到知识库" placement="top">
+                  <el-button 
+                    size="small" 
+                    :icon="FolderOpened" 
+                    @click="saveToKnowledge(message.content)"
+                    text
+                    circle
+                  />
+                </el-tooltip>
+                <el-tooltip content="复制" placement="top">
+                  <el-button 
+                    size="small" 
+                    :icon="CopyDocument" 
+                    @click="copyMessage(message.content)"
+                    text
+                    circle
+                  />
+                </el-tooltip>
+              </div>
               <!-- 附件显示 -->
               <div v-if="message.attachments && message.attachments.length > 0" class="message-attachments">
                 <div
@@ -176,7 +206,7 @@
 
           <div v-if="isLoading" class="message-item assistant">
             <div class="message-avatar">
-              <el-icon :size="36" color="#0969da"><Cpu /></el-icon>
+              <el-avatar :size="36" :src="require('@/assets/logo.png')" class="ai-avatar-img" />
             </div>
             <div class="message-content">
               <div class="loading-dots">
@@ -221,13 +251,14 @@
             />
             <div class="input-actions">
               <div class="input-tools">
-                <el-button 
-                  :icon="Paperclip" 
-                  circle 
-                  size="small"
-                  @click="handleUploadClick"
-                  title="上传文件或图片"
-                />
+                <el-tooltip content="上传文件或图片" placement="top">
+                  <el-button 
+                    :icon="Paperclip" 
+                    circle 
+                    size="small"
+                    @click="handleUploadClick"
+                  />
+                </el-tooltip>
                 <input
                   ref="fileInputRef"
                   type="file"
@@ -249,12 +280,13 @@
                       :hidden="temporaryKnowledgeBases.length === 0"
                       type="primary"
                     >
-                      <el-button 
-                        :icon="FolderOpened" 
-                        circle 
-                        size="small"
-                        title="选择知识库"
-                      />
+                      <el-tooltip content="选择知识库" placement="top">
+                        <el-button 
+                          :icon="FolderOpened" 
+                          circle 
+                          size="small"
+                        />
+                      </el-tooltip>
                     </el-badge>
                   </template>
                   <div class="knowledge-popover">
@@ -288,6 +320,16 @@
                     </div>
                   </div>
                 </el-popover>
+                <!-- 新建对话按钮 -->
+                <el-tooltip content="新建对话" placement="top">
+                  <el-button 
+                    :icon="Plus" 
+                    circle 
+                    size="small"
+                    @click="handleCreateTopicQuick"
+                    :disabled="!selectedAssistantForTopics"
+                  />
+                </el-tooltip>
               </div>
               <el-button type="primary" :icon="Promotion" @click="handleSendMessage" :loading="isLoading">
                 发送
@@ -350,14 +392,57 @@
         <el-button type="primary" @click="handleRenameTopic">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 保存到知识库对话框 -->
+    <el-dialog
+      v-model="knowledgeDialogVisible"
+      title="保存到知识库"
+      width="500px"
+    >
+      <el-form label-width="100px">
+        <el-form-item label="选择知识库">
+          <el-select
+            v-model="selectedKnowledgeBase"
+            placeholder="请选择知识库"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="kb in knowledgeBases"
+              :key="kb._id"
+              :label="kb.name"
+              :value="kb._id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="文件名">
+          <el-input
+            v-model="knowledgeFileName"
+            placeholder="请输入文件名"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="knowledgeDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmSaveToKnowledge">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue';
+import { ref, onMounted, nextTick, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, MoreFilled, ChatDotRound, Cpu, Promotion, Paperclip, Close, Document, Picture, FolderOpened, DArrowLeft, DArrowRight } from '@element-plus/icons-vue';
+import { Plus, MoreFilled, ChatDotRound, Cpu, Promotion, Paperclip, Close, Document, FolderOpened, DArrowLeft, DArrowRight, CopyDocument } from '@element-plus/icons-vue';
 import { marked } from 'marked';
+
+// 配置 marked 选项
+marked.setOptions({
+  breaks: true, // 支持 GitHub 风格的换行
+  gfm: true, // 启用 GitHub 风格的 Markdown
+  headerIds: false, // 禁用标题 ID
+  mangle: false // 禁用邮箱混淆
+});
+
 import {
   getAssistants,
   createAssistant,
@@ -375,7 +460,8 @@ import {
   clearMessages,
   uploadFile
 } from '@/api/chat';
-import { getKnowledgeBases } from '@/api/knowledge';
+import { getKnowledgeBases, addText } from '@/api/knowledge';
+import { addNote } from '@/api/note';
 
 const userId = ref(localStorage.getItem('edu-user-id'));
 const userAvatar = ref(localStorage.getItem('edu-avatar') || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png');
@@ -418,6 +504,12 @@ const editingAssistantId = ref(null);
 const renameDialogVisible = ref(false);
 const renameTitle = ref('');
 const renamingTopicId = ref(null);
+
+// 保存到知识库对话框
+const knowledgeDialogVisible = ref(false);
+const selectedKnowledgeBase = ref('');
+const knowledgeFileName = ref('');
+const pendingSaveContent = ref('');
 
 onMounted(async () => {
   await loadAssistants();
@@ -857,6 +949,109 @@ const scrollToBottom = () => {
 const previewImage = (url) => {
   window.open(url, '_blank');
 };
+
+// 快速新建对话
+const handleCreateTopicQuick = async () => {
+  if (!selectedAssistantForTopics.value) {
+    ElMessage.warning('请先选择助手');
+    return;
+  }
+
+  try {
+    const res = await createTopic({
+      assistantId: selectedAssistantForTopics.value._id,
+      userId: userId.value,
+      title: '新对话'
+    });
+    if (res.code === 200) {
+      await loadTopics(selectedAssistantForTopics.value._id);
+      await selectTopic(res.data);
+      ElMessage.success('新对话已创建');
+    }
+  } catch (error) {
+    console.error('创建对话失败:', error);
+    ElMessage.error('创建失败');
+  }
+};
+
+// 保存到笔记
+const saveToNote = async (content) => {
+  try {
+    const res = await addNote({
+      userId: userId.value,
+      noteTitle: '来自 AI 对话',
+      noteContent: content,
+      noteTags: ['AI对话'],
+      isFolder: false
+    });
+    if (res.code === 200) {
+      ElMessage.success('已保存到笔记');
+    }
+  } catch (error) {
+    console.error('保存到笔记失败:', error);
+    ElMessage.error('保存失败');
+  }
+};
+
+// 保存到知识库
+const saveToKnowledge = (content) => {
+  if (knowledgeBases.value.length === 0) {
+    ElMessage.warning('暂无知识库，请先创建知识库');
+    return;
+  }
+  pendingSaveContent.value = content;
+  knowledgeFileName.value = `AI对话_${new Date().toLocaleString('zh-CN', { 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  }).replace(/\//g, '-').replace(/:/g, '-')}`;
+  knowledgeDialogVisible.value = true;
+};
+
+// 确认保存到知识库
+const confirmSaveToKnowledge = async () => {
+  if (!selectedKnowledgeBase.value) {
+    ElMessage.warning('请选择知识库');
+    return;
+  }
+  if (!knowledgeFileName.value) {
+    ElMessage.warning('请输入文件名');
+    return;
+  }
+
+  try {
+    const res = await addText(selectedKnowledgeBase.value, {
+      title: knowledgeFileName.value,
+      content: pendingSaveContent.value
+    });
+    if (res.code === 200 || res.status === 200) {
+      ElMessage.success('已保存到知识库');
+      knowledgeDialogVisible.value = false;
+      selectedKnowledgeBase.value = '';
+      knowledgeFileName.value = '';
+      pendingSaveContent.value = '';
+    }
+  } catch (error) {
+    console.error('保存到知识库失败:', error);
+    ElMessage.error('保存失败');
+  }
+};
+
+// 复制消息
+const copyMessage = (content) => {
+  // 移除 HTML 标签，只保留纯文本
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = content;
+  const plainText = tempDiv.textContent || tempDiv.innerText || '';
+  
+  navigator.clipboard.writeText(plainText).then(() => {
+    ElMessage.success('已复制到剪贴板');
+  }).catch(() => {
+    ElMessage.error('复制失败');
+  });
+};
 </script>
 
 <style scoped>
@@ -1104,33 +1299,183 @@ const previewImage = (url) => {
 
 .message-item {
   display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 16px;
+  padding: 12px 0;
+  margin-bottom: 4px;
+  /* 移除背景色和边框 */
+}
+
+.message-item.user {
+  /* 用户消息样式 */
+}
+
+.message-item.assistant {
+  /* AI 消息样式 */
 }
 
 .message-avatar {
   flex-shrink: 0;
 }
 
+/* AI Logo 头像样式 */
+.ai-avatar-img {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.ai-avatar-img:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 .message-content {
   flex: 1;
-  max-width: 80%;
+  min-width: 0;
 }
 
 .message-text {
-  padding: 12px 16px;
-  border-radius: 8px;
-  color: #333;
-  line-height: 1.6;
+  line-height: 1.8;
+  color: #303133;
+  font-size: 13px;
   word-wrap: break-word;
 }
 
-.message-item.user .message-text {
-  background: #e8f4ff;
+.message-text :deep(p) {
+  margin: 0 0 12px 0;
 }
 
-.message-item.assistant .message-text {
+.message-text :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.message-text :deep(h1),
+.message-text :deep(h2),
+.message-text :deep(h3),
+.message-text :deep(h4),
+.message-text :deep(h5),
+.message-text :deep(h6) {
+  margin: 16px 0 12px 0;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.message-text :deep(h1) { font-size: 20px; }
+.message-text :deep(h2) { font-size: 18px; }
+.message-text :deep(h3) { font-size: 16px; }
+.message-text :deep(h4) { font-size: 14px; }
+.message-text :deep(h5) { font-size: 13px; }
+.message-text :deep(h6) { font-size: 12px; }
+
+.message-text :deep(ul),
+.message-text :deep(ol) {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.message-text :deep(li) {
+  margin: 4px 0;
+}
+
+.message-text :deep(blockquote) {
+  margin: 12px 0;
+  padding: 8px 16px;
+  border-left: 4px solid #0969da;
+  background: #f6f8fa;
+  color: #666;
+}
+
+.message-text :deep(table) {
+  border-collapse: collapse;
+  margin: 12px 0;
+  width: 100%;
+}
+
+.message-text :deep(table th),
+.message-text :deep(table td) {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.message-text :deep(table th) {
+  background: #f6f8fa;
+  font-weight: 600;
+}
+
+.message-text :deep(a) {
+  color: #0969da;
+  text-decoration: none;
+}
+
+.message-text :deep(a:hover) {
+  text-decoration: underline;
+}
+
+.message-text :deep(hr) {
+  border: none;
+  border-top: 1px solid #e4e7ed;
+  margin: 16px 0;
+}
+
+.message-text :deep(img) {
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 12px 0;
+}
+
+.message-text :deep(pre) {
+  background: #f6f8fa;
+  border-radius: 6px;
+  padding: 16px;
+  overflow-x: auto;
+  margin: 12px 0;
+  border: 1px solid #e4e7ed;
+}
+
+.message-text :deep(code) {
+  background: #f6f8fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  color: #e83e8c;
+}
+
+.message-text :deep(pre code) {
+  background: transparent;
+  padding: 0;
+  color: #333;
+}
+
+/* AI 消息快捷操作按钮 */
+.message-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 12px;
+  opacity: 0.6;
+  transition: opacity 0.3s;
+}
+
+.message-item:hover .message-actions {
+  opacity: 1;
+}
+
+.message-actions .el-button {
+  color: #909399;
+  font-size: 16px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
+.message-actions .el-button:hover {
+  color: #0969da;
   background: #f5f7fa;
+}
+
+.message-attachments {
+  flex: 1;
+  max-width: 80%;
 }
 
 .loading-dots {
@@ -1183,6 +1528,8 @@ const previewImage = (url) => {
   box-shadow: none;
   padding: 0;
   resize: none;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .message-input :deep(.el-textarea__inner):focus {
@@ -1193,6 +1540,7 @@ const previewImage = (url) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid #f0f0f0;
@@ -1202,6 +1550,7 @@ const previewImage = (url) => {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex: 1;
 }
 
 .knowledge-popover {
