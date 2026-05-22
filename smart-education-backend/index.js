@@ -11,6 +11,7 @@ const aiRouter = require("./routes/ai");
 const studyDataRouter = require("./routes/studyData");
 const errorBookRouter = require("./routes/errorBook");
 
+const noteRouter = require("./routes/note");
 const studyPlanRouter = require("./routes/studyPlan");
 const feedbackRouter = require("./routes/feedback");
 const communityRouter = require("./routes/community");
@@ -21,7 +22,7 @@ const knowledgeRouter = require("./routes/knowledge");
 /**
  * 智慧教育平台 - 后端服务器
  * 技术栈：Node.js + Express + MongoDB + DeepSeek AI
- * 功能：用户管理、AI答题、错题本、学习计划、学习社区、数据统计
+ * 功能：用户管理、AI答题、错题本、学习笔记、学习计划、学习社区、数据统计
  */
 
 const app = express();
@@ -96,6 +97,7 @@ app.use("/api/ai", aiRouter);
 app.use("/api/study-data", studyDataRouter);
 app.use("/api/error-book", errorBookRouter);
 
+app.use("/api/note", noteRouter);
 app.use("/api/study-plan", studyPlanRouter);
 app.use("/api/feedback", feedbackRouter);
 app.use("/api/community", communityRouter);

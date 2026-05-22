@@ -50,6 +50,12 @@ const routes = [
   },
 
   { 
+    path: "/note", 
+    component: () => import("../views/NotePage.vue"), 
+    name: "我的笔记",
+    meta: { title: "我的笔记 - 智慧教育平台", requiresAuth: true }
+  },
+  { 
     path: "/study-community", 
     component: () => import("../views/StudyCommunity.vue"), 
     name: "学习社区",
