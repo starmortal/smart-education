@@ -68,67 +68,116 @@
           <el-button :icon="Setting" @click="showManageDialog = true">管理我的疑问</el-button>
         </div>
         
-        <!-- 问题列表 -->
+        <!-- 问题列表 - 极简社交流式布局 -->
         <div class="questions-list" v-loading="loading">
-          <div class="questions-grid">
+          <div class="questions-feed">
             <div 
-              v-for="(question, index) in paginatedQuestions" 
+              v-for="question in paginatedQuestions" 
               :key="question.id"
               class="question-card"
-              :style="{ borderColor: getQuestionBorderColor(index) }"
               @click="handleQuestionDetail(question)"
             >
+              <!-- 用户信息行 -->
               <div class="card-header">
-                <el-avatar :size="32" :src="question.userAvatar" />
+                <el-avatar :size="40" :src="question.userAvatar" />
                 <div class="card-user-info">
                   <div class="card-username">{{ question.userName }}</div>
-                  <div class="card-time">{{ formatTime(question.createTime) }}</div>
+                  <div class="card-meta">
+                    <span>{{ getGradeLabel(question.userGrade || userInfo.grade) }}</span>
+                    <span class="meta-dot">·</span>
+                    <span>{{ formatTime(question.createTime) }}</span>
+                  </div>
                 </div>
                 <el-icon 
-                  :size="20" 
-                  :color="isFavorited(question.id) ? '#f56c6c' : '#c0c4cc'"
+                  :size="22" 
+                  :color="isFavorited(question.id) ? '#3b82f6' : '#d1d5db'"
                   @click.stop="toggleFavorite(question.id)"
-                  style="cursor: pointer;"
+                  class="favorite-icon"
                 >
-                  <Star :fill="isFavorited(question.id) ? '#f56c6c' : 'none'" />
+                  <Star :fill="isFavorited(question.id) ? '#3b82f6' : 'none'" />
                 </el-icon>
               </div>
               
+              <!-- 问题标题 -->
               <div class="card-title">{{ question.title }}</div>
               
-              <div class="card-tags">
-                <el-tag 
-                  v-for="(tag, idx) in question.tags.slice(0, 2)" 
-                  :key="idx"
-                  size="small"
-                  type="primary"
-                >
-                  {{ tag }}
-                </el-tag>
-                <el-tag v-if="question.tags.length > 2" size="small" type="info">
-                  +{{ question.tags.length - 2 }}
-                </el-tag>
+              <!-- 问题内容预览 -->
+              <div class="card-content" v-if="question.content">
+                {{ question.content.substring(0, 100) }}{{ question.content.length > 100 ? '...' : '' }}
               </div>
               
-              <div class="card-footer">
-                <el-tag :type="question.solved ? 'success' : 'warning'" size="small">
-                  {{ question.solved ? '已解决' : '待解决' }}
-                </el-tag>
+              <!-- 标签 -->
+              <div class="card-tags">
+                <span 
+                  v-for="(tag, idx) in question.tags.slice(0, 3)" 
+                  :key="idx"
+                  class="tag-item"
+                >
+                  {{ tag }}
+                </span>
+                <span v-if="question.tags.length > 3" class="tag-item tag-more">
+                  +{{ question.tags.length - 3 }}
+                </span>
+              </div>
+              
+              <!-- 分隔线 -->
+              <div class="card-divider"></div>
+              
+              <!-- 互动统计栏 -->
+              <div class="card-stats">
+                <div class="stat-item">
+                  <el-icon :size="16"><ChatDotRound /></el-icon>
+                  <span>{{ question.answerCount || 0 }} 回答</span>
+                </div>
+                <div class="stat-item">
+                  <el-icon :size="16"><View /></el-icon>
+                  <span>{{ question.viewCount || 0 }} 浏览</span>
+                </div>
+                <div class="stat-item status-badge" :class="{ solved: question.solved }">
+                  <el-icon :size="16" v-if="question.solved"><CircleCheck /></el-icon>
+                  <el-icon :size="16" v-else><Clock /></el-icon>
+                  <span>{{ question.solved ? '已解决' : '待解决' }}</span>
+                </div>
+              </div>
+              
+              <!-- 热门回答预览（如果有） -->
+              <div class="top-answer-preview" v-if="question.topAnswer" @click.stop>
+                <div class="preview-header">
+                  <el-icon :size="14" color="#10b981"><TrendCharts /></el-icon>
+                  <span class="preview-label">热门回答</span>
+                </div>
+                <div class="preview-content">
+                  {{ question.topAnswer.content.substring(0, 80) }}...
+                </div>
+                <div class="preview-footer">
+                  <span class="preview-author">{{ question.topAnswer.userName }}</span>
+                  <span class="preview-likes">
+                    <el-icon :size="12"><Star /></el-icon>
+                    {{ question.topAnswer.likeCount }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
           
-          <el-empty v-if="filteredQuestions.length === 0 && !loading" description="暂无问题" />
+          <!-- 空状态 -->
+          <div v-if="filteredQuestions.length === 0 && !loading" class="empty-state">
+            <el-icon :size="80" color="#d1d5db"><DocumentDelete /></el-icon>
+            <div class="empty-text">暂无问题</div>
+            <div class="empty-hint">试试调整筛选条件或发起新问题</div>
+          </div>
           
-          <el-pagination
-            v-if="filteredQuestions.length > pageSize"
-            v-model:current-page="currentPage"
-            :page-size="pageSize"
-            :total="filteredQuestions.length"
-            layout="prev, pager, next"
-            @current-change="handlePageChange"
-            style="margin-top: 20px; justify-content: center;"
-          />
+          <!-- 分页 -->
+          <div class="pagination-wrapper" v-if="filteredQuestions.length > pageSize">
+            <el-pagination
+              v-model:current-page="currentPage"
+              :page-size="pageSize"
+              :total="filteredQuestions.length"
+              layout="prev, pager, next"
+              @current-change="handlePageChange"
+              background
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -393,7 +442,8 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
   Plus, Setting, Delete, Star, Medal, ChatDotRound, 
-  DataAnalysis, DArrowLeft, DArrowRight 
+  DataAnalysis, DArrowLeft, DArrowRight, View, CircleCheck, 
+  Clock, TrendCharts, DocumentDelete
 } from '@element-plus/icons-vue';
 import SideNavBar from '@/components/SideNavBar.vue';
 import axios from 'axios';
@@ -419,7 +469,7 @@ const userSubjects = ref([]);
 const questions = ref([]);
 const questionStatusFilter = ref('');
 const currentPage = ref(1);
-const pageSize = ref(4);
+const pageSize = ref(6); // 单列布局，每页显示6条
 
 // 我的收藏
 const myFavorites = ref([]);
@@ -496,12 +546,6 @@ function toggleStatusFilter(status) {
     questionStatusFilter.value = status;
   }
   currentPage.value = 1;
-}
-
-// 获取问题边框颜色
-function getQuestionBorderColor(index) {
-  const colors = ['#0969da', '#35b778', '#ffc107', '#e74c3c'];
-  return colors[index % colors.length];
 }
 
 // 格式化时间
@@ -1083,78 +1127,287 @@ onMounted(async () => {
 .questions-list {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 0;
+  background: #f9fafb;
 }
 
-.questions-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 16px;
-  height: calc(100vh - 200px);
-}
-
-.question-card {
-  background: #fff;
-  border: 2px solid;
-  border-radius: 12px;
-  padding: 16px;
-  cursor: pointer;
-  transition: all 0.3s;
+/* 极简社交流式布局 */
+.questions-feed {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
+}
+
+/* 极简问题卡片 */
+.question-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .question-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   transform: translateY(-2px);
 }
 
+/* 用户信息行 */
 .card-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .card-user-info {
   flex: 1;
+  min-width: 0;
 }
 
 .card-username {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #1a1a1a;
+  line-height: 1.4;
 }
 
-.card-time {
-  font-size: 12px;
-  color: #909399;
+.card-meta {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.4;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
+.meta-dot {
+  color: #d1d5db;
+}
+
+.favorite-icon {
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.favorite-icon:hover {
+  transform: scale(1.15);
+}
+
+/* 问题标题 */
 .card-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #1a1a1a;
   line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  flex: 1;
+  margin: 0;
 }
 
+/* 内容预览 */
+.card-content {
+  font-size: 15px;
+  color: #374151;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* 标签 */
 .card-tags {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.card-footer {
+.tag-item {
+  padding: 4px 12px;
+  background: rgba(59, 130, 246, 0.08);
+  color: #3b82f6;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  transition: all 0.2s;
+}
+
+.tag-item:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.tag-more {
+  background: rgba(107, 114, 128, 0.08);
+  color: #6b7280;
+}
+
+/* 分隔线 */
+.card-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #e5e7eb 20%, #e5e7eb 80%, transparent);
+  margin: 4px 0;
+}
+
+/* 互动统计栏 */
+.card-stats {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-top: auto;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6b7280;
+  transition: color 0.2s;
+}
+
+.stat-item .el-icon {
+  color: #9ca3af;
+}
+
+.stat-item:hover {
+  color: #374151;
+}
+
+.stat-item:hover .el-icon {
+  color: #6b7280;
+}
+
+.status-badge {
+  margin-left: auto;
+  padding: 4px 10px;
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 8px;
+  font-weight: 500;
+  color: #f59e0b;
+}
+
+.status-badge.solved {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.status-badge .el-icon {
+  color: inherit;
+}
+
+/* 热门回答预览 */
+.top-answer-preview {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-top: 4px;
+  transition: all 0.2s;
+}
+
+.top-answer-preview:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.preview-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #10b981;
+}
+
+.preview-content {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.preview-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.preview-author {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.preview-likes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-top: 16px;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: 8px;
+}
+
+/* 分页 */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 32px 20px;
+  background: #f9fafb;
+}
+
+.pagination-wrapper :deep(.el-pagination) {
+  gap: 8px;
+}
+
+.pagination-wrapper :deep(.el-pager li) {
+  border-radius: 8px;
+  min-width: 36px;
+  height: 36px;
+  line-height: 36px;
+  font-weight: 500;
+}
+
+.pagination-wrapper :deep(.el-pager li.is-active) {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.pagination-wrapper :deep(.btn-prev),
+.pagination-wrapper :deep(.btn-next) {
+  border-radius: 8px;
+  min-width: 36px;
+  height: 36px;
+  line-height: 36px;
 }
 
 /* 问题详情 */
@@ -1355,9 +1608,33 @@ onMounted(async () => {
 
 /* 响应式 */
 @media (max-width: 1200px) {
-  .questions-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: repeat(4, 1fr);
+  .questions-feed {
+    max-width: 100%;
+    padding: 20px 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .questions-feed {
+    padding: 16px 12px;
+    gap: 16px;
+  }
+  
+  .question-card {
+    padding: 20px;
+    border-radius: 12px;
+  }
+  
+  .card-title {
+    font-size: 16px;
+  }
+  
+  .card-content {
+    font-size: 14px;
+  }
+  
+  .card-stats {
+    gap: 16px;
   }
 }
 </style>
