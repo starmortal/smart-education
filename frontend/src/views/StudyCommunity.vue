@@ -13,7 +13,45 @@
       </div>
 
       <div class="filter-list-section">
+        <!-- 内容筛选 -->
+        <div class="section-divider">内容筛选</div>
+        
+        <div 
+          class="filter-item"
+          @click="setContentFilter('all')"
+          :class="{ active: contentFilter === 'all' }"
+        >
+          <div class="filter-label">
+            <el-icon><List /></el-icon>
+            <span>全部问题</span>
+          </div>
+        </div>
+
+        <div 
+          class="filter-item"
+          @click="setContentFilter('following')"
+          :class="{ active: contentFilter === 'following' }"
+        >
+          <div class="filter-label">
+            <el-icon><UserFilled /></el-icon>
+            <span>关注的人</span>
+          </div>
+        </div>
+
+        <div 
+          class="filter-item"
+          @click="setContentFilter('mine')"
+          :class="{ active: contentFilter === 'mine' }"
+        >
+          <div class="filter-label">
+            <el-icon><User /></el-icon>
+            <span>我的问题</span>
+          </div>
+        </div>
+
         <!-- 状态筛选 -->
+        <div class="section-divider">状态筛选</div>
+        
         <div 
           class="filter-item"
           @click="toggleStatusFilter('unsolved')"
@@ -36,10 +74,44 @@
           </div>
         </div>
 
+        <!-- 社交 -->
+        <div class="section-divider">
+          <span>社交</span>
+        </div>
+        
+        <div class="social-stats">
+          <div class="social-stat-item" @click="showFollowingDialog = true">
+            <el-icon><UserFilled /></el-icon>
+            <span>我的关注</span>
+            <span class="stat-count">{{ followingCount }}</span>
+          </div>
+          <div class="social-stat-item" @click="showFollowersDialog = true">
+            <el-icon><Star /></el-icon>
+            <span>我的粉丝</span>
+            <span class="stat-count">{{ followerCount }}</span>
+          </div>
+        </div>
+
+        <!-- AI 智能 -->
+        <div class="section-divider">
+          <span>AI 智能</span>
+        </div>
+        
+        <div 
+          class="filter-item ai-filter"
+          @click="setContentFilter('ai-recommend')"
+          :class="{ active: contentFilter === 'ai-recommend' }"
+        >
+          <div class="filter-label">
+            <el-icon><MagicStick /></el-icon>
+            <span>为你推荐</span>
+          </div>
+        </div>
+
         <!-- 用户信息 -->
         <div class="section-divider">我的信息</div>
         
-        <div class="user-info-card">
+        <div class="user-info-card" @click="handleViewMyProfile">
           <el-avatar :size="50" :src="userInfo.avatar" />
           <div class="user-details">
             <div class="user-name">{{ userInfo.nickname }}</div>
@@ -51,7 +123,7 @@
     </div>
 
     <!-- 右侧主内容 -->
-    <div class="community-content" :class="{ expanded: sidebarCollapsed }">
+    <div class="community-content" :class="{ expanded: sidebarCollapsed, 'with-ai-panel': !aiPanelCollapsed }">
       <div class="content-container">
         <!-- 顶部标题栏 -->
         <div class="editor-header">
@@ -73,21 +145,38 @@
           <div class="questions-feed">
             <div 
               v-for="question in paginatedQuestions" 
-              :key="question.id"
+              :key="question.id || question._id"
               class="question-card"
+              :class="{ following: question.isFollowing }"
               @click="handleQuestionDetail(question)"
             >
               <!-- 用户信息行 -->
               <div class="card-header">
-                <el-avatar :size="40" :src="question.userAvatar" />
+                <el-avatar 
+                  :size="40" 
+                  :src="question.userAvatar" 
+                  class="clickable-avatar"
+                  @click.stop="handleViewUserProfile(question.userId)"
+                />
                 <div class="card-user-info">
-                  <div class="card-username">{{ question.userName }}</div>
+                  <div class="card-username clickable-username" @click.stop="handleViewUserProfile(question.userId)">
+                    {{ question.userName }}
+                  </div>
                   <div class="card-meta">
                     <span>{{ getGradeLabel(question.userGrade || userInfo.grade) }}</span>
                     <span class="meta-dot">·</span>
                     <span>{{ formatTime(question.createTime) }}</span>
                   </div>
                 </div>
+                <FollowButton
+                  v-if="question.userId !== userId"
+                  :target-user-id="question.userId"
+                  :is-following="question.isFollowing"
+                  :is-mutual="question.isMutual"
+                  size="small"
+                  @follow-change="handleFollowChange"
+                  @click.stop
+                />
                 <el-icon 
                   :size="22" 
                   :color="isFavorited(question.id) ? '#3b82f6' : '#d1d5db'"
@@ -181,6 +270,83 @@
         </div>
       </div>
     </div>
+
+    <!-- AI 助手面板 -->
+    <AIAssistantPanel
+      ref="aiAssistantRef"
+      @question-click="handleAIQuestionClick"
+      @topic-click="handleTopicClick"
+      @update:collapsed="aiPanelCollapsed = $event"
+    />
+
+    <!-- 用户主页对话框 -->
+    <UserProfileDialog
+      v-model="showUserProfileDialog"
+      :user-id="selectedUserId"
+      @question-click="handleProfileQuestionClick"
+    />
+
+    <!-- 关注列表对话框 -->
+    <el-dialog
+      v-model="showFollowingDialog"
+      title="我的关注"
+      width="600px"
+      center
+      class="blue-border-dialog"
+    >
+      <div v-loading="loadingFollowing" class="follow-list">
+        <div
+          v-for="user in followingList"
+          :key="user.id"
+          class="follow-item"
+          @click="handleViewUserProfile(user.id)"
+        >
+          <el-avatar :size="50" :src="user.avatar" />
+          <div class="follow-info">
+            <div class="follow-name">{{ user.nickname }}</div>
+            <div class="follow-meta">{{ user.school }} · {{ getGradeLabel(user.grade) }}</div>
+          </div>
+          <FollowButton
+            :target-user-id="user.id"
+            :is-following="true"
+            size="small"
+            @follow-change="loadFollowData"
+          />
+        </div>
+        <el-empty v-if="followingList.length === 0 && !loadingFollowing" description="暂无关注" />
+      </div>
+    </el-dialog>
+
+    <!-- 粉丝列表对话框 -->
+    <el-dialog
+      v-model="showFollowersDialog"
+      title="我的粉丝"
+      width="600px"
+      center
+      class="blue-border-dialog"
+    >
+      <div v-loading="loadingFollowers" class="follow-list">
+        <div
+          v-for="user in followersList"
+          :key="user.id"
+          class="follow-item"
+          @click="handleViewUserProfile(user.id)"
+        >
+          <el-avatar :size="50" :src="user.avatar" />
+          <div class="follow-info">
+            <div class="follow-name">{{ user.nickname }}</div>
+            <div class="follow-meta">{{ user.school }} · {{ getGradeLabel(user.grade) }}</div>
+          </div>
+          <FollowButton
+            :target-user-id="user.id"
+            :is-following="user.isFollowing"
+            size="small"
+            @follow-change="loadFollowData"
+          />
+        </div>
+        <el-empty v-if="followersList.length === 0 && !loadingFollowers" description="暂无粉丝" />
+      </div>
+    </el-dialog>
 
     <!-- 发起提问对话框 -->
     <el-dialog
@@ -443,15 +609,19 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
   Plus, Setting, Delete, Star, Medal, ChatDotRound, 
   DataAnalysis, DArrowLeft, DArrowRight, View, CircleCheck, 
-  Clock, TrendCharts, DocumentDelete
+  Clock, TrendCharts, DocumentDelete, List, UserFilled, User, MagicStick
 } from '@element-plus/icons-vue';
 import SideNavBar from '@/components/SideNavBar.vue';
+import FollowButton from '@/components/social/FollowButton.vue';
+import UserProfileDialog from '@/components/social/UserProfileDialog.vue';
+import AIAssistantPanel from '@/components/ai/AIAssistantPanel.vue';
 import axios from 'axios';
 import { marked } from 'marked';
 import { getUserSubjects } from '@/utils/userSubjects';
 
 const loading = ref(false);
 const sidebarCollapsed = ref(false);
+const aiPanelCollapsed = ref(false);
 const userId = ref(localStorage.getItem('edu-user-id') || '');
 
 // 用户信息
@@ -467,9 +637,29 @@ const userSubjects = ref([]);
 
 // 问题列表
 const questions = ref([]);
+const contentFilter = ref('all'); // all, following, mine, ai-recommend
 const questionStatusFilter = ref('');
 const currentPage = ref(1);
 const pageSize = ref(6); // 单列布局，每页显示6条
+
+// 社交数据
+const followingCount = ref(0);
+const followerCount = ref(0);
+const followingList = ref([]);
+const followersList = ref([]);
+const loadingFollowing = ref(false);
+const loadingFollowers = ref(false);
+
+// 用户主页
+const showUserProfileDialog = ref(false);
+const selectedUserId = ref('');
+
+// 关注/粉丝对话框
+const showFollowingDialog = ref(false);
+const showFollowersDialog = ref(false);
+
+// AI 助手
+const aiAssistantRef = ref(null);
 
 // 我的收藏
 const myFavorites = ref([]);
@@ -515,14 +705,29 @@ const selectAllFavorites = ref(false);
 // 筛选后的问题列表
 const filteredQuestions = computed(() => {
   if (!Array.isArray(questions.value)) return [];
-  if (!questionStatusFilter.value) return questions.value;
+  
+  let result = questions.value;
+  
+  // 内容筛选
+  if (contentFilter.value === 'following') {
+    // 只显示关注的人的问题
+    result = result.filter(q => q.isFollowing);
+  } else if (contentFilter.value === 'mine') {
+    // 只显示我的问题
+    result = result.filter(q => q.userId === userId.value);
+  } else if (contentFilter.value === 'ai-recommend') {
+    // AI 推荐的问题（这里简化处理，实际应该从 AI 接口获取）
+    result = result.slice(0, 10);
+  }
+  
+  // 状态筛选
   if (questionStatusFilter.value === 'unsolved') {
-    return questions.value.filter(q => !q.solved);
+    result = result.filter(q => !q.solved);
+  } else if (questionStatusFilter.value === 'solved') {
+    result = result.filter(q => q.solved);
   }
-  if (questionStatusFilter.value === 'solved') {
-    return questions.value.filter(q => q.solved);
-  }
-  return questions.value;
+  
+  return result;
 });
 
 // 分页后的问题列表
@@ -546,6 +751,130 @@ function toggleStatusFilter(status) {
     questionStatusFilter.value = status;
   }
   currentPage.value = 1;
+}
+
+// 设置内容筛选
+function setContentFilter(filter) {
+  contentFilter.value = filter;
+  currentPage.value = 1;
+  
+  // 如果选择关注的人，需要加载关注的人的问题
+  if (filter === 'following') {
+    loadFollowingQuestions();
+  } else if (filter === 'ai-recommend') {
+    // 刷新 AI 推荐
+    if (aiAssistantRef.value) {
+      aiAssistantRef.value.refresh();
+    }
+  }
+}
+
+// 加载关注数据
+async function loadFollowData() {
+  try {
+    // 加载关注数量
+    const followingRes = await axios.get('http://localhost:3001/api/social/following', {
+      params: { userId: userId.value }
+    });
+    followingList.value = followingRes.data.data || [];
+    followingCount.value = followingList.value.length;
+    
+    // 加载粉丝数量
+    const followersRes = await axios.get('http://localhost:3001/api/social/followers', {
+      params: { userId: userId.value }
+    });
+    followersList.value = followersRes.data.data || [];
+    followerCount.value = followersList.value.length;
+    
+    // 检查每个问题的关注状态
+    await checkQuestionsFollowStatus();
+  } catch (error) {
+    console.error('加载关注数据失败：', error);
+  }
+}
+
+// 检查问题的关注状态
+async function checkQuestionsFollowStatus() {
+  if (!Array.isArray(questions.value)) return;
+  
+  const followingIds = followingList.value.map(u => u.id);
+  
+  questions.value.forEach(q => {
+    q.isFollowing = followingIds.includes(q.userId);
+    // 检查是否互相关注（需要额外查询，这里简化处理）
+    q.isMutual = false;
+  });
+}
+
+// 加载关注的人的问题
+async function loadFollowingQuestions() {
+  loading.value = true;
+  try {
+    const res = await axios.get('http://localhost:3001/api/social/following-questions', {
+      params: { userId: userId.value }
+    });
+    questions.value = res.data.data || [];
+    await checkQuestionsFollowStatus();
+  } catch (error) {
+    console.error('加载关注的人的问题失败：', error);
+    ElMessage.error('加载失败');
+  } finally {
+    loading.value = false;
+  }
+}
+
+// 查看用户主页
+function handleViewUserProfile(targetUserId) {
+  if (!targetUserId || targetUserId === userId.value) {
+    // 查看自己的主页，可以跳转到个人中心
+    return;
+  }
+  selectedUserId.value = targetUserId;
+  showUserProfileDialog.value = true;
+}
+
+// 查看我的主页
+function handleViewMyProfile() {
+  // 可以跳转到个人中心页面
+  ElMessage.info('点击头像查看个人中心');
+}
+
+// 关注状态变化
+async function handleFollowChange() {
+  // 重新加载关注数据
+  await loadFollowData();
+  // 刷新问题列表
+  await loadQuestions();
+}
+
+// AI 推荐的问题点击
+function handleAIQuestionClick(questionId) {
+  const question = questions.value.find(q => q.id === questionId || q._id === questionId);
+  if (question) {
+    handleQuestionDetail(question);
+  }
+}
+
+// 话题点击
+function handleTopicClick(tag) {
+  // 筛选该标签的问题
+  contentFilter.value = 'all';
+  questionStatusFilter.value = '';
+  currentPage.value = 1;
+  
+  // 简单实现：滚动到顶部并提示
+  ElMessage.info(`筛选话题：#${tag}`);
+  
+  // 实际应该添加标签筛选功能
+  // 这里可以扩展一个 tagFilter 状态
+}
+
+// 用户主页问题点击
+function handleProfileQuestionClick(questionId) {
+  const question = questions.value.find(q => q.id === questionId || q._id === questionId);
+  if (question) {
+    handleQuestionDetail(question);
+  }
 }
 
 // 格式化时间
@@ -931,6 +1260,7 @@ onMounted(async () => {
   userSubjects.value = await getUserSubjects();
   await loadQuestions();
   await loadMyFavorites();
+  await loadFollowData();
 });
 </script>
 
@@ -1077,6 +1407,255 @@ onMounted(async () => {
   margin-bottom: 2px;
 }
 
+.user-info-card {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.user-info-card:hover {
+  transform: translateX(2px);
+}
+
+/* AI 助手侧边栏 - 右侧 */
+.ai-assistant-sidebar {
+  width: 280px;
+  background: #fff;
+  border-left: 1px solid #e4e7ed;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+  transition: transform 0.3s;
+}
+
+.ai-assistant-sidebar.collapsed {
+  transform: translateX(280px);
+}
+
+.ai-content-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  background: #fafafa;
+  padding: 12px;
+}
+
+.ai-content-section::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ai-content-section::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 2px;
+}
+
+.ai-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-icon-wrapper-small {
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-icon {
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+/* AI 推荐列表 */
+.ai-recommend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-recommend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-recommend-item:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  transform: translateX(-2px);
+}
+
+.recommend-badge {
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+  color: white;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.recommend-text {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1a1a1a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* AI 建议框 */
+.ai-advice-box {
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.advice-text {
+  font-size: 12px;
+  color: #374151;
+  line-height: 1.6;
+}
+
+/* AI 话题网格 */
+.ai-topics-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.topic-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.topic-chip:hover {
+  background: #e8f4ff;
+  transform: translateY(-1px);
+}
+
+.topic-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: #3b82f6;
+}
+
+.topic-num {
+  font-size: 10px;
+  color: #9ca3af;
+}
+
+/* AI 统计网格 */
+.ai-stats-grid {
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.stats-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.stat-mini-item {
+  text-align: center;
+}
+
+.stat-mini-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 2px;
+}
+
+.stat-mini-label {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.empty-hint-small {
+  text-align: center;
+  padding: 12px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* 社交统计 */
+.social-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.social-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 1.5px solid transparent;
+}
+
+.social-stat-item:hover {
+  background: #e8f4ff;
+  border-color: #0969da;
+  transform: translateX(2px);
+}
+
+.social-stat-item span {
+  font-size: 13px;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.stat-count {
+  margin-left: auto;
+  font-weight: 600;
+  color: #0969da;
+}
+
+/* AI 筛选项 */
+.ai-filter {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+}
+
+.ai-filter:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+}
+
+.ai-filter.active {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%);
+  border-color: #8b5cf6;
+}
+
 /* 右侧主内容 */
 .community-content {
   position: fixed;
@@ -1087,11 +1666,15 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   background: #fff;
-  transition: left 0.3s;
+  transition: left 0.3s, right 0.3s;
 }
 
 .community-content.expanded {
   left: 60px;
+}
+
+.community-content.with-ai-panel {
+  right: 320px;
 }
 
 .content-container {
@@ -1150,6 +1733,7 @@ onMounted(async () => {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   border: none;
+  border-left: 3px solid transparent;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1160,11 +1744,35 @@ onMounted(async () => {
   transform: translateY(-2px);
 }
 
+/* 已关注用户的问题 */
+.question-card.following {
+  border-left-color: #3b82f6;
+}
+
 /* 用户信息行 */
 .card-header {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.clickable-avatar {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clickable-avatar:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.clickable-username {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.clickable-username:hover {
+  color: #3b82f6;
 }
 
 .card-user-info {
@@ -1606,11 +2214,62 @@ onMounted(async () => {
   box-shadow: 0 4px 20px rgba(9, 105, 218, 0.3);
 }
 
+/* 关注列表 */
+.follow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.follow-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.follow-item:hover {
+  background: #f3f4f6;
+  transform: translateX(4px);
+}
+
+.follow-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.follow-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.follow-meta {
+  font-size: 13px;
+  color: #6b7280;
+}
+
 /* 响应式 */
 @media (max-width: 1200px) {
   .questions-feed {
     max-width: 100%;
     padding: 20px 16px;
+  }
+  
+  /* 小屏幕隐藏 AI 面板 */
+  .ai-assistant-sidebar {
+    display: none;
+  }
+  
+  .community-content {
+    right: 0;
   }
 }
 
@@ -1635,6 +2294,10 @@ onMounted(async () => {
   
   .card-stats {
     gap: 16px;
+  }
+  
+  .social-stats {
+    font-size: 12px;
   }
 }
 </style>

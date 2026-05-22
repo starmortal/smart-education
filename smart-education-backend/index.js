@@ -8,6 +8,7 @@ const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
 // 导入路由模块
 const userRouter = require("./routes/user");
 const aiRouter = require("./routes/ai");
+const socialRouter = require("./routes/social");
 const studyDataRouter = require("./routes/studyData");
 const errorBookRouter = require("./routes/errorBook");
 
@@ -94,6 +95,7 @@ connectDB();
 // 路由挂载
 app.use("/api/user", userRouter);
 app.use("/api/ai", aiRouter);
+app.use("/api/social", socialRouter);
 app.use("/api/study-data", studyDataRouter);
 app.use("/api/error-book", errorBookRouter);
 
