@@ -18,13 +18,6 @@ export const errorBookApi = {
   delete: (id) => request.delete(`/api/error-book/delete/${id}`),
 };
 
-export const noteApi = {
-  getList: (params) => request.get("/api/note/list", { params }),
-  add: (data) => request.post("/api/note/add", data),
-  update: (id, data) => request.put(`/api/note/update/${id}`, data),
-  delete: (id) => request.delete(`/api/note/delete/${id}`),
-};
-
 export const studyPlanApi = {
   getList: (params) => request.get("/api/study-plan/list", { params }),
   add: (data) => request.post("/api/study-plan/add", data),
@@ -41,7 +34,6 @@ export default {
   userApi,
   aiApi,
   errorBookApi,
-  noteApi,
   studyPlanApi,
   studyDataApi,
 };

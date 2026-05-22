@@ -127,7 +127,6 @@ const userAvatar = ref('https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c672
 const navItems = [
   { path: '/error-book', label: '错题集' },
   { path: '/study-plan', label: '学习计划' },
-  { path: '/note', label: '我的笔记' },
   { path: '/study-community', label: '学习社区' },
   { path: '/feedback', label: '意见反馈' },
 ];
@@ -178,7 +177,6 @@ const getNavIcon = (path) => {
   const iconMap = {
     '/error-book': Notebook,
     '/study-plan': Calendar,
-    '/note': Document,
     '/study-community': DataAnalysis,
     '/feedback': ChatLineRound
   };

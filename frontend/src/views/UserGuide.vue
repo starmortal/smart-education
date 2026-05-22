@@ -71,8 +71,8 @@
                 <div class="step-item">
                   <div class="step-number">4</div>
                   <div class="step-content">
-                    <h4>保存笔记</h4>
-                    <p>点击"保存到笔记"按钮，可将AI解答保存为学习笔记</p>
+                    <h4>查看历史</h4>
+                    <p>在历史记录中查看之前的对话内容</p>
                   </div>
                 </div>
               </div>
@@ -84,7 +84,6 @@
                 <li>🤖 基于DeepSeek AI，回答准确专业</li>
                 <li>⚡ 流式输出，实时显示回答过程</li>
                 <li>📁 支持文件上传，图片识别解题</li>
-                <li>💾 一键保存到笔记，便于复习</li>
                 <li>📚 历史记录管理，随时查看对话</li>
               </ul>
             </div>
@@ -201,64 +200,6 @@
                 <li>⏰ 截止时间提醒，避免计划延期</li>
                 <li>🔄 批量管理操作，提高效率</li>
                 <li>📊 进度可视化，直观了解完成情况</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <!-- 我的笔记功能 -->
-        <div class="section" id="section-3">
-          <div class="section-header">
-            <el-icon class="section-icon" color="#e6a23c"><Notebook /></el-icon>
-            <h2>我的笔记</h2>
-          </div>
-          <div class="section-content">
-            <div class="feature-intro">
-              <p>我的笔记是知识管理中心，支持创建、编辑、分类管理学习笔记，是知识积累的重要工具。</p>
-            </div>
-            
-            <div class="usage-steps">
-              <h3>使用步骤：</h3>
-              <div class="step-list">
-                <div class="step-item">
-                  <div class="step-number">1</div>
-                  <div class="step-content">
-                    <h4>创建笔记</h4>
-                    <p>点击"添加笔记"，填写标题、选择分类和标签</p>
-                  </div>
-                </div>
-                <div class="step-item">
-                  <div class="step-number">2</div>
-                  <div class="step-content">
-                    <h4>编写内容</h4>
-                    <p>在编辑器中输入笔记内容，支持Markdown格式</p>
-                  </div>
-                </div>
-                <div class="step-item">
-                  <div class="step-number">3</div>
-                  <div class="step-content">
-                    <h4>分类管理</h4>
-                    <p>通过分类和标签系统，有序管理不同类型的笔记</p>
-                  </div>
-                </div>
-                <div class="step-item">
-                  <div class="step-number">4</div>
-                  <div class="step-content">
-                    <h4>搜索查找</h4>
-                    <p>使用搜索功能快速找到需要的笔记内容</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="feature-highlights">
-              <h3>功能特色：</h3>
-              <ul>
-                <li>📝 支持Markdown格式，排版美观</li>
-                <li>🏷️ 标签分类系统，便于整理</li>
-                <li>🔍 全文搜索功能，快速定位</li>
-                <li>💾 AI答疑一键保存，知识积累</li>
-                <li>📱 响应式设计，随时随地记录</li>
               </ul>
             </div>
           </div>
@@ -460,7 +401,6 @@ const sections = [
   { title: 'AI答疑', icon: ChatDotRound },
   { title: '错题集', icon: Warning },
   { title: '学习计划', icon: Calendar },
-  { title: '我的笔记', icon: Notebook },
   { title: '学习社区', icon: Users },
   { title: '个人中心', icon: User },
   { title: '意见反馈', icon: ChatDotRound }

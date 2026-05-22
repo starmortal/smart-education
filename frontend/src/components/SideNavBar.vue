@@ -77,7 +77,7 @@ const navItems = [
   { path: '/knowledge-base', label: '知识库', icon: FolderOpened },
   { path: '/error-book', label: '错题集', icon: Notebook },
   { path: '/study-plan', label: '学习计划', icon: Calendar },
-  { path: '/note', label: '我的笔记', icon: Document },
+
   { path: '/study-community', label: '学习社区', icon: DataAnalysis },
   { path: '/feedback', label: '意见反馈', icon: ChatLineRound }
 ];

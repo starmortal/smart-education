@@ -69,18 +69,6 @@
       </el-card>
       <el-card class="overview-card" shadow="hover">
         <div class="card-item">
-          <div class="item-icon primary-icon">
-            <el-icon size="24"><Document /></el-icon>
-          </div>
-          <div class="item-content">
-            <div class="item-title">已创建学习笔记</div>
-            <div class="item-value">{{ overviewData.noteCount }}</div>
-            <div class="item-desc">共 {{ overviewData.noteCount }} 篇</div>
-          </div>
-        </div>
-      </el-card>
-      <el-card class="overview-card" shadow="hover">
-        <div class="card-item">
           <div class="item-icon danger-icon">
             <el-icon size="24"><Close /></el-icon>
           </div>
@@ -205,7 +193,6 @@
           >
             <el-option label="综合数据" value="comprehensive" />
             <el-option label="学习计划数据" value="plan" />
-            <el-option label="学习笔记数据" value="note" />
             <el-option label="错题数据" value="error" />
           </el-select>
         </el-form-item>

@@ -48,12 +48,7 @@ const routes = [
     name: "学习计划",
     meta: { title: "学习计划 - 智慧教育平台", requiresAuth: true }
   },
-  { 
-    path: "/note", 
-    component: () => import("../views/NotePage.vue"), 
-    name: "我的笔记",
-    meta: { title: "我的笔记 - 智慧教育平台", requiresAuth: true }
-  },
+
   { 
     path: "/study-community", 
     component: () => import("../views/StudyCommunity.vue"), 

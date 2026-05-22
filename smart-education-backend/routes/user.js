@@ -398,7 +398,6 @@ router.delete("/account/:userId", async (req, res) => {
     
     const Exam = require("../models/Exam");
     const StudyPlan = require("../models/StudyPlan");
-    const Note = require("../models/Note");
     const ErrorQuestion = require("../models/ErrorQuestion");
     const AIHistory = require("../models/AIHistory");
     const Feedback = require("../models/Feedback");
@@ -406,7 +405,6 @@ router.delete("/account/:userId", async (req, res) => {
     await Promise.all([
       Exam.deleteMany({ userId: user._id.toString() }),
       StudyPlan.deleteMany({ userId: user._id.toString() }),
-      Note.deleteMany({ userId: user._id.toString() }),
       ErrorQuestion.deleteMany({ userId: user._id.toString() }),
       AIHistory.deleteMany({ userId: user._id.toString() }),
       Feedback.deleteMany({ userId: user._id.toString() })

@@ -1,12 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const StudyPlan = require("../models/StudyPlan");
-const Note = require("../models/Note");
 const ErrorQuestion = require("../models/ErrorQuestion");
 
 /**
  * 学习数据统计路由模块
- * 功能：提供学习数据的统计分析，包括学习计划完成率、笔记数量、错题数量等
+ * 功能：提供学习数据的统计分析，包括学习计划完成率、错题数量等
  * 用途：为学生提供可视化的学习数据分析，帮助了解学习进度和效果
  */
 
@@ -25,7 +24,6 @@ router.get("/list", async (req, res) => {
             completedPlanCount: 0,
             totalPlanCount: 0,
             planCompletionRate: 0,
-            noteCount: 0,
             errorQuestionCount: 0,
             totalStudyHours: 0,
             avgDailyStudyHours: 0,
@@ -36,10 +34,9 @@ router.get("/list", async (req, res) => {
       });
     }
 
-    // 并行查询用户的学习计划、笔记、错题数据（提升查询效率）
-    const [studyPlans, notes, errorQuestions] = await Promise.all([
+    // 并行查询用户的学习计划、错题数据（提升查询效率）
+    const [studyPlans, errorQuestions] = await Promise.all([
       StudyPlan.find({ userId }).sort({ createTime: -1 }),
-      Note.find({ userId }).sort({ createTime: -1 }),
       ErrorQuestion.find({ userId }).sort({ addTime: -1 }),
     ]);
 
@@ -50,8 +47,7 @@ router.get("/list", async (req, res) => {
       ? Math.round((completedPlanCount / totalPlanCount) * 100) 
       : 0;
     
-    // 统计笔记和错题数量
-    const noteCount = notes.length;
+    // 统计错题数量
     const errorQuestionCount = errorQuestions.length;
     
     // 估算学习时长（基于完成的计划数量）
@@ -63,13 +59,12 @@ router.get("/list", async (req, res) => {
       completedPlanCount,
       totalPlanCount,
       planCompletionRate,
-      noteCount,
       errorQuestionCount,
       totalStudyHours,
       avgDailyStudyHours,
     };
 
-    // 构建学习明细列表（合并学习计划、笔记、错题数据）
+    // 构建学习明细列表（合并学习计划、错题数据）
     const allRecords = [];
     let idCounter = 1;
 
@@ -81,17 +76,6 @@ router.get("/list", async (req, res) => {
         subject: plan.subject || "math",
         content: `学习计划：${plan.planTitle || "未命名计划"}`,
         value: plan.planStatus === "completed" ? "已完成" : "进行中",
-      });
-    });
-
-    // 添加笔记记录
-    notes.forEach(note => {
-      allRecords.push({
-        id: idCounter++,
-        date: note.createTime?.toLocaleDateString() || new Date().toLocaleDateString(),
-        subject: note.noteCategory || "math",
-        content: `学习笔记：${note.noteTitle || "未命名笔记"}`,
-        value: "1篇",
       });
     });
 

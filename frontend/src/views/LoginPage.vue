@@ -515,12 +515,6 @@ const features = ref([
     title: '学习社区',
     desc: '与同学交流学习心得，分享学习资源，互相帮助，共同进步',
     color: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
-  },
-  {
-    icon: Document,
-    title: '智能笔记',
-    desc: '支持富文本编辑，自动整理知识点，构建个人知识体系',
-    color: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)'
   }
 ]);
 
