@@ -677,12 +677,13 @@ window.addEventListener('beforeunload', () => {
 }
 
 .sidebar-header {
-  padding: 12px;
+  padding: 16px;
   border-bottom: 1px solid #e4e7ed;
   background: #fff;
   display: flex;
   gap: 8px;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .search-box {
@@ -854,6 +855,7 @@ window.addEventListener('beforeunload', () => {
   border-bottom: 1px solid #e4e7ed;
   background: #fff;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .file-name {

@@ -1,199 +1,182 @@
 ﻿
 <template>
-  <!-- 最外层容器 -->
   <div class="study-plan-container">
-        <!-- ================= 1. 实时数据统计 ================= -->
-    <div class="stats-bar">
-      <div class="stat-item">
-        <el-icon size="24" color="#0969da"><Calendar /></el-icon>
-        <div class="stat-content">
-          <div class="stat-value">{{ globalStats.totalCount || 0 }}</div>
-          <div class="stat-label">计划总数</div>
+    <SideNavBar />
+    
+    <!-- 左侧边栏：筛选区 -->
+    <div class="plan-sidebar" :class="{ collapsed: sidebarCollapsed }">
+      <!-- 科目筛选标题和操作按钮 -->
+      <div class="sidebar-header">
+        <div class="section-title">
+          <el-icon size="16"><Calendar /></el-icon>
+          <span>计划筛选</span>
+        </div>
+        <div class="header-actions">
+          <el-tooltip content="新增计划" placement="bottom">
+            <el-button :icon="Plus" circle size="small" @click="handleAddPlan" />
+          </el-tooltip>
+          
+          <el-tooltip content="管理计划" placement="bottom">
+            <el-button :icon="Setting" circle size="small" @click="showManagePlanDialog = true" />
+          </el-tooltip>
         </div>
       </div>
-      <div class="stat-item">
-        <el-icon size="24" color="#ffc107"><Clock /></el-icon>
-        <div class="stat-content">
-          <div class="stat-value">{{ globalStats.inProgressCount || 0 }}</div>
-          <div class="stat-label">进行中</div>
+
+      <!-- 筛选列表区域 -->
+      <div class="filter-list-section">
+        <!-- 状态筛选项（卡片样式） -->
+        <div 
+          class="subject-item"
+          @click="filterByStatus('not_started')"
+          :class="{ active: filterForm.planStatus === 'not_started' }"
+        >
+          <div class="subject-label">
+            <span class="subject-dot" style="background: #909399;"></span>
+            未开始
+          </div>
+          <div class="subject-count">{{ globalStats.statusStats.not_started || 0 }}</div>
         </div>
-      </div>
-      <div class="stat-item">
-        <el-icon size="24" color="#35b778"><Check /></el-icon>
-        <div class="stat-content">
-          <div class="stat-value">{{ globalStats.completedCount || 0 }}</div>
-          <div class="stat-label">已完成</div>
+
+        <div 
+          class="subject-item"
+          @click="filterByStatus('in_progress')"
+          :class="{ active: filterForm.planStatus === 'in_progress' }"
+        >
+          <div class="subject-label">
+            <span class="subject-dot" style="background: #0969da;"></span>
+            进行中
+          </div>
+          <div class="subject-count">{{ globalStats.statusStats.in_progress || 0 }}</div>
+        </div>
+
+        <div 
+          class="subject-item"
+          @click="filterByStatus('completed')"
+          :class="{ active: filterForm.planStatus === 'completed' }"
+        >
+          <div class="subject-label">
+            <span class="subject-dot" style="background: #35b778;"></span>
+            已完成
+          </div>
+          <div class="subject-count">{{ globalStats.statusStats.completed || 0 }}</div>
+        </div>
+
+        <div 
+          class="subject-item"
+          @click="filterByStatus('overdue')"
+          :class="{ active: filterForm.planStatus === 'overdue' }"
+        >
+          <div class="subject-label">
+            <span class="subject-dot" style="background: #e74c3c;"></span>
+            已逾期
+          </div>
+          <div class="subject-count">{{ globalStats.statusStats.overdue || 0 }}</div>
+        </div>
+
+        <!-- 科目列表 -->
+        <div class="subject-list">
+          <div 
+            v-for="(subject, index) in userSubjects" 
+            :key="subject"
+            class="subject-item"
+            @click="filterBySubject(getSubjectCode(subject))"
+            :class="{ active: filterForm.subject === getSubjectCode(subject) }"
+          >
+            <div class="subject-label">
+              <span class="subject-dot" :style="{ background: getSubjectColor(index) }"></span>
+              {{ subject }}
+            </div>
+            <div class="subject-count">{{ getSubjectCount(subject) }}</div>
+          </div>
+          <el-empty 
+            v-if="!hasUserSubjects(userSubjects)" 
+            description="请先在个人中心设置学习科目" 
+            :image-size="60"
+          />
         </div>
       </div>
     </div>
 
-    <!-- ================= 2. 主内容区 ================= -->
-    <div class="plan-content">
-      <!-- 左侧：计划列表 -->
-      <div class="left-section">
-        <div class="plans-container">
-          <div class="section-header">
-            <div class="header-left">
-              <el-icon size="20"><Calendar /></el-icon>
-              <span>我的计划</span>
-              <span v-if="filterForm.planStatus" class="filter-hint">
-                （{{ getStatusText(filterForm.planStatus) }}）
-              </span>
-            </div>
-            <div class="header-actions">
-              <el-pagination
-                v-if="planList.length > pageSize"
-                v-model:current-page="currentPage"
-                :page-size="pageSize"
-                :total="totalCount"
-                layout="prev, pager, next"
-                small
-                @current-change="handleCurrentPageChange"
-              />
-              <el-button 
-                type="primary" 
-                size="small" 
-                :icon="Setting" 
-                @click="showManagePlanDialog = true"
-              >
-                管理
-              </el-button>
-              <el-button 
-                type="primary" 
-                size="small" 
-                :icon="Plus" 
-                @click="handleAddPlan"
-              >
-                新增计划
-              </el-button>
-            </div>
-          </div>
-          
-          <div class="plan-list" v-loading="loading">
-            <div class="plan-grid">
-              <div 
-                v-for="(plan, index) in paginatedPlans" 
-                :key="plan.id"
-                class="plan-card"
-                :style="{ background: getCardColor(index) }"
-                @click="handlePlanDetail(plan)"
-              >
-                <div class="card-content">
-                  <div class="card-header-row">
-                    <div class="card-status-row">
-                      <div 
-                        class="card-checkbox" 
-                        @click.stop="togglePlanCompletion(plan)"
-                        :class="{ completed: plan.planStatus === 'completed' }"
-                      >
-                        <el-icon v-if="plan.planStatus === 'completed'" size="14" color="#fff">
-                          <Check />
-                        </el-icon>
-                      </div>
-                      <div class="card-status">
-                        {{ getStatusText(plan.planStatus) }}
-                      </div>
+    <!-- 右侧：计划列表 -->
+    <div class="plan-content" :class="{ expanded: sidebarCollapsed }">
+      <div class="plans-container">
+        <!-- 顶部标题栏 -->
+        <div class="editor-header">
+          <el-button 
+            :icon="sidebarCollapsed ? DArrowRight : DArrowLeft" 
+            circle 
+            size="small"
+            @click="toggleSidebar"
+          />
+          <span class="file-name">我的计划</span>
+          <div class="header-spacer"></div>
+          <el-pagination
+            v-if="planList.length > pageSize"
+            v-model:current-page="currentPage"
+            :page-size="pageSize"
+            :total="totalCount"
+            layout="prev, pager, next"
+            small
+            @current-change="handleCurrentPageChange"
+          />
+        </div>
+        
+        <div class="plan-list" v-loading="loading">
+          <div class="plan-grid">
+            <div 
+              v-for="(plan, index) in paginatedPlans" 
+              :key="plan.id"
+              class="plan-card"
+              :style="{ background: getCardColor(index) }"
+              @click="handlePlanDetail(plan)"
+            >
+              <div class="card-content">
+                <div class="card-header-row">
+                  <div class="card-status-row">
+                    <div 
+                      class="card-checkbox" 
+                      @click.stop="togglePlanCompletion(plan)"
+                      :class="{ completed: plan.planStatus === 'completed' }"
+                    >
+                      <el-icon v-if="plan.planStatus === 'completed'" size="14" color="#fff">
+                        <Check />
+                      </el-icon>
                     </div>
-                    <div class="card-subject">
-                      {{ getSubjectText(plan.subject) }}
+                    <div class="card-status">
+                      {{ getStatusText(plan.planStatus) }}
                     </div>
                   </div>
-                  
-                  <div class="card-title">{{ plan.planTitle }}</div>
-                  
-                  <div class="card-progress">
-                    <el-progress
-                      :percentage="plan.progress"
-                      :stroke-width="8"
-                      :color="getProgressColor(plan.progress)"
-                      :show-text="false"
-                    />
-                    <span class="progress-text">{{ plan.progress }}%</span>
+                  <div class="card-subject">
+                    {{ getSubjectText(plan.subject) }}
                   </div>
-                  
-                  <div class="card-footer">
-                    <div class="card-time">
-                      {{ formatDateTime(plan.endTime) }}
-                    </div>
-                    <div class="card-edit-btn" @click.stop="handleEditPlan(plan)" title="编辑计划">
-                      <el-icon><Edit /></el-icon>
-                      <span>编辑</span>
-                    </div>
+                </div>
+                
+                <div class="card-title">{{ plan.planTitle }}</div>
+                
+                <div class="card-progress">
+                  <el-progress
+                    :percentage="plan.progress"
+                    :stroke-width="8"
+                    :color="getProgressColor(plan.progress)"
+                    :show-text="false"
+                  />
+                  <span class="progress-text">{{ plan.progress }}%</span>
+                </div>
+                
+                <div class="card-footer">
+                  <div class="card-time">
+                    {{ formatDateTime(plan.endTime) }}
+                  </div>
+                  <div class="card-edit-btn" @click.stop="handleEditPlan(plan)" title="编辑计划">
+                    <el-icon><Edit /></el-icon>
+                    <span>编辑</span>
                   </div>
                 </div>
               </div>
             </div>
-            
-            <el-empty v-if="planList.length === 0 && !loading" description="暂无学习计划" />
           </div>
-        </div>
-      </div>
-
-      <!-- 右侧：统计信息 -->
-      <div class="right-section">
-        <!-- 状态统计 -->
-        <div class="status-stats-box">
-          <div class="box-header">
-            <div class="header-left">
-              <el-icon size="18"><DataAnalysis /></el-icon>
-              <span>状态统计</span>
-            </div>
-            <el-button 
-              v-if="filterForm.planStatus"
-              size="small" 
-              type="primary" 
-              text
-              @click="clearStatusFilter"
-            >
-              清除筛选
-            </el-button>
-          </div>
-          <div class="status-stats-list">
-            <div 
-              class="status-stat-item"
-              :class="{ active: filterForm.planStatus === 'not_started' }"
-              @click="filterByStatus('not_started')"
-            >
-              <div class="status-stat-label">
-                <span class="status-dot" style="background: #909399;"></span>
-                未开始
-              </div>
-              <div class="status-stat-value">{{ globalStats.statusStats.not_started || 0 }}</div>
-            </div>
-            <div 
-              class="status-stat-item"
-              :class="{ active: filterForm.planStatus === 'in_progress' }"
-              @click="filterByStatus('in_progress')"
-            >
-              <div class="status-stat-label">
-                <span class="status-dot" style="background: #0969da;"></span>
-                进行中
-              </div>
-              <div class="status-stat-value">{{ globalStats.statusStats.in_progress || 0 }}</div>
-            </div>
-            <div 
-              class="status-stat-item"
-              :class="{ active: filterForm.planStatus === 'completed' }"
-              @click="filterByStatus('completed')"
-            >
-              <div class="status-stat-label">
-                <span class="status-dot" style="background: #35b778;"></span>
-                已完成
-              </div>
-              <div class="status-stat-value">{{ globalStats.statusStats.completed || 0 }}</div>
-            </div>
-            <div 
-              class="status-stat-item"
-              :class="{ active: filterForm.planStatus === 'overdue' }"
-              @click="filterByStatus('overdue')"
-            >
-              <div class="status-stat-label">
-                <span class="status-dot" style="background: #e74c3c;"></span>
-                已逾期
-              </div>
-              <div class="status-stat-value">{{ globalStats.statusStats.overdue || 0 }}</div>
-            </div>
-          </div>
+          
+          <el-empty v-if="planList.length === 0 && !loading" description="暂无学习计划" />
         </div>
       </div>
     </div>
@@ -499,11 +482,12 @@
 import { ref, reactive, onMounted, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { Plus, Refresh, Filter, Calendar, Clock, Check, DataAnalysis, Edit, Setting, Delete } from "@element-plus/icons-vue";
+import { Plus, Refresh, Filter, Calendar, Clock, Check, DataAnalysis, Edit, Setting, Delete, DArrowLeft, DArrowRight } from "@element-plus/icons-vue";
+import SideNavBar from '@/components/SideNavBar.vue';
 // 【新增】引入 axios，对接后端接口
 import axios from "axios";
 // 【新增】引入用户科目工具
-import { getUserSubjects, generateSubjectOptions, hasUserSubjects } from "@/utils/userSubjects";
+import { getUserSubjects, generateSubjectOptions, hasUserSubjects, getSubjectCode } from "@/utils/userSubjects";
 
 /* ============== 基础变量（与上一版完全一致） ============== */
 const router = useRouter();
@@ -511,6 +495,7 @@ const loading = ref(false);
 const showPlanDialog = ref(false);
 const isEdit = ref(false);
 const planFormRef = ref(null);
+const sidebarCollapsed = ref(false);
 
 // 查看计划详情
 const showPlanDetailDialog = ref(false);
@@ -602,6 +587,45 @@ const paginatedPlans = computed(() => {
   const end = start + pageSize.value;
   return planList.value.slice(start, end);
 });
+
+// 切换侧边栏
+function toggleSidebar() {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+}
+
+// 【新增】获取科目颜色（循环使用预定义颜色）
+function getSubjectColor(index) {
+  const colors = [
+    '#0969da',
+    '#35b778',
+    '#ffc107',
+    '#e74c3c',
+    '#9b59b6',
+    '#3498db',
+    '#e67e22',
+    '#1abc9c',
+    '#34495e'
+  ];
+  return colors[index % colors.length];
+}
+
+// 【新增】按科目筛选
+function filterBySubject(subjectCode) {
+  if (filterForm.subject === subjectCode) {
+    // 如果点击的是当前科目，则取消筛选
+    filterForm.subject = '';
+  } else {
+    filterForm.subject = subjectCode;
+  }
+  currentPage.value = 1;
+  loadPlanList();
+}
+
+// 【新增】根据科目名称获取计划数量
+function getSubjectCount(subjectName) {
+  const subjectCode = getSubjectCode(subjectName);
+  return planList.value.filter(plan => plan.subject === subjectCode).length;
+}
 
 // 获取卡片颜色
 function getCardColor(index) {
@@ -747,13 +771,6 @@ function filterByStatus(status) {
   } else {
     filterForm.planStatus = status;
   }
-  currentPage.value = 1;
-  loadPlanList();
-}
-
-// 清除状态筛选
-function clearStatusFilter() {
-  filterForm.planStatus = '';
   currentPage.value = 1;
   loadPlanList();
 }
@@ -1146,121 +1163,176 @@ function formatDateTime(dateStr) {
 
 <style scoped>
 .study-plan-container {
-  min-height: 100vh;
+  display: block;
+  height: 100vh;
   background: #f5f7fa;
+  overflow: hidden;
+  position: relative;
 }
 
-/* 实时数据统计 */
-.stats-bar {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  padding: 20px 40px;
-  background: #f8f9fa;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 24px;
+/* 左侧边栏 */
+.plan-sidebar {
+  width: 280px;
   background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s;
-  border: 2px solid #e4e7ed;
-}
-
-.stat-item:nth-child(1) {
-  border-color: #0969da;
-}
-
-.stat-item:nth-child(2) {
-  border-color: #ffc107;
-}
-
-.stat-item:nth-child(3) {
-  border-color: #35b778;
-}
-
-.stat-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: #2c3e50;
-  line-height: 1;
-  margin-bottom: 6px;
-}
-
-.stat-label {
-  font-size: 13px;
-  color: #666;
-  font-weight: 500;
-}
-
-/* 主内容区 */
-.plan-content {
-  display: grid;
-  grid-template-columns: 3fr 1fr;
-  gap: 20px;
-  padding: 24px 40px 40px;
-  max-width: 1920px;
-  margin: 0 auto;
-}
-
-/* 左侧：计划列表 */
-.left-section {
+  border-right: 1px solid #e4e7ed;
   display: flex;
   flex-direction: column;
+  position: fixed;
+  left: 60px;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+  transition: transform 0.3s;
 }
 
-.plans-container {
+.plan-sidebar.collapsed {
+  transform: translateX(-280px);
+}
+
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid #e4e7ed;
   background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   display: flex;
-  flex-direction: column;
-  border: 2px solid #0969da;
-  height: 520px;
-  max-height: 520px;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e4e7ed;
+  align-items: center;
   flex-shrink: 0;
 }
 
-.header-left {
+.sidebar-header .section-title {
+  margin-bottom: 0;
+}
+
+.sidebar-header .header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.section-title {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 18px;
+  gap: 6px;
+  font-size: 15px;
   font-weight: 600;
   color: #2c3e50;
 }
 
-.header-actions {
+/* 筛选列表区域 */
+.filter-list-section {
+  flex: 1;
   display: flex;
-  gap: 10px;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  background: #fafafa;
+  padding: 12px;
 }
 
-.header-actions .el-pagination {
-  margin-right: 10px;
+.filter-list-section::-webkit-scrollbar {
+  width: 4px;
+}
+
+.filter-list-section::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 2px;
+}
+
+.subject-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subject-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 1.5px solid transparent;
+}
+
+.subject-item:hover {
+  background: #e8f4ff;
+  transform: translateX(2px);
+}
+
+.subject-item.active {
+  background: #e8f4ff;
+  border-color: #0969da;
+  transform: translateX(2px);
+}
+
+.subject-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.subject-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.subject-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+  flex-shrink: 0;
+}
+
+/* 右侧：计划列表 */
+.plan-content {
+  position: fixed;
+  left: 340px;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  transition: left 0.3s;
+}
+
+.plan-content.expanded {
+  left: 60px;
+}
+
+.plans-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* 顶部标题栏（笔记样式） */
+.editor-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e4e7ed;
+  background: #fff;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.file-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.header-spacer {
+  flex: 1;
 }
 
 /* 计划列表 */
@@ -1270,6 +1342,8 @@ function formatDateTime(dateStr) {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  padding: 20px;
+  background: #fff;
 }
 
 /* 计划网格布局（2行4列，每个占1/8） */
@@ -1280,7 +1354,6 @@ function formatDateTime(dateStr) {
   gap: 16px;
   height: 100%;
 }
-
 /* 彩色卡片样式 */
 .plan-card {
   border-radius: 16px;

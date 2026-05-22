@@ -1,147 +1,146 @@
 ﻿<template>
-  <!-- 最外层容器 -->
   <div class="error-book-container">
-    <!-- 主内容区 -->
-    <div class="error-content">
-      <!-- 左侧边栏：科目筛选 -->
-      <div class="error-sidebar">
-        <!-- 科目筛选 -->
-        <div class="subject-filter-section">
-          <div class="section-title">
-            <el-icon size="16"><Reading /></el-icon>
-            <span>科目筛选</span>
-          </div>
-          <el-button 
-            v-if="filterForm.subject"
-            size="small" 
-            type="primary" 
-            class="clear-filter-btn"
-            @click="clearSubjectFilter"
-          >
-            清除筛选
-          </el-button>
-          <div class="subject-list">
-            <div 
-              v-for="(subject, index) in userSubjects" 
-              :key="subject"
-              class="subject-item"
-              @click="filterBySubject(getSubjectCode(subject))"
-              :class="{ active: filterForm.subject === getSubjectCode(subject) }"
-            >
-              <div class="subject-label">
-                <span class="subject-dot" :style="{ background: getSubjectColor(index) }"></span>
-                {{ subject }}
-              </div>
-              <div class="subject-count">{{ getSubjectStatCount(subject) }}</div>
-            </div>
-            <el-empty 
-              v-if="!hasUserSubjects(userSubjects)" 
-              description="请先在个人中心设置学习科目" 
-              :image-size="60"
-            />
-          </div>
+    <SideNavBar />
+    
+    <!-- 左侧边栏：筛选区 -->
+    <div class="error-sidebar" :class="{ collapsed: sidebarCollapsed }">
+      <!-- 科目筛选标题和操作按钮 -->
+      <div class="sidebar-header">
+        <div class="section-title">
+          <el-icon size="16"><Reading /></el-icon>
+          <span>科目筛选</span>
+        </div>
+        <div class="header-actions">
+          <el-tooltip content="添加错题" placement="bottom">
+            <el-button :icon="Plus" circle size="small" @click="handleAddError" />
+          </el-tooltip>
+          
+          <el-tooltip content="管理错题" placement="bottom">
+            <el-button :icon="Setting" circle size="small" @click="showManageErrorDialog = true" />
+          </el-tooltip>
         </div>
       </div>
 
-      <!-- 右侧：错题列表 -->
-      <div class="right-section">
-        <div class="errors-container">
-          <div class="section-header">
-            <div class="header-left">
-              <el-icon size="20"><Notebook /></el-icon>
-              <span>我的错题</span>
-              <div class="status-filter-buttons">
-                <el-button 
-                  size="small"
-                  :type="filterForm.masteryStatus === 'unmastered' ? 'warning' : 'default'"
-                  @click="toggleErrorStatus('unmastered')"
-                >
-                  未掌握
-                </el-button>
-                <el-button 
-                  size="small"
-                  :type="filterForm.masteryStatus === 'mastered' ? 'success' : 'default'"
-                  @click="toggleErrorStatus('mastered')"
-                >
-                  已掌握
-                </el-button>
-              </div>
-            </div>
-            <div class="header-actions">
-              <el-pagination
-                v-if="errorList.length > pageSize"
-                v-model:current-page="currentPage"
-                :page-size="pageSize"
-                :total="totalCount"
-                layout="prev, pager, next"
-                small
-                @current-change="handleCurrentPageChange"
-              />
-              <el-button 
-                type="primary" 
-                size="small" 
-                :icon="Setting" 
-                @click="showManageErrorDialog = true"
-              >
-                管理
-              </el-button>
-              <el-button 
-                type="primary" 
-                size="small" 
-                :icon="Plus" 
-                @click="handleAddError"
-              >
-                添加错题
-              </el-button>
-            </div>
+      <!-- 筛选列表区域 -->
+      <div class="filter-list-section">
+        <!-- 状态筛选项（卡片样式） -->
+        <div 
+          class="subject-item"
+          @click="toggleErrorStatus('unmastered')"
+          :class="{ active: filterForm.masteryStatus === 'unmastered' }"
+        >
+          <div class="subject-label">
+            <span class="subject-dot" style="background: #f56c6c;"></span>
+            未掌握
           </div>
-          
-          <div class="error-list" v-loading="loading">
-            <div class="error-grid">
-              <div 
-                v-for="(error, index) in paginatedErrors" 
-                :key="error.id"
-                class="error-card"
-                :style="{ background: getCardColor(index) }"
-              >
-                <div class="card-content" @click="handleErrorDetail(error)">
-                  <div class="card-header-row">
-                    <div class="card-status-row">
-                      <div 
-                        class="card-checkbox" 
-                        @click.stop="toggleErrorMastery(error)"
-                        :class="{ mastered: error.masteryStatus === 'mastered' }"
-                      >
-                        <el-icon v-if="error.masteryStatus === 'mastered'" size="14" color="#fff">
-                          <Check />
-                        </el-icon>
-                      </div>
-                      <div class="card-status">
-                        {{ getStatusText(error.masteryStatus) }}
-                      </div>
+          <div class="subject-count">{{ globalStats.unmasteredCount }}</div>
+        </div>
+
+        <div 
+          class="subject-item"
+          @click="toggleErrorStatus('mastered')"
+          :class="{ active: filterForm.masteryStatus === 'mastered' }"
+        >
+          <div class="subject-label">
+            <span class="subject-dot" style="background: #67c23a;"></span>
+            已掌握
+          </div>
+          <div class="subject-count">{{ globalStats.masteredCount }}</div>
+        </div>
+
+        <!-- 科目列表 -->
+        <div class="subject-list">
+          <div 
+            v-for="(subject, index) in userSubjects" 
+            :key="subject"
+            class="subject-item"
+            @click="filterBySubject(getSubjectCode(subject))"
+            :class="{ active: filterForm.subject === getSubjectCode(subject) }"
+          >
+            <div class="subject-label">
+              <span class="subject-dot" :style="{ background: getSubjectColor(index) }"></span>
+              {{ subject }}
+            </div>
+            <div class="subject-count">{{ getSubjectStatCount(subject) }}</div>
+          </div>
+          <el-empty 
+            v-if="!hasUserSubjects(userSubjects)" 
+            description="请先在个人中心设置学习科目" 
+            :image-size="60"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧：错题列表 -->
+    <div class="error-content" :class="{ expanded: sidebarCollapsed }">
+      <div class="errors-container">
+        <!-- 顶部标题栏 -->
+        <div class="editor-header">
+          <el-button 
+            :icon="sidebarCollapsed ? DArrowRight : DArrowLeft" 
+            circle 
+            size="small"
+            @click="toggleSidebar"
+          />
+          <span class="file-name">我的错题</span>
+          <div class="header-spacer"></div>
+          <el-pagination
+            v-if="errorList.length > pageSize"
+            v-model:current-page="currentPage"
+            :page-size="pageSize"
+            :total="totalCount"
+            layout="prev, pager, next"
+            small
+            @current-change="handleCurrentPageChange"
+          />
+        </div>
+        
+        <div class="error-list" v-loading="loading">
+          <div class="error-grid">
+            <div 
+              v-for="(error, index) in paginatedErrors" 
+              :key="error.id"
+              class="error-card"
+              :style="{ background: getCardColor(index) }"
+            >
+              <div class="card-content" @click="handleErrorDetail(error)">
+                <div class="card-header-row">
+                  <div class="card-status-row">
+                    <div 
+                      class="card-checkbox" 
+                      @click.stop="toggleErrorMastery(error)"
+                      :class="{ mastered: error.masteryStatus === 'mastered' }"
+                    >
+                      <el-icon v-if="error.masteryStatus === 'mastered'" size="14" color="#fff">
+                        <Check />
+                      </el-icon>
                     </div>
-                    <div class="card-subject">
-                      {{ getSubjectText(error.subject) }}
+                    <div class="card-status">
+                      {{ getStatusText(error.masteryStatus) }}
                     </div>
                   </div>
-                  
-                  <div class="card-title">{{ error.questionTitle }}</div>
-                  
-                  <div class="card-footer">
-                    <div class="card-type">
-                      {{ getTypeText(error.questionType) }}
-                    </div>
-                    <div class="card-edit-btn" @click.stop="handleEditError(error)" title="编辑错题">
-                      <el-icon><Edit /></el-icon>
-                      <span>编辑</span>
-                    </div>
+                  <div class="card-subject">
+                    {{ getSubjectText(error.subject) }}
+                  </div>
+                </div>
+                
+                <div class="card-title">{{ error.questionTitle }}</div>
+                
+                <div class="card-footer">
+                  <div class="card-type">
+                    {{ getTypeText(error.questionType) }}
+                  </div>
+                  <div class="card-edit-btn" @click.stop="handleEditError(error)" title="编辑错题">
+                    <el-icon><Edit /></el-icon>
+                    <span>编辑</span>
                   </div>
                 </div>
               </div>
             </div>
-            
-            <el-empty v-if="errorList.length === 0 && !loading" description="暂无错题记录" />
           </div>
+          
+          <el-empty v-if="errorList.length === 0 && !loading" description="暂无错题记录" />
         </div>
       </div>
     </div>
@@ -515,7 +514,8 @@
 import { ref, reactive, onMounted, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { Plus, Refresh, Filter, Notebook, Warning, Clock, Check, DataAnalysis, Edit, Setting, Delete, Reading } from "@element-plus/icons-vue";
+import { Plus, Refresh, Filter, Notebook, Warning, Clock, Check, DataAnalysis, Edit, Setting, Delete, Reading, DArrowLeft, DArrowRight } from "@element-plus/icons-vue";
+import SideNavBar from '@/components/SideNavBar.vue';
 // 【新增】引入 axios，对接后端接口
 import axios from "axios";
 // 【新增】引入用户科目工具
@@ -527,6 +527,7 @@ const loading = ref(false);
 const showEditDialog = ref(false);
 const showFilterDialog = ref(false);
 const editFormRef = ref(null);
+const sidebarCollapsed = ref(false);
 
 // 查看错题详情
 const showErrorDetailDialog = ref(false);
@@ -654,6 +655,11 @@ const paginatedErrors = computed(() => {
   const end = start + pageSize.value;
   return errorList.value.slice(start, end);
 });
+
+// 切换侧边栏
+function toggleSidebar() {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+}
 
 // 获取卡片颜色
 function getCardColor(index) {
@@ -841,12 +847,7 @@ function filterBySubject(subjectCode) {
   loadErrorList();
 }
 
-// 清除科目筛选
-function clearSubjectFilter() {
-  filterForm.subject = '';
-  currentPage.value = 1;
-  loadErrorList();
-}
+
 
 function handleFilter() {
   currentPage.value = 1;
@@ -1157,16 +1158,11 @@ async function batchDeleteErrors() {
 
 <style scoped>
 .error-book-container {
-  display: flex;
+  display: block;
   height: 100vh;
   background: #f5f7fa;
   overflow: hidden;
-}
-
-/* 主内容区 */
-.error-content {
-  display: flex;
-  width: 100%;
+  position: relative;
 }
 
 /* 左侧边栏 */
@@ -1176,159 +1172,168 @@ async function batchDeleteErrors() {
   border-right: 1px solid #e4e7ed;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  position: fixed;
+  left: 60px;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+  transition: transform 0.3s;
+}
+
+.error-sidebar.collapsed {
+  transform: translateX(-280px);
+}
+
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid #e4e7ed;
+  background: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   flex-shrink: 0;
 }
 
-.error-sidebar::-webkit-scrollbar {
-  width: 6px;
+.sidebar-header .section-title {
+  margin-bottom: 0;
 }
 
-.error-sidebar::-webkit-scrollbar-thumb {
-  background: #dcdfe6;
-  border-radius: 3px;
+.sidebar-header .header-actions {
+  display: flex;
+  gap: 8px;
 }
 
-/* 科目筛选区 */
-.subject-filter-section {
+/* 筛选列表区域 */
+.filter-list-section {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  padding: 20px 16px;
+  gap: 8px;
+  overflow-y: auto;
+  background: #fafafa;
+  padding: 12px;
+}
+
+.filter-list-section::-webkit-scrollbar {
+  width: 4px;
+}
+
+.filter-list-section::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 2px;
 }
 
 .section-title {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: #2c3e50;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e4e7ed;
 }
 
-.clear-filter-btn {
-  margin-bottom: 12px;
-  width: 100%;
+.sidebar-header .section-title {
+  margin-bottom: 0;
 }
+
+
 
 .subject-list {
-  flex: 1;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  min-height: 0;
-}
-
-.subject-list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.subject-list::-webkit-scrollbar-thumb {
-  background: #dcdfe6;
-  border-radius: 2px;
+  gap: 8px;
 }
 
 .subject-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 16px;
+  padding: 10px 12px;
   background: #f8f9fa;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.3s;
-  border: 2px solid transparent;
+  border: 1.5px solid transparent;
 }
 
 .subject-item:hover {
   background: #e8f4ff;
-  transform: translateX(4px);
+  transform: translateX(2px);
 }
 
 .subject-item.active {
   background: #e8f4ff;
   border-color: #0969da;
-  transform: translateX(4px);
+  transform: translateX(2px);
 }
 
 .subject-label {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 14px;
+  gap: 8px;
+  font-size: 13px;
   color: #2c3e50;
   font-weight: 500;
 }
 
 .subject-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .subject-count {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #2c3e50;
-}
-
-/* 右侧：错题列表 */
-.right-section {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  overflow: hidden;
-}
-
-.errors-container {
-  background: transparent;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  padding: 16px 20px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
 }
 
-.header-left {
+/* 右侧：错题列表 */
+.error-content {
+  position: fixed;
+  left: 340px;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  transition: left 0.3s;
+}
+
+.error-content.expanded {
+  left: 60px;
+}
+
+.errors-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* 顶部标题栏（笔记样式） */
+.editor-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 18px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e4e7ed;
+  background: #fff;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.file-name {
+  font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #303133;
 }
 
-.status-filter-buttons {
-  display: flex;
-  gap: 8px;
-  margin-left: 16px;
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.header-actions .el-pagination {
-  margin-right: 10px;
+.header-spacer {
+  flex: 1;
 }
 
 /* 错题列表 */
@@ -1338,6 +1343,8 @@ async function batchDeleteErrors() {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  padding: 20px;
+  background: #fff;
 }
 
 /* 错题网格布局（2行4列，每个占1/8） */
@@ -1412,8 +1419,7 @@ async function batchDeleteErrors() {
   border-color: #67c23a;
 }
 
-.card-status,
-.card-subject {
+.card-status {
   display: inline-block;
   padding: 4px 10px;
   background: rgba(255, 255, 255, 0.95);
@@ -1425,6 +1431,23 @@ async function batchDeleteErrors() {
   text-shadow: none;
   flex-shrink: 0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.card-subject {
+  display: inline-block;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  max-width: 100px;
+  color: #000;
+  text-shadow: none;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card-title {
@@ -1690,6 +1713,14 @@ async function batchDeleteErrors() {
     width: 240px;
   }
   
+  .error-sidebar.collapsed {
+    transform: translateX(-240px);
+  }
+  
+  .error-content {
+    left: 300px;
+  }
+  
   .error-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -1698,6 +1729,14 @@ async function batchDeleteErrors() {
 @media (max-width: 768px) {
   .error-sidebar {
     width: 200px;
+  }
+  
+  .error-sidebar.collapsed {
+    transform: translateX(-200px);
+  }
+  
+  .error-content {
+    left: 260px;
   }
   
   .error-grid {

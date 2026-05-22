@@ -89,14 +89,14 @@
     <div class="content-container" :class="{ expanded: sidebarCollapsed }">
       <!-- 未选中反馈时显示提交表单 -->
       <div v-if="!selectedFeedback" class="submit-form-container">
-        <div class="form-header">
+        <div class="editor-header">
           <el-button 
             :icon="sidebarCollapsed ? DArrowRight : DArrowLeft" 
             circle 
             size="small"
             @click="toggleSidebar"
           />
-          <span class="header-title">提交反馈</span>
+          <span class="file-name">提交反馈</span>
         </div>
 
         <div class="form-content">
@@ -198,20 +198,21 @@
 
       <!-- 选中反馈时显示详情 -->
       <div v-else class="feedback-detail-container">
-        <div class="detail-header">
+        <div class="editor-header">
           <el-button 
             :icon="sidebarCollapsed ? DArrowRight : DArrowLeft" 
             circle 
             size="small"
             @click="toggleSidebar"
           />
-          <el-tag :type="getTypeTag(selectedFeedback.type)" size="large">
+          <span class="file-name">反馈详情</span>
+          <el-tag :type="getTypeTag(selectedFeedback.type)" size="small" style="margin-left: 12px;">
             {{ getTypeLabel(selectedFeedback.type) }}
           </el-tag>
           <el-tag 
             v-if="selectedFeedback.status === 'replied'" 
             type="success" 
-            size="large"
+            size="small"
             effect="dark"
           >
             已回复
@@ -542,12 +543,13 @@ onMounted(() => {
 }
 
 .sidebar-header {
-  padding: 12px;
+  padding: 16px;
   border-bottom: 1px solid #e4e7ed;
   background: #fff;
   display: flex;
   gap: 8px;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .filter-box {
@@ -675,17 +677,18 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.form-header {
+.editor-header {
   display: flex;
   align-items: center;
   padding: 16px 20px;
   border-bottom: 1px solid #e4e7ed;
   background: #fff;
   gap: 12px;
+  flex-shrink: 0;
 }
 
-.header-title {
-  font-size: 18px;
+.file-name {
+  font-size: 16px;
   font-weight: 600;
   color: #303133;
 }
@@ -803,18 +806,10 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.detail-header {
-  display: flex;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e4e7ed;
-  background: #fff;
-  gap: 12px;
-}
-
 .detail-time {
-  font-size: 14px;
+  font-size: 13px;
   color: #909399;
+  margin-left: 8px;
 }
 
 .detail-content {
