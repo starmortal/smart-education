@@ -1,10 +1,20 @@
 <template>
   <div class="knowledge-base-container">
     <!-- 左侧知识库列表 -->
-    <div class="left-panel">
+    <div class="left-panel" :class="{ collapsed: sidebarCollapsed }">
       <div class="panel-header">
-        <el-button type="primary" :icon="Plus" @click="handleCreateKnowledge" style="width: 100%;">
-          新建知识库
+        <div class="section-title">
+          <el-icon size="16"><FolderOpened /></el-icon>
+          <span v-if="!sidebarCollapsed">知识库</span>
+        </div>
+        <el-button 
+          v-if="!sidebarCollapsed"
+          type="primary" 
+          :icon="Plus" 
+          @click="handleCreateKnowledge"
+          size="small"
+        >
+          新建
         </el-button>
       </div>
 
@@ -46,24 +56,28 @@
     </div>
 
     <!-- 右侧内容区域 -->
-    <div class="content-panel">
+    <div class="content-panel" :class="{ expanded: sidebarCollapsed }">
       <div v-if="!currentKnowledge" class="empty-content">
         <el-icon :size="80" color="#e4e7ed"><FolderOpened /></el-icon>
         <p>选择或创建一个知识库</p>
       </div>
 
       <template v-else>
-        <!-- 顶部操作栏 -->
-        <div class="content-header">
-          <div class="header-info">
-            <h2>{{ currentKnowledge.name }}</h2>
-            <p v-if="currentKnowledge.description">{{ currentKnowledge.description }}</p>
-          </div>
+        <!-- 顶部标题栏 -->
+        <div class="editor-header">
+          <el-button 
+            :icon="sidebarCollapsed ? DArrowRight : DArrowLeft" 
+            circle 
+            size="small"
+            @click="toggleSidebar"
+          />
+          <span class="file-name">{{ currentKnowledge.name }}</span>
+          <div class="header-spacer"></div>
           <div class="header-actions">
-            <el-button :icon="Upload" @click="handleAddFile">添加文件</el-button>
-            <el-button :icon="Link" @click="handleAddURL">添加链接</el-button>
-            <el-button :icon="Document" @click="handleAddText">添加文本</el-button>
-            <el-button :icon="Search" @click="handleSearch">搜索知识库</el-button>
+            <el-button :icon="Upload" @click="handleAddFile" size="small">添加文件</el-button>
+            <el-button :icon="Link" @click="handleAddURL" size="small">添加链接</el-button>
+            <el-button :icon="Document" @click="handleAddText" size="small">添加文本</el-button>
+            <el-button :icon="Search" @click="handleSearch" size="small">搜索</el-button>
           </div>
         </div>
 
@@ -229,7 +243,9 @@ import {
   Link,
   Document,
   Search,
-  Delete
+  Delete,
+  DArrowLeft,
+  DArrowRight
 } from '@element-plus/icons-vue';
 import {
   getKnowledgeBases,
@@ -280,6 +296,14 @@ const searching = ref(false);
 const searched = ref(false);
 
 const fileInputRef = ref(null);
+
+// 侧边栏折叠状态
+const sidebarCollapsed = ref(false);
+
+// 切换侧边栏
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+};
 
 onMounted(async () => {
   await loadKnowledgeBases();
@@ -576,9 +600,11 @@ const formatDate = (date) => {
 
 <style scoped>
 .knowledge-base-container {
-  display: flex;
+  display: block;
   height: 100vh;
   background: #f5f7fa;
+  overflow: hidden;
+  position: relative;
 }
 
 .left-panel {
@@ -587,11 +613,39 @@ const formatDate = (date) => {
   border-right: 1px solid #e4e7ed;
   display: flex;
   flex-direction: column;
+  position: fixed;
+  left: 60px;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+  transition: transform 0.3s;
+}
+
+.left-panel.collapsed {
+  transform: translateX(-280px);
+}
+
+.left-panel.collapsed .knowledge-list {
+  display: none;
 }
 
 .panel-header {
   padding: 16px;
   border-bottom: 1px solid #e4e7ed;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  flex-shrink: 0;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
 }
 
 .knowledge-list {
@@ -667,11 +721,46 @@ const formatDate = (date) => {
 }
 
 .content-panel {
-  flex: 1;
+  position: fixed;
+  left: 340px;
+  right: 0;
+  top: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   background: #ffffff;
   overflow: hidden;
+  transition: left 0.3s;
+}
+
+.content-panel.expanded {
+  left: 60px;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e4e7ed;
+  background: #ffffff;
+  min-height: 56px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.file-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.header-spacer {
+  flex: 1;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .empty-content {
@@ -686,29 +775,6 @@ const formatDate = (date) => {
 .empty-content p {
   margin-top: 16px;
   font-size: 16px;
-}
-
-.content-header {
-  padding: 20px;
-  border-bottom: 1px solid #e4e7ed;
-}
-
-.header-info h2 {
-  margin: 0 0 8px 0;
-  font-size: 20px;
-  color: #333;
-}
-
-.header-info p {
-  margin: 0;
-  font-size: 14px;
-  color: #666;
-}
-
-.header-actions {
-  margin-top: 16px;
-  display: flex;
-  gap: 12px;
 }
 
 .file-list {

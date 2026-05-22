@@ -1,9 +1,17 @@
 <template>
   <div class="ai-chat-container">
     <!-- 左侧面板（标签切换） -->
-    <div class="left-panel">
+    <div class="left-panel" :class="{ collapsed: sidebarCollapsed }">
+      <!-- 顶部标题栏 -->
+      <div class="panel-header">
+        <div class="section-title">
+          <el-icon size="16"><Cpu /></el-icon>
+          <span v-if="!sidebarCollapsed">助手管理</span>
+        </div>
+      </div>
+
       <!-- 自定义标签按钮 -->
-      <div class="tab-buttons">
+      <div v-if="!sidebarCollapsed" class="tab-buttons">
         <button 
           :class="['tab-btn', { active: activeTab === 'assistants' }]"
           @click="activeTab = 'assistants'"
@@ -106,13 +114,17 @@
     </div>
 
     <!-- 右侧对话区域 -->
-    <div class="chat-panel">
-      <!-- 对话框顶部助手信息 -->
-      <div v-if="selectedAssistantForTopics" class="chat-header">
-        <div class="chat-header-info">
-          <el-icon :size="20" color="#0969da"><Cpu /></el-icon>
-          <span class="chat-header-title">{{ selectedAssistantForTopics.name }}</span>
-        </div>
+    <div class="chat-panel" :class="{ expanded: sidebarCollapsed }">
+      <!-- 对话框顶部标题栏 -->
+      <div class="editor-header">
+        <el-button 
+          :icon="sidebarCollapsed ? DArrowRight : DArrowLeft" 
+          circle 
+          size="small"
+          @click="toggleSidebar"
+        />
+        <span class="file-name">{{ selectedAssistantForTopics ? selectedAssistantForTopics.name : 'AI 对话' }}</span>
+        <div class="header-spacer"></div>
       </div>
 
       <div v-if="!currentTopic" class="empty-chat">
@@ -344,7 +356,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, MoreFilled, ChatDotRound, Cpu, Promotion, Paperclip, Close, Document, Picture, FolderOpened } from '@element-plus/icons-vue';
+import { Plus, MoreFilled, ChatDotRound, Cpu, Promotion, Paperclip, Close, Document, Picture, FolderOpened, DArrowLeft, DArrowRight } from '@element-plus/icons-vue';
 import { marked } from 'marked';
 import {
   getAssistants,
@@ -384,6 +396,14 @@ const temporaryKnowledgeBases = ref([]); // 对话级别选择的知识库
 
 // 标签状态
 const activeTab = ref('assistants');
+
+// 侧边栏折叠状态
+const sidebarCollapsed = ref(false);
+
+// 切换侧边栏
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+};
 
 // 对话框
 const assistantDialogVisible = ref(false);
@@ -841,18 +861,54 @@ const previewImage = (url) => {
 
 <style scoped>
 .ai-chat-container {
-  display: flex;
+  display: block;
   height: 100vh;
   background: #f5f7fa;
+  overflow: hidden;
+  position: relative;
 }
 
 /* 左侧面板 */
 .left-panel {
-  width: 260px;
+  width: 280px;
   background: #ffffff;
   border-right: 1px solid #e4e7ed;
   display: flex;
   flex-direction: column;
+  position: fixed;
+  left: 60px;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+  transition: transform 0.3s;
+}
+
+.left-panel.collapsed {
+  transform: translateX(-280px);
+}
+
+.left-panel.collapsed .tab-buttons,
+.left-panel.collapsed .tab-content .panel-header .el-button,
+.left-panel.collapsed .item-list {
+  display: none;
+}
+
+.panel-header {
+  padding: 16px;
+  border-bottom: 1px solid #e4e7ed;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
 }
 
 /* 自定义标签按钮 */
@@ -909,6 +965,8 @@ const previewImage = (url) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 56px;
+  flex-shrink: 0;
 }
 
 .header-title {
@@ -988,28 +1046,40 @@ const previewImage = (url) => {
 
 /* 对话面板 */
 .chat-panel {
-  flex: 1;
+  position: fixed;
+  left: 340px;
+  right: 0;
+  top: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   background: #ffffff;
+  transition: left 0.3s;
 }
 
-.chat-header {
+.chat-panel.expanded {
+  left: 60px;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
   padding: 16px 20px;
   border-bottom: 1px solid #e4e7ed;
   background: #ffffff;
+  min-height: 56px;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
-.chat-header-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.chat-header-title {
+.file-name {
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: #303133;
+}
+
+.header-spacer {
+  flex: 1;
 }
 
 .empty-chat {
