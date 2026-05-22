@@ -575,7 +575,7 @@ async function loadQuestions() {
     const res = await axios.get('http://localhost:3001/api/community/questions', {
       params: { userId: userId.value }
     });
-    questions.value = res.data || [];
+    questions.value = res.data.data || [];
   } catch (error) {
     console.error('加载问题列表失败：', error);
     ElMessage.error('加载问题列表失败');
@@ -590,7 +590,7 @@ async function loadMyFavorites() {
     const res = await axios.get('http://localhost:3001/api/community/favorites', {
       params: { userId: userId.value }
     });
-    myFavorites.value = res.data || [];
+    myFavorites.value = res.data.data || [];
   } catch (error) {
     console.error('加载收藏失败：', error);
   }
@@ -644,7 +644,7 @@ async function handleQuestionDetail(question) {
       `http://localhost:3001/api/community/questions/${question.id}/answers`,
       { params: { userId: userId.value } }
     );
-    answers.value = answersRes.data || [];
+    answers.value = answersRes.data.data || [];
   } catch (error) {
     console.error('加载问题详情失败：', error);
   }

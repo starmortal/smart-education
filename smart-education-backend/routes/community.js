@@ -4,6 +4,7 @@ const Question = require('../models/Question');
 const Answer = require('../models/Answer');
 const Favorite = require('../models/Favorite');
 const AnswerLike = require('../models/AnswerLike');
+const Response = require('../utils/response');
 
 /**
  * 学习社区路由模块
@@ -40,16 +41,9 @@ router.get('/questions', async (req, res) => {
       };
     });
     
-    res.json({
-      success: true,
-      data: questionsWithUserFlag
-    });
+    return Response.success(res, questionsWithUserFlag, '获取问题列表成功');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '获取问题列表失败',
-      error: error.message
-    });
+    return Response.error(res, '获取问题列表失败', 500);
   }
 });
 
@@ -59,10 +53,7 @@ router.post('/questions', async (req, res) => {
     const { title, content, tags, userId, userName, userAvatar } = req.body;
     
     if (!title || !content) {
-      return res.status(400).json({
-        success: false,
-        message: '问题标题和内容不能为空'
-      });
+      return Response.badRequest(res, '问题标题和内容不能为空');
     }
     
     const newQuestion = new Question({
@@ -97,17 +88,9 @@ router.post('/questions', async (req, res) => {
       createTime: formattedTime
     };
     
-    res.json({
-      success: true,
-      message: '发布成功',
-      data: questionData
-    });
+    return Response.success(res, questionData, '发布成功');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '发布问题失败',
-      error: error.message
-    });
+    return Response.error(res, '发布问题失败', 500);
   }
 });
 
@@ -120,33 +103,20 @@ router.delete('/questions/:id', async (req, res) => {
     const question = await Question.findById(questionId);
     
     if (!question) {
-      return res.status(404).json({
-        success: false,
-        message: '问题不存在'
-      });
+      return Response.notFound(res, '问题不存在');
     }
     
     if (question.userId !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: '只能删除自己发布的问题'
-      });
+      return Response.forbidden(res, '只能删除自己发布的问题');
     }
     
     await Question.findByIdAndDelete(questionId);
     await Answer.deleteMany({ questionId });
     await Favorite.deleteMany({ questionId });
     
-    res.json({
-      success: true,
-      message: '删除成功'
-    });
+    return Response.success(res, null, '删除成功');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '删除问题失败',
-      error: error.message
-    });
+    return Response.error(res, '删除问题失败', 500);
   }
 });
 
@@ -159,32 +129,19 @@ router.post('/questions/:id/solve', async (req, res) => {
     const question = await Question.findById(questionId);
     
     if (!question) {
-      return res.status(404).json({
-        success: false,
-        message: '问题不存在'
-      });
+      return Response.notFound(res, '问题不存在');
     }
     
     if (question.userId !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: '只有提问者可以标记问题为已解决'
-      });
+      return Response.forbidden(res, '只有提问者可以标记问题为已解决');
     }
     
     question.solved = true;
     await question.save();
     
-    res.json({
-      success: true,
-      message: '标记成功'
-    });
+    return Response.success(res, null, '标记成功');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '标记失败',
-      error: error.message
-    });
+    return Response.error(res, '标记失败', 500);
   }
 });
 
@@ -197,32 +154,19 @@ router.post('/questions/:id/unsolve', async (req, res) => {
     const question = await Question.findById(questionId);
     
     if (!question) {
-      return res.status(404).json({
-        success: false,
-        message: '问题不存在'
-      });
+      return Response.notFound(res, '问题不存在');
     }
     
     if (question.userId !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: '只有提问者可以标记问题为未解决'
-      });
+      return Response.forbidden(res, '只有提问者可以标记问题为未解决');
     }
     
     question.solved = false;
     await question.save();
     
-    res.json({
-      success: true,
-      message: '标记成功'
-    });
+    return Response.success(res, null, '标记成功');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '标记失败',
-      error: error.message
-    });
+    return Response.error(res, '标记失败', 500);
   }
 });
 
@@ -232,25 +176,15 @@ router.get('/favorites', async (req, res) => {
     const { userId } = req.query;
     
     if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: '用户ID不能为空'
-      });
+      return Response.badRequest(res, '用户ID不能为空');
     }
     
     const favorites = await Favorite.find({ userId }).lean();
     const favoriteIds = favorites.map(f => f.questionId.toString());
     
-    res.json({
-      success: true,
-      data: favoriteIds
-    });
+    return Response.success(res, favoriteIds, '获取收藏列表成功');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '获取收藏列表失败',
-      error: error.message
-    });
+    return Response.error(res, '获取收藏列表失败', 500);
   }
 });
 
@@ -260,18 +194,12 @@ router.post('/favorites', async (req, res) => {
     const { userId, questionId } = req.body;
     
     if (!userId || !questionId) {
-      return res.status(400).json({
-        success: false,
-        message: '用户ID和问题ID不能为空'
-      });
+      return Response.badRequest(res, '用户ID和问题ID不能为空');
     }
     
     const existingFavorite = await Favorite.findOne({ userId, questionId });
     if (existingFavorite) {
-      return res.status(400).json({
-        success: false,
-        message: '已经收藏过该问题'
-      });
+      return Response.badRequest(res, '已经收藏过该问题');
     }
     
     await Favorite.create({ userId, questionId });
@@ -279,17 +207,9 @@ router.post('/favorites', async (req, res) => {
     const favorites = await Favorite.find({ userId }).lean();
     const favoriteIds = favorites.map(f => f.questionId.toString());
     
-    res.json({
-      success: true,
-      message: '收藏成功',
-      data: favoriteIds
-    });
+    return Response.success(res, favoriteIds, '收藏成功');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '添加收藏失败',
-      error: error.message
-    });
+    return Response.error(res, '添加收藏失败', 500);
   }
 });
 
@@ -300,10 +220,7 @@ router.delete('/favorites/:questionId', async (req, res) => {
     const { userId } = req.body;
     
     if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: '用户ID不能为空'
-      });
+      return Response.badRequest(res, '用户ID不能为空');
     }
     
     await Favorite.deleteOne({ userId, questionId });
@@ -311,17 +228,9 @@ router.delete('/favorites/:questionId', async (req, res) => {
     const favorites = await Favorite.find({ userId }).lean();
     const favoriteIds = favorites.map(f => f.questionId.toString());
     
-    res.json({
-      success: true,
-      message: '取消收藏成功',
-      data: favoriteIds
-    });
+    return Response.success(res, favoriteIds, '取消收藏成功');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '取消收藏失败',
-      error: error.message
-    });
+    return Response.error(res, '取消收藏失败', 500);
   }
 });
 
@@ -334,20 +243,13 @@ router.get('/stats', async (req, res) => {
     const unsolvedQuestions = await Question.countDocuments({ solved: false });
     const myQuestions = userId ? await Question.countDocuments({ userId }) : 0;
     
-    res.json({
-      success: true,
-      data: {
-        totalQuestions,
-        unsolvedQuestions,
-        myQuestions
-      }
-    });
+    return Response.success(res, {
+      totalQuestions,
+      unsolvedQuestions,
+      myQuestions
+    }, '获取统计数据成功');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '获取统计数据失败',
-      error: error.message
-    });
+    return Response.error(res, '获取统计数据失败', 500);
   }
 });
 
@@ -385,16 +287,9 @@ router.get('/questions/:id/answers', async (req, res) => {
       }).replace(/\//g, '-')
     }));
     
-    res.json({
-      success: true,
-      data: answersWithLikeStatus
-    });
+    return Response.success(res, answersWithLikeStatus, '获取回答列表成功');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '获取回答列表失败',
-      error: error.message
-    });
+    return Response.error(res, '获取回答列表失败', 500);
   }
 });
 
@@ -405,10 +300,7 @@ router.post('/questions/:id/answers', async (req, res) => {
     const { content, userId, userName, userAvatar } = req.body;
     
     if (!content) {
-      return res.status(400).json({
-        success: false,
-        message: '回答内容不能为空'
-      });
+      return Response.badRequest(res, '回答内容不能为空');
     }
     
     const newAnswer = await Answer.create({
@@ -436,22 +328,14 @@ router.post('/questions/:id/answers', async (req, res) => {
       hour12: false
     }).replace(/\//g, '-');
     
-    res.json({
-      success: true,
-      message: '回答成功',
-      data: {
-        ...newAnswer.toObject(),
-        id: newAnswer._id.toString(),
-        createTime: formattedTime,
-        liked: false
-      }
-    });
+    return Response.success(res, {
+      ...newAnswer.toObject(),
+      id: newAnswer._id.toString(),
+      createTime: formattedTime,
+      liked: false
+    }, '回答成功');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '提交回答失败',
-      error: error.message
-    });
+    return Response.error(res, '提交回答失败', 500);
   }
 });
 
@@ -463,25 +347,15 @@ router.post('/answers/:id/like', async (req, res) => {
     
     const existingLike = await AnswerLike.findOne({ answerId, userId });
     if (existingLike) {
-      return res.status(400).json({
-        success: false,
-        message: '已经点赞过了'
-      });
+      return Response.badRequest(res, '已经点赞过了');
     }
     
     await AnswerLike.create({ answerId, userId });
     await Answer.findByIdAndUpdate(answerId, { $inc: { likeCount: 1 } });
     
-    res.json({
-      success: true,
-      message: '点赞成功'
-    });
+    return Response.success(res, null, '点赞成功');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '点赞失败',
-      error: error.message
-    });
+    return Response.error(res, '点赞失败', 500);
   }
 });
 
@@ -494,16 +368,9 @@ router.delete('/answers/:id/like', async (req, res) => {
     await AnswerLike.deleteOne({ answerId, userId });
     await Answer.findByIdAndUpdate(answerId, { $inc: { likeCount: -1 } });
     
-    res.json({
-      success: true,
-      message: '取消点赞成功'
-    });
+    return Response.success(res, null, '取消点赞成功');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '取消点赞失败',
-      error: error.message
-    });
+    return Response.error(res, '取消点赞失败', 500);
   }
 });
 
@@ -516,16 +383,9 @@ router.post('/answers/:id/mark-best', async (req, res) => {
     await Answer.updateMany({ questionId }, { isBest: false });
     await Answer.findByIdAndUpdate(answerId, { isBest: true });
     
-    res.json({
-      success: true,
-      message: '设置成功'
-    });
+    return Response.success(res, null, '设置成功');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '设置最佳答案失败',
-      error: error.message
-    });
+    return Response.error(res, '设置最佳答案失败', 500);
   }
 });
 
