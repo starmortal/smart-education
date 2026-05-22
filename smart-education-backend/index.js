@@ -2,8 +2,10 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const http = require("http");
 const logger = require("./utils/logger");
 const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
+const socketManager = require("./utils/socketManager");
 
 // 导入路由模块
 const userRouter = require("./routes/user");
@@ -19,15 +21,22 @@ const communityRouter = require("./routes/community");
 const assistantRouter = require("./routes/assistant");
 const chatRouter = require("./routes/chat");
 const knowledgeRouter = require("./routes/knowledge");
+const notificationRouter = require("./routes/notification");
 
 /**
  * 智慧教育平台 - 后端服务器
- * 技术栈：Node.js + Express + MongoDB + DeepSeek AI
- * 功能：用户管理、AI答题、错题本、学习笔记、学习计划、学习社区、数据统计
+ * 技术栈：Node.js + Express + MongoDB + DeepSeek AI + Socket.IO
+ * 功能：用户管理、AI答题、错题本、学习笔记、学习计划、学习社区、数据统计、实时通知
  */
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
+
+// 初始化 Socket.IO
+socketManager.initialize(server);
+console.log("✅ Socket.IO 服务器初始化成功");
+logger.info("Socket.IO 服务器初始化成功");
 
 // 中间件配置
 app.use(express.json({ limit: '10mb' }));
@@ -106,6 +115,7 @@ app.use("/api/community", communityRouter);
 app.use("/api/assistant", assistantRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/knowledge", knowledgeRouter);
+app.use("/api/notification", notificationRouter);
 
 // 健康检查接口
 app.get("/api/test", (req, res) => {
@@ -126,8 +136,8 @@ app.use(notFoundHandler);
 // 全局错误处理中间件
 app.use(errorHandler);
 
-// 启动服务器
-app.listen(PORT, () => {
+// 启动服务器（使用 http server 而不是 app.listen，以支持 Socket.IO）
+server.listen(PORT, () => {
   console.log(`🚀 后端服务器运行在 http://localhost:${PORT}`);
   logger.info(`后端服务器启动成功，端口：${PORT}`);
 });

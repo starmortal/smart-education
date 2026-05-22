@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Question = require('../models/Question');
 const Response = require('../utils/response');
 const logger = require('../utils/logger');
+const notificationService = require('../services/notificationService');
 
 // 关注用户
 exports.followUser = async (req, res) => {
@@ -32,6 +33,29 @@ exports.followUser = async (req, res) => {
     });
     
     await follow.save();
+    
+    // 发送关注通知
+    try {
+      const follower = await User.findById(userId);
+      if (follower) {
+        await notificationService.sendNotification(
+          followingId,
+          "follow",
+          "👥 您有新的粉丝",
+          `用户 ${follower.nickname || '匿名用户'} 关注了您`,
+          {
+            relatedId: userId,
+            relatedType: "user",
+            relatedData: {
+              userName: follower.nickname || '匿名用户',
+              userAvatar: follower.avatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+            }
+          }
+        );
+      }
+    } catch (error) {
+      logger.error('发送关注通知失败：', error);
+    }
     
     // 更新用户统计（可选，如果User模型有这些字段）
     // await User.findByIdAndUpdate(userId, { $inc: { followingCount: 1 } });

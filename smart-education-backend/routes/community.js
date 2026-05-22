@@ -5,6 +5,7 @@ const Answer = require('../models/Answer');
 const Favorite = require('../models/Favorite');
 const AnswerLike = require('../models/AnswerLike');
 const Response = require('../utils/response');
+const notificationService = require('../services/notificationService');
 
 /**
  * 学习社区路由模块
@@ -317,6 +318,31 @@ router.post('/questions/:id/answers', async (req, res) => {
       $inc: { answerCount: 1 }
     });
     
+    // 发送回复通知给问题作者
+    try {
+      const question = await Question.findById(questionId);
+      if (question && question.userId !== userId) {
+        await notificationService.sendNotification(
+          question.userId,
+          "reply",
+          "💬 您的问题有新回复",
+          `用户 ${userName || '匿名用户'} 回复了您的问题`,
+          {
+            relatedId: questionId,
+            relatedType: "question",
+            relatedData: {
+              userName: userName || '匿名用户',
+              userAvatar: userAvatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png',
+              questionTitle: question.title,
+              questionId: questionId
+            }
+          }
+        );
+      }
+    } catch (error) {
+      console.error("发送回复通知失败：", error);
+    }
+    
     const formattedTime = new Date(newAnswer.createTime).toLocaleString('zh-CN', {
       timeZone: 'Asia/Shanghai',
       year: 'numeric',
@@ -352,6 +378,25 @@ router.post('/answers/:id/like', async (req, res) => {
     
     await AnswerLike.create({ answerId, userId });
     await Answer.findByIdAndUpdate(answerId, { $inc: { likeCount: 1 } });
+    
+    // 发送点赞通知给回答作者
+    try {
+      const answer = await Answer.findById(answerId);
+      if (answer && answer.userId !== userId) {
+        await notificationService.sendNotification(
+          answer.userId,
+          "like",
+          "❤️ 您的回答被点赞",
+          `您的回答获得了点赞`,
+          {
+            relatedId: answerId,
+            relatedType: "answer"
+          }
+        );
+      }
+    } catch (error) {
+      console.error("发送点赞通知失败：", error);
+    }
     
     return Response.success(res, null, '点赞成功');
   } catch (error) {

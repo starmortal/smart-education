@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
 const emailService = require("../utils/emailService");
+const notificationService = require("../services/notificationService");
 
 /**
  * 用户管理路由模块
@@ -123,6 +124,18 @@ router.post("/register", async (req, res) => {
 
     await newUser.save();
 
+    // 发送注册欢迎通知
+    try {
+      await notificationService.sendNotification(
+        newUser._id.toString(),
+        "register",
+        "🎉 欢迎加入智慧教育平台",
+        `亲爱的 ${newUser.nickname}，欢迎您加入智慧教育平台！我们很高兴能够陪伴您开启学习之旅。`
+      );
+    } catch (error) {
+      console.error("发送注册通知失败：", error);
+    }
+
     res.status(201).json({
       message: "注册成功",
       userId: newUser._id.toString(),
@@ -167,6 +180,18 @@ router.post("/register-email", async (req, res) => {
 
     await newUser.save();
 
+    // 发送注册欢迎通知
+    try {
+      await notificationService.sendNotification(
+        newUser._id.toString(),
+        "register",
+        "🎉 欢迎加入智慧教育平台",
+        `亲爱的 ${newUser.nickname}，欢迎您加入智慧教育平台！我们很高兴能够陪伴您开启学习之旅。`
+      );
+    } catch (error) {
+      console.error("发送注册通知失败：", error);
+    }
+
     // 生成 JWT token
     const jwt = require('jsonwebtoken');
     const token = jwt.sign(
@@ -210,6 +235,27 @@ router.post("/login", async (req, res) => {
 
     user.lastLoginTime = Date.now();
     await user.save();
+
+    // 发送登录通知
+    try {
+      const loginTime = new Date().toLocaleString('zh-CN', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      await notificationService.sendNotification(
+        user._id.toString(),
+        "login",
+        "👋 欢迎回来",
+        `您于 ${loginTime} 登录了平台，祝您学习愉快！`
+      );
+    } catch (error) {
+      console.error("发送登录通知失败：", error);
+    }
 
     // 生成 JWT token
     const jwt = require('jsonwebtoken');

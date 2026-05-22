@@ -18,7 +18,17 @@
           :class="['nav-item', { active: currentPath === item.path }]"
           @click="goToPage(item.path)"
         >
-          <el-icon :size="18">
+          <el-badge 
+            v-if="item.badge && unreadCount > 0" 
+            :value="unreadCount" 
+            :max="99"
+            class="nav-badge"
+          >
+            <el-icon :size="18">
+              <component :is="item.icon" />
+            </el-icon>
+          </el-badge>
+          <el-icon v-else :size="18">
             <component :is="item.icon" />
           </el-icon>
         </div>
@@ -44,14 +54,18 @@ import {
   ChatLineRound,
   User,
   SwitchButton,
-  FolderOpened
+  FolderOpened,
+  Bell
 } from '@element-plus/icons-vue';
 import eventBus from '@/utils/eventBus';
+import { getUnreadCount } from '@/api/notification';
+import socketClient from '@/utils/socket';
 
 const router = useRouter();
 const route = useRoute();
 
 const userAvatar = ref('https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png');
+const unreadCount = ref(0);
 
 // 导航项配置
 const navItems = [
@@ -63,6 +77,7 @@ const navItems = [
   { path: '/study-community', label: '学习社区', icon: DataAnalysis },
   { path: '/feedback', label: '意见反馈', icon: ChatLineRound },
   { path: '/profile', label: '个人中心', icon: User },
+  { path: '/notification-center', label: '通知中心', icon: Bell, badge: true },
   { path: 'logout', label: '退出登录', icon: SwitchButton }
 ];
 
@@ -70,16 +85,33 @@ const currentPath = computed(() => route.path);
 
 onMounted(() => {
   loadUserInfo();
+  loadUnreadCount();
   eventBus.on('userInfoUpdated', loadUserInfo);
+  
+  // 监听实时通知更新未读数量
+  socketClient.on('notification:new', loadUnreadCount);
 });
 
 onBeforeUnmount(() => {
   eventBus.off('userInfoUpdated', loadUserInfo);
+  socketClient.off('notification:new', loadUnreadCount);
 });
 
 const loadUserInfo = () => {
   const savedAvatar = localStorage.getItem('edu-avatar');
   if (savedAvatar) userAvatar.value = savedAvatar;
+};
+
+// 加载未读通知数量
+const loadUnreadCount = async () => {
+  try {
+    const response = await getUnreadCount();
+    if (response.code === 200) {
+      unreadCount.value = response.data.count || 0;
+    }
+  } catch (error) {
+    console.error('加载未读通知数量失败：', error);
+  }
 };
 
 const goToPage = (path) => {
@@ -197,6 +229,18 @@ const handleLogout = () => {
   align-items: center;
   justify-content: center;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-badge :deep(.el-badge__content) {
+  transform: translateY(-50%) translateX(50%);
+  top: 8px;
+  right: 8px;
 }
 
 /* 移动端适配 */

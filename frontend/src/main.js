@@ -13,6 +13,8 @@ import zhCn from 'element-plus/dist/locale/zh-cn.mjs';
 import * as ElementPlusIconsVue from "@element-plus/icons-vue";
 // 导入设计令牌（全局样式变量）
 import "./styles/design-tokens.css";
+// 导入 Socket.IO 客户端
+import socketClient from "./utils/socket";
 
 // 创建Vue应用实例
 const app = createApp(App);
@@ -29,3 +31,23 @@ app.use(router).use(ElementPlus, {
 
 // 挂载到页面的#app元素
 app.mount("#app");
+
+// 初始化 Socket.IO 连接（登录后）
+const userId = localStorage.getItem('edu-user-id');
+if (userId) {
+  socketClient.connect(userId);
+  console.log('Socket.IO 客户端已初始化');
+}
+
+// 监听路由变化，确保登录后连接 Socket.IO
+router.afterEach((to) => {
+  const userId = localStorage.getItem('edu-user-id');
+  if (userId && !socketClient.isConnected()) {
+    socketClient.connect(userId);
+  }
+  
+  // 如果退出登录，断开 Socket.IO
+  if (to.path === '/login') {
+    socketClient.disconnect();
+  }
+});

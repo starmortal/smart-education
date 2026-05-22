@@ -103,6 +103,12 @@ const routes = [
     name: "个人中心",
     meta: { title: "个人中心 - 智慧教育平台", requiresAuth: true }
   },
+  { 
+    path: "/notification-center", 
+    component: () => import("../views/NotificationCenter.vue"), 
+    name: "通知中心",
+    meta: { title: "通知中心 - 智慧教育平台", requiresAuth: true }
+  },
   // 管理员路由
   { 
     path: "/admin/login", 

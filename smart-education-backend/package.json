@@ -20,6 +20,7 @@
     "nodemailer": "^7.0.13",
     "openai": "^4.0.0",
     "pdf-parse": "^2.4.5",
+    "socket.io": "^4.8.1",
     "winston": "^3.19.0"
   },
   "devDependencies": {
