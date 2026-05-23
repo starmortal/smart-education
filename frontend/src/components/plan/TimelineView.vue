@@ -1,125 +1,43 @@
 <template>
   <div class="timeline-view">
-    <div class="timeline-header">
-      <h3 class="timeline-title">📅 时间轴视图</h3>
-      <div class="view-tabs">
-        <el-button 
-          :type="activeView === 'today' ? 'primary' : ''" 
-          size="small"
-          @click="activeView = 'today'"
-        >
-          今天
-        </el-button>
-        <el-button 
-          :type="activeView === 'week' ? 'primary' : ''" 
-          size="small"
-          @click="activeView = 'week'"
-        >
-          本周
-        </el-button>
-        <el-button 
-          :type="activeView === 'month' ? 'primary' : ''" 
-          size="small"
-          @click="activeView = 'month'"
-        >
-          本月
-        </el-button>
-      </div>
-    </div>
-
     <div class="timeline-content">
-      <!-- 今天 -->
-      <div v-if="timelineData.today.length > 0 || activeView === 'today'" class="timeline-section">
-        <div class="section-header" @click="toggleSection('today')">
-          <el-icon :class="{ rotated: !collapsedSections.today }">
+      <div
+        v-for="section in timelineSections"
+        :key="section.key"
+        class="timeline-section"
+      >
+        <div class="section-header" @click="toggleSection(section.key)">
+          <el-icon :class="{ rotated: !isSectionCollapsed(section.key) }">
             <ArrowRight />
           </el-icon>
-          <span class="section-title">▼ 今天 {{ formatDate(new Date()) }}</span>
-          <el-tag size="small" type="primary">{{ timelineData.today.length }}个任务</el-tag>
+          <span class="section-title">{{ section.label }}</span>
+          <el-tag size="small" :type="section.isToday ? 'primary' : 'info'">
+            {{ section.plans.length }}个任务
+          </el-tag>
         </div>
-        
+
         <transition name="section-content">
-          <div v-show="!collapsedSections.today" class="section-content">
+          <div v-show="!isSectionCollapsed(section.key)" class="section-content">
             <plan-card-enhanced
-              v-for="plan in timelineData.today"
+              v-for="plan in section.plans"
               :key="plan.id"
               :plan="plan"
-              @start-learning="handleStartLearning"
               @view-details="handleViewDetails"
-              @adjust-plan="handleAdjustPlan"
             />
-            <el-empty 
-              v-if="timelineData.today.length === 0" 
-              description="今天暂无学习任务"
+            <el-empty
+              v-if="section.plans.length === 0"
+              :description="section.emptyText"
               :image-size="80"
             />
           </div>
         </transition>
       </div>
 
-      <!-- 明天 -->
-      <div v-if="timelineData.tomorrow.length > 0 || activeView === 'week'" class="timeline-section">
-        <div class="section-header" @click="toggleSection('tomorrow')">
-          <el-icon :class="{ rotated: !collapsedSections.tomorrow }">
-            <ArrowRight />
-          </el-icon>
-          <span class="section-title">▼ 明天 {{ formatDate(getTomorrow()) }}</span>
-          <el-tag size="small" type="info">{{ timelineData.tomorrow.length }}个任务</el-tag>
-        </div>
-        
-        <transition name="section-content">
-          <div v-show="!collapsedSections.tomorrow" class="section-content">
-            <plan-card-enhanced
-              v-for="plan in timelineData.tomorrow"
-              :key="plan.id"
-              :plan="plan"
-              @start-learning="handleStartLearning"
-              @view-details="handleViewDetails"
-              @adjust-plan="handleAdjustPlan"
-            />
-            <el-empty 
-              v-if="timelineData.tomorrow.length === 0" 
-              description="明天暂无学习任务"
-              :image-size="80"
-            />
-          </div>
-        </transition>
-      </div>
-
-      <!-- 本周 -->
-      <div v-if="(timelineData.thisWeek.length > 0 || activeView === 'week') && activeView !== 'today'" class="timeline-section">
-        <div class="section-header" @click="toggleSection('thisWeek')">
-          <el-icon :class="{ rotated: !collapsedSections.thisWeek }">
-            <ArrowRight />
-          </el-icon>
-          <span class="section-title">▼ 本周其他</span>
-          <el-tag size="small" type="success">{{ timelineData.thisWeek.length }}个任务</el-tag>
-        </div>
-        
-        <transition name="section-content">
-          <div v-show="!collapsedSections.thisWeek" class="section-content">
-            <plan-card-enhanced
-              v-for="plan in timelineData.thisWeek"
-              :key="plan.id"
-              :plan="plan"
-              @start-learning="handleStartLearning"
-              @view-details="handleViewDetails"
-              @adjust-plan="handleAdjustPlan"
-            />
-          </div>
-        </transition>
-      </div>
-
-      <!-- 本周概览 -->
-      <div v-if="activeView === 'week' || activeView === 'month'" class="timeline-section">
-        <div class="section-header">
-          <span class="section-title">▼ 本周概览</span>
-        </div>
-        
-        <div class="section-content">
-          <weekly-summary :plans="allPlans" />
-        </div>
-      </div>
+      <el-empty
+        v-if="timelineSections.length === 0"
+        description="暂无学习计划"
+        :image-size="100"
+      />
     </div>
   </div>
 </template>
@@ -128,13 +46,10 @@
 import { ref, computed } from 'vue';
 import { ArrowRight } from '@element-plus/icons-vue';
 import dayjs from 'dayjs';
-import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import 'dayjs/locale/zh-cn';
 import PlanCardEnhanced from './PlanCardEnhanced.vue';
-import WeeklySummary from './WeeklySummary.vue';
 
-dayjs.extend(isSameOrBefore);
-dayjs.extend(isSameOrAfter);
+dayjs.locale('zh-cn');
 
 const props = defineProps({
   plans: {
@@ -143,65 +58,78 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['start-learning', 'view-details', 'adjust-plan']);
+const emit = defineEmits(['view-details']);
 
-const activeView = ref('today');
-const collapsedSections = ref({
-  today: false,
-  tomorrow: false,
-  thisWeek: false
-});
+const collapsedSections = ref({});
 
-// 所有计划
-const allPlans = computed(() => props.plans);
-
-// 时间轴数据分组
-const timelineData = computed(() => {
+/** 计划归属日期：进行中且已开始于过去的计划归入今天 */
+function getPlanAnchorDate(plan) {
   const today = dayjs().startOf('day');
-  const tomorrow = dayjs().add(1, 'day').startOf('day');
-  const weekEnd = dayjs().endOf('week');
-  
-  return {
-    today: props.plans.filter(plan => 
-      dayjs(plan.startTime).isSame(today, 'day') || 
-      (plan.planStatus === 'in_progress' && dayjs(plan.startTime).isBefore(today))
-    ),
-    tomorrow: props.plans.filter(plan => 
-      dayjs(plan.startTime).isSame(tomorrow, 'day')
-    ),
-    thisWeek: props.plans.filter(plan => {
-      const planDate = dayjs(plan.startTime);
-      return planDate.isAfter(tomorrow) && planDate.isSameOrBefore(weekEnd);
-    })
-  };
+  const start = dayjs(plan.startTime).startOf('day');
+
+  if (plan.planStatus === 'in_progress' && start.isBefore(today)) {
+    return today;
+  }
+  return start;
+}
+
+const timelineSections = computed(() => {
+  const today = dayjs().startOf('day');
+  const tomorrow = today.add(1, 'day');
+  const todayKey = today.format('YYYY-MM-DD');
+  const tomorrowKey = tomorrow.format('YYYY-MM-DD');
+  const groupMap = new Map();
+
+  props.plans.forEach((plan) => {
+    const anchor = getPlanAnchorDate(plan);
+    const key = anchor.format('YYYY-MM-DD');
+    if (!groupMap.has(key)) {
+      groupMap.set(key, []);
+    }
+    groupMap.get(key).push(plan);
+  });
+
+  // 固定「今天」「明天」两个日历分组，之后仅展示有计划的更晚日期
+  const laterKeys = Array.from(groupMap.keys())
+    .filter((key) => key > tomorrowKey)
+    .sort();
+
+  const sectionKeys = [todayKey, tomorrowKey, ...laterKeys];
+
+  return sectionKeys.map((key) => {
+    const date = dayjs(key);
+    const isToday = key === todayKey;
+    const isTomorrow = key === tomorrowKey;
+    const plans = (groupMap.get(key) || [])
+      .slice()
+      .sort((a, b) => dayjs(a.startTime).valueOf() - dayjs(b.startTime).valueOf());
+
+    let label = date.format('MM-DD (ddd)');
+    if (isToday) label = '今天';
+    let emptyText = `${date.format('MM-DD')} 暂无学习任务`;
+    if (isToday) emptyText = '今天暂无学习任务';
+    else if (isTomorrow) emptyText = '明天暂无学习任务';
+
+    return {
+      key,
+      isToday,
+      label,
+      plans,
+      emptyText
+    };
+  });
 });
 
-// 切换折叠状态
-function toggleSection(section) {
-  collapsedSections.value[section] = !collapsedSections.value[section];
+function isSectionCollapsed(key) {
+  return collapsedSections.value[key] === true;
 }
 
-// 格式化日期
-function formatDate(date) {
-  return dayjs(date).format('YYYY-MM-DD (ddd)');
-}
-
-// 获取明天日期
-function getTomorrow() {
-  return dayjs().add(1, 'day').toDate();
-}
-
-// 事件处理
-function handleStartLearning(plan) {
-  emit('start-learning', plan);
+function toggleSection(key) {
+  collapsedSections.value[key] = !collapsedSections.value[key];
 }
 
 function handleViewDetails(plan) {
   emit('view-details', plan);
-}
-
-function handleAdjustPlan(plan) {
-  emit('adjust-plan', plan);
 }
 </script>
 
@@ -210,27 +138,6 @@ function handleAdjustPlan(plan) {
   background: white;
   border-radius: 8px;
   padding: 20px;
-}
-
-.timeline-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #f0f0f0;
-}
-
-.timeline-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
-}
-
-.view-tabs {
-  display: flex;
-  gap: 8px;
 }
 
 .timeline-content {
@@ -301,22 +208,5 @@ function handleAdjustPlan(plan) {
 .section-content-leave-to {
   opacity: 0;
   transform: translateY(-10px);
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .timeline-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  
-  .view-tabs {
-    width: 100%;
-  }
-  
-  .view-tabs :deep(.el-button) {
-    flex: 1;
-  }
 }
 </style>

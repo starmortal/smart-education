@@ -1,5 +1,5 @@
 <template>
-  <div class="plan-card-enhanced" :class="urgencyClass">
+  <div class="plan-card-enhanced" :class="urgencyClass" @click="handleViewDetails">
     <div class="card-header">
       <div class="header-left">
         <span class="urgency-icon">{{ urgencyIcon }}</span>
@@ -41,93 +41,14 @@
         </span>
       </div>
 
-      <!-- AI建议区域 -->
-      <div v-if="showAISuggestion" class="ai-suggestion">
-        <div class="suggestion-header" @click="toggleAISuggestion">
-          <span class="suggestion-title">🤖 AI建议</span>
-          <el-icon :class="{ rotated: aiSuggestionExpanded }">
-            <ArrowDown />
-          </el-icon>
-        </div>
-        
-        <transition name="suggestion-content">
-          <div v-show="aiSuggestionExpanded" class="suggestion-content" v-loading="loadingAI">
-            <div v-if="aiSuggestion" class="suggestion-list">
-              <div class="suggestion-item">
-                <el-icon color="#409eff"><Target /></el-icon>
-                <span>{{ aiSuggestion.todayGoal || '今日目标：完成30%进度' }}</span>
-              </div>
-              <div class="suggestion-item">
-                <el-icon color="#67c23a"><Clock /></el-icon>
-                <span>{{ aiSuggestion.estimatedTime || '预计用时：2小时' }}</span>
-              </div>
-              <div class="suggestion-item">
-                <el-icon color="#e6a23c"><Document /></el-icon>
-                <span>{{ aiSuggestion.resources || '学习资源：已准备3个视频教程' }}</span>
-              </div>
-              <div class="suggestion-item">
-                <el-icon color="#f56c6c"><Timer /></el-icon>
-                <span>{{ aiSuggestion.bestTimeSlot || '最佳时段：19:00-21:00' }}</span>
-              </div>
-            </div>
-          </div>
-        </transition>
-      </div>
-    </div>
-
-    <div class="card-footer">
-      <el-button 
-        v-if="plan.planStatus === 'not_started'"
-        type="primary" 
-        size="small"
-        :icon="VideoPlay"
-        @click="handleStartLearning"
-      >
-        开始学习
-      </el-button>
-      <el-button 
-        v-else-if="plan.planStatus === 'in_progress'"
-        type="success" 
-        size="small"
-        :icon="VideoPlay"
-        @click="handleStartLearning"
-      >
-        继续学习
-      </el-button>
-      <el-button 
-        v-else
-        type="info" 
-        size="small"
-        :icon="Check"
-        disabled
-      >
-        已完成
-      </el-button>
-      
-      <el-button size="small" :icon="Document" @click="handleViewDetails">
-        查看详情
-      </el-button>
-      <el-button size="small" :icon="Edit" @click="handleAdjustPlan">
-        调整计划
-      </el-button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { 
-  Clock, 
-  ArrowDown, 
-  Target, 
-  Document, 
-  Timer, 
-  VideoPlay, 
-  Check, 
-  Edit 
-} from '@element-plus/icons-vue';
+import { computed } from 'vue';
+import { Clock } from '@element-plus/icons-vue';
 import dayjs from 'dayjs';
-import axios from 'axios';
 
 const props = defineProps({
   plan: {
@@ -136,11 +57,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['start-learning', 'view-details', 'adjust-plan']);
-
-const aiSuggestionExpanded = ref(false);
-const loadingAI = ref(false);
-const aiSuggestion = ref(null);
+const emit = defineEmits(['view-details']);
 
 // 紧急程度
 const urgencyLevel = computed(() => {
@@ -197,57 +114,6 @@ const statusTagType = computed(() => {
   return statusMap[props.plan.planStatus] || 'info';
 });
 
-// 是否显示AI建议
-const showAISuggestion = computed(() => {
-  return props.plan.planStatus !== 'completed';
-});
-
-// 切换AI建议展开状态
-function toggleAISuggestion() {
-  aiSuggestionExpanded.value = !aiSuggestionExpanded.value;
-  if (aiSuggestionExpanded.value && !aiSuggestion.value) {
-    fetchAISuggestion();
-  }
-}
-
-// 获取AI建议
-async function fetchAISuggestion() {
-  loadingAI.value = true;
-  
-  try {
-    const response = await axios.post('http://localhost:3001/api/ai/text-answer', {
-      prompt: `学习计划：${props.plan.planTitle}，当前进度：${props.plan.progress}%，剩余时间：${remainingDays.value}天。请简短给出：1.今日目标 2.预计时长 3.学习资源建议 4.最佳学习时段。每项不超过15字。`
-    });
-    
-    const answer = response.data?.data?.answer || '';
-    // 解析AI回复
-    aiSuggestion.value = parseAIResponse(answer);
-    
-  } catch (error) {
-    console.error('获取AI建议失败：', error);
-    // 降级方案
-    aiSuggestion.value = {
-      todayGoal: `今日目标：完成${Math.min(30, 100 - props.plan.progress)}%进度`,
-      estimatedTime: '预计用时：2小时',
-      resources: '学习资源：已准备相关教程',
-      bestTimeSlot: '最佳时段：根据您的习惯安排'
-    };
-  } finally {
-    loadingAI.value = false;
-  }
-}
-
-// 解析AI回复
-function parseAIResponse(answer) {
-  // 简单解析，实际可以更复杂
-  return {
-    todayGoal: answer.split('\n')[0] || '今日目标：稳步推进',
-    estimatedTime: answer.split('\n')[1] || '预计用时：2小时',
-    resources: answer.split('\n')[2] || '学习资源：已准备',
-    bestTimeSlot: answer.split('\n')[3] || '最佳时段：灵活安排'
-  };
-}
-
 // 格式化时间范围
 function formatTimeRange(start, end) {
   return `${dayjs(start).format('MM-DD')} 至 ${dayjs(end).format('MM-DD')}`;
@@ -270,16 +136,8 @@ function getSubjectText(subject) {
 }
 
 // 事件处理
-function handleStartLearning() {
-  emit('start-learning', props.plan);
-}
-
 function handleViewDetails() {
   emit('view-details', props.plan);
-}
-
-function handleAdjustPlan() {
-  emit('adjust-plan', props.plan);
 }
 </script>
 
@@ -291,6 +149,7 @@ function handleAdjustPlan() {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   border-left: 4px solid #409eff;
+  cursor: pointer;
 }
 
 .plan-card-enhanced:hover {
@@ -398,80 +257,6 @@ function handleAdjustPlan() {
   color: #f56c6c;
 }
 
-.ai-suggestion {
-  background: #f5f7fa;
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 12px;
-}
-
-.suggestion-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-.suggestion-header:hover {
-  opacity: 0.8;
-}
-
-.suggestion-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-}
-
-.suggestion-header .el-icon {
-  transition: transform 0.3s ease;
-  color: #409eff;
-}
-
-.suggestion-header .el-icon.rotated {
-  transform: rotate(180deg);
-}
-
-.suggestion-content {
-  margin-top: 12px;
-}
-
-.suggestion-content-enter-active,
-.suggestion-content-leave-active {
-  transition: all 0.3s ease;
-}
-
-.suggestion-content-enter-from,
-.suggestion-content-leave-to {
-  opacity: 0;
-  max-height: 0;
-}
-
-.suggestion-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.suggestion-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #666;
-}
-
-.card-footer {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.card-footer :deep(.el-button) {
-  flex: 1;
-  min-width: 80px;
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .header-left {
@@ -481,14 +266,6 @@ function handleAdjustPlan() {
   .plan-title {
     width: 100%;
     margin-top: 4px;
-  }
-  
-  .card-footer {
-    flex-direction: column;
-  }
-  
-  .card-footer :deep(.el-button) {
-    width: 100%;
   }
 }
 </style>

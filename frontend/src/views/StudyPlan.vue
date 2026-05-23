@@ -109,102 +109,14 @@
             @click="toggleSidebar"
           />
           <span class="file-name">我的计划</span>
-          <div class="header-spacer"></div>
-          <el-button 
-            :icon="viewMode === 'timeline' ? DataAnalysis : Calendar" 
-            circle 
-            size="small"
-            @click="toggleViewMode"
-            :title="viewMode === 'timeline' ? '切换到卡片视图' : '切换到时间轴视图'"
-          />
         </div>
         
-        <!-- AI助手面板 -->
-        <AIAssistantPanel
-          v-if="viewMode === 'timeline'"
-          :userId="userId"
-          :todayPlans="todayPlans"
-          @start-learning="handleStartLearning"
-          @view-details="handlePlanDetail"
-          @adjust-plan="handleAdjustPlan"
-        />
-        
         <!-- 时间轴视图 -->
-        <TimelineView
-          v-if="viewMode === 'timeline'"
-          :plans="planList"
-          @start-learning="handleStartLearning"
-          @view-details="handlePlanDetail"
-          @adjust-plan="handleEditPlan"
-        />
-        
-        <!-- 原有的卡片视图 -->
-        <div v-else class="plan-list" v-loading="loading">
-          <el-pagination
-            v-if="planList.length > pageSize"
-            v-model:current-page="currentPage"
-            :page-size="pageSize"
-            :total="totalCount"
-            layout="prev, pager, next"
-            small
-            @current-change="handleCurrentPageChange"
-            style="margin-bottom: 20px; text-align: center;"
+        <div class="plan-timeline-wrapper" v-loading="loading">
+          <TimelineView
+            :plans="planList"
+            @view-details="handlePlanDetail"
           />
-          
-          <div class="plan-grid">
-            <div 
-              v-for="(plan, index) in paginatedPlans" 
-              :key="plan.id"
-              class="plan-card"
-              :style="{ background: getCardColor(index) }"
-              @click="handlePlanDetail(plan)"
-            >
-              <div class="card-content">
-                <div class="card-header-row">
-                  <div class="card-status-row">
-                    <div 
-                      class="card-checkbox" 
-                      @click.stop="togglePlanCompletion(plan)"
-                      :class="{ completed: plan.planStatus === 'completed' }"
-                    >
-                      <el-icon v-if="plan.planStatus === 'completed'" size="14" color="#fff">
-                        <Check />
-                      </el-icon>
-                    </div>
-                    <div class="card-status">
-                      {{ getStatusText(plan.planStatus) }}
-                    </div>
-                  </div>
-                  <div class="card-subject">
-                    {{ getSubjectText(plan.subject) }}
-                  </div>
-                </div>
-                
-                <div class="card-title">{{ plan.planTitle }}</div>
-                
-                <div class="card-progress">
-                  <el-progress
-                    :percentage="plan.progress"
-                    :stroke-width="8"
-                    :color="getProgressColor(plan.progress)"
-                    :show-text="false"
-                  />
-                  <span class="progress-text">{{ plan.progress }}%</span>
-                </div>
-                
-                <div class="card-footer">
-                  <div class="card-time">
-                    {{ formatDateTime(plan.endTime) }}
-                  </div>
-                  <div class="card-edit-btn" @click.stop="handleEditPlan(plan)" title="编辑计划">
-                    <el-icon><Edit /></el-icon>
-                    <span>编辑</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
           <el-empty v-if="planList.length === 0 && !loading" description="暂无学习计划" />
         </div>
       </div>
@@ -425,6 +337,9 @@
           <div class="detail-content-box">{{ currentPlanDetail.description }}</div>
         </div>
       </div>
+      <template #footer>
+        <el-button @click="showPlanDetailDialog = false">关闭</el-button>
+      </template>
     </el-dialog>
 
     <!-- ================= 8. 管理计划对话框 ================= -->
@@ -511,14 +426,12 @@
 import { ref, reactive, onMounted, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { Plus, Refresh, Filter, Calendar, Clock, Check, DataAnalysis, Edit, Setting, Delete, DArrowLeft, DArrowRight } from "@element-plus/icons-vue";
+import { Plus, Calendar, Edit, Setting, Delete, DArrowLeft, DArrowRight } from "@element-plus/icons-vue";
 import SideNavBar from '@/components/SideNavBar.vue';
 // 【新增】引入 axios，对接后端接口
 import axios from "axios";
 // 【新增】引入用户科目工具
 import { getUserSubjects, generateSubjectOptions, hasUserSubjects, getSubjectCode } from "@/utils/userSubjects";
-// 【v3.4.0新增】引入新组件
-import AIAssistantPanel from '@/components/plan/AIAssistantPanel.vue';
 import TimelineView from '@/components/plan/TimelineView.vue';
 import dayjs from 'dayjs';
 
@@ -529,10 +442,6 @@ const showPlanDialog = ref(false);
 const isEdit = ref(false);
 const planFormRef = ref(null);
 const sidebarCollapsed = ref(false);
-
-// 【v3.4.0新增】视图模式切换
-const viewMode = ref('timeline'); // 'timeline' 或 'card'
-const userId = ref(localStorage.getItem("edu-user-id") || "default-user");
 
 // 查看计划详情
 const showPlanDetailDialog = ref(false);
@@ -546,7 +455,7 @@ const isPlanIndeterminate = ref(false);
 
 /* 分页 */
 const currentPage = ref(1);
-const pageSize = ref(8); // 每页显示8条计划（4列2行）
+const pageSize = ref(9999); // 时间轴展示全部计划
 const totalCount = ref(0);
 
 const showFilterDialog = ref(false);
@@ -584,27 +493,6 @@ const planList = ref([]);
 const userSubjects = ref([]);
 const subjectOptions = computed(() => generateSubjectOptions(userSubjects.value));
 
-// 【v3.4.0新增】今日计划
-const todayPlans = computed(() => {
-  const today = dayjs().startOf('day');
-  return planList.value.filter(plan => 
-    dayjs(plan.startTime).isSame(today, 'day') || 
-    (plan.planStatus === 'in_progress' && dayjs(plan.startTime).isBefore(today))
-  );
-});
-
-// 彩色背景色数组
-const cardColors = [
-  'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-  'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-  'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-  'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-  'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-  'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
-  'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'
-];
-
 // 【新增】全局统计数据（不受筛选影响）
 const globalStats = ref({
   totalCount: 0,
@@ -627,24 +515,12 @@ const completedCount = computed(() => {
 // 【删除原有的状态统计计算，现在使用全局统计】
 // 原来的 statusStats computed 已被 globalStats.statusStats 替代
 
-// 分页后的计划列表
-const paginatedPlans = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value;
-  const end = start + pageSize.value;
-  return planList.value.slice(start, end);
-});
-
 // 切换侧边栏
 function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value;
 }
 
-// 【v3.4.0新增】切换视图模式
-function toggleViewMode() {
-  viewMode.value = viewMode.value === 'timeline' ? 'card' : 'timeline';
-}
-
-// 【v3.4.0新增】开始学习
+// 开始学习
 function handleStartLearning(plan) {
   if (!plan) {
     ElMessage.warning('请选择要学习的计划');
@@ -660,16 +536,7 @@ function handleStartLearning(plan) {
   // 这里可以跳转到学习页面或打开学习对话框
 }
 
-// 【v3.4.0新增】调整计划
-function handleAdjustPlan(plan) {
-  if (plan) {
-    handleEditPlan(plan);
-  } else {
-    ElMessage.info('请选择要调整的计划');
-  }
-}
-
-// 【v3.4.0新增】更新计划状态
+// 更新计划状态
 async function updatePlanStatus(planId, status) {
   try {
     await axios.put(
@@ -719,10 +586,6 @@ function getSubjectCount(subjectName) {
 }
 
 // 获取卡片颜色
-function getCardColor(index) {
-  return cardColors[index % cardColors.length];
-}
-
 // 获取科目文本
 function getSubjectText(subject) {
   const map = {
@@ -888,13 +751,6 @@ function resetFilter() {
 function refreshPlanList() {
   loadPlanList();
   ElMessage.info("已刷新");
-}
-function handlePageSizeChange(size) {
-  pageSize.value = size;
-  loadPlanList();
-}
-function handleCurrentPageChange(page) {
-  currentPage.value = page;
 }
 function handlePlanDetail(row) {
   // 点击卡片只显示内容详情
@@ -1432,15 +1288,13 @@ function formatDateTime(dateStr) {
   flex: 1;
 }
 
-/* 计划列表 */
-.plan-list {
-  display: flex;
-  flex-direction: column;
+/* 时间轴列表区域 */
+.plan-timeline-wrapper {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
   padding: 20px;
-  background: #fff;
+  background: #f9fafb;
 }
 
 /* 计划网格布局（2行4列，每个占1/8） */
