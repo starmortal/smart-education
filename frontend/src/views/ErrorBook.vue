@@ -735,13 +735,15 @@ async function loadGlobalStats() {
       { timeout: 10000 }
     );
     
-    if (res.data) {
+    // 修复：axios响应数据在 res.data.data 中
+    const statsData = res.data?.data || res.data;
+    if (statsData) {
       globalStats.value = {
-        totalCount: res.data.totalCount || 0,
-        unmasteredCount: res.data.unmasteredCount || 0,
-        masteringCount: res.data.masteringCount || 0,
-        masteredCount: res.data.masteredCount || 0,
-        subjectStats: res.data.subjectStats || {}
+        totalCount: statsData.totalCount || 0,
+        unmasteredCount: statsData.unmasteredCount || 0,
+        masteringCount: statsData.masteringCount || 0,
+        masteredCount: statsData.masteredCount || 0,
+        subjectStats: statsData.subjectStats || {}
       };
     }
   } catch (error) {
@@ -771,7 +773,9 @@ async function loadErrorListForStats() {
       }
     );
     
-    const allErrors = res.data?.errorQuestions || [];
+    // 修复：axios响应数据在 res.data.data 中
+    const listData = res.data?.data || res.data;
+    const allErrors = listData?.errorQuestions || [];
     globalStats.value = {
       totalCount: allErrors.length,
       unmasteredCount: allErrors.filter(e => e.masteryStatus === 'unmastered').length,
@@ -810,8 +814,10 @@ async function loadErrorList() {
         timeout: 10000,
       }
     );
-    errorList.value = res.data?.errorQuestions || [];
-    totalCount.value = res.data?.count || 0;
+    // 修复：axios响应数据在 res.data.data 中
+    const listData = res.data?.data || res.data;
+    errorList.value = listData?.errorQuestions || [];
+    totalCount.value = listData?.count || 0;
   } catch (error) {
     console.error("获取错题列表失败：", error);
     ElMessage.error(
