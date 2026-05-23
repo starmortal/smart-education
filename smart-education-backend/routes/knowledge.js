@@ -10,7 +10,9 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+    // 使用 Buffer 处理中文文件名，避免乱码
+    const originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    cb(null, uniqueSuffix + path.extname(originalname));
   }
 });
 
@@ -18,6 +20,9 @@ const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
+    // 修复中文文件名乱码
+    file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    
     const allowedTypes = [
       'text/plain',
       'text/markdown',

@@ -111,14 +111,19 @@
             <el-table-column label="操作" width="100" fixed="right">
               <template #default="{ row }">
                 <el-button
+                  type="primary"
+                  size="small"
+                  :icon="Refresh"
+                  @click="handleRefreshFile(row)"
+                  link
+                />
+                <el-button
                   type="danger"
                   size="small"
                   :icon="Delete"
                   @click="handleDeleteFile(row)"
                   link
-                >
-                  删除
-                </el-button>
+                />
               </template>
             </el-table-column>
           </el-table>
@@ -222,11 +227,15 @@
       </el-input>
 
       <div v-if="searchResults.length > 0" class="search-results">
-        <div v-for="(result, index) in searchResults" :key="index" class="result-item">
+        <div v-for="file in searchResults" :key="file._id" class="result-item">
           <div class="result-header">
-            <span class="result-score">相似度: {{ (result.score * 100).toFixed(2) }}%</span>
+            <el-tag :type="getTypeTagType(file.type)" size="small">
+              {{ getTypeLabel(file.type) }}
+            </el-tag>
+            <span class="result-status">{{ getStatusLabel(file.status) }}</span>
           </div>
-          <div class="result-content">{{ result.text }}</div>
+          <div class="result-name">{{ file.name }}</div>
+          <div class="result-time">{{ formatDate(file.createdAt) }}</div>
         </div>
       </div>
 
@@ -260,7 +269,8 @@ import {
   Search,
   Delete,
   DArrowLeft,
-  DArrowRight
+  DArrowRight,
+  Refresh
 } from '@element-plus/icons-vue';
 import { MdEditor } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
@@ -555,6 +565,16 @@ const handleDeleteFile = async (file) => {
   }
 };
 
+const handleRefreshFile = async (file) => {
+  try {
+    await loadFiles(currentKnowledge.value._id);
+    ElMessage.success('状态已刷新');
+  } catch (error) {
+    console.error('刷新失败:', error);
+    ElMessage.error('刷新失败');
+  }
+};
+
 const handleSearch = () => {
   searchQuery.value = '';
   searchResults.value = [];
@@ -830,22 +850,37 @@ const formatDate = (date) => {
   border: 1px solid #e4e7ed;
   border-radius: 8px;
   background: #f5f7fa;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.result-item:hover {
+  background: #e8f4ff;
+  border-color: #409eff;
 }
 
 .result-header {
   margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.result-score {
+.result-status {
   font-size: 12px;
-  color: #0969da;
-  font-weight: 500;
+  color: #909399;
 }
 
-.result-content {
+.result-name {
   font-size: 14px;
-  color: #333;
-  line-height: 1.6;
+  color: #303133;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.result-time {
+  font-size: 12px;
+  color: #909399;
 }
 
 .no-results {

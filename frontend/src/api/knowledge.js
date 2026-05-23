@@ -42,6 +42,6 @@ export const deleteFile = (fileId) => {
   return request.delete(`/api/knowledge/files/${fileId}`);
 };
 
-export const searchKnowledge = (knowledgeId, query, topK = 5) => {
-  return request.post(`/api/knowledge/${knowledgeId}/search`, { query, topK });
+export const searchKnowledge = (knowledgeId, query) => {
+  return request.post(`/api/knowledge/${knowledgeId}/search`, { query });
 };

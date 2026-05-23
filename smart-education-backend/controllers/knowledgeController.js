@@ -123,6 +123,7 @@ exports.addFile = async (req, res) => {
       return Response.notFound(res, '知识库不存在');
     }
     
+    // 文件名已在 multer 中处理过编码，直接使用
     const knowledgeFile = new KnowledgeFile({
       knowledgeId,
       name: file.originalname,
@@ -249,37 +250,19 @@ exports.deleteFile = async (req, res) => {
 exports.searchKnowledge = async (req, res) => {
   try {
     const { knowledgeId } = req.params;
-    const { query, topK = 5 } = req.body;
+    const { query } = req.body;
     
     if (!query) {
       return Response.badRequest(res, '缺少查询参数');
     }
     
+    // 只搜索文件名，不搜索向量内容
     const files = await KnowledgeFile.find({ 
-      knowledgeId, 
-      status: 'completed' 
-    });
+      knowledgeId,
+      name: { $regex: query, $options: 'i' } // 不区分大小写的正则搜索
+    }).sort({ createdAt: -1 });
     
-    if (files.length === 0) {
-      return Response.success(res, [], '知识库为空');
-    }
-    
-    const queryEmbedding = await Vectorizer.generateEmbedding(query);
-    
-    const allVectors = [];
-    files.forEach(file => {
-      file.vectors.forEach(vector => {
-        allVectors.push({
-          ...vector.toObject(),
-          fileName: file.name,
-          fileId: file._id
-        });
-      });
-    });
-    
-    const results = await Vectorizer.searchSimilar(queryEmbedding, allVectors, topK);
-    
-    Response.success(res, results, '搜索成功');
+    Response.success(res, files, '搜索成功');
   } catch (error) {
     logger.error('搜索知识库失败:', error);
     Response.error(res, '搜索知识库失败', 500);
