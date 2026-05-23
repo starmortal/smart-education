@@ -73,11 +73,34 @@
       
       <!-- 复习日历（移到左侧下方） -->
       <div class="sidebar-calendar">
-        <ReviewCalendar
-          :userId="userId"
-          @day-click="handleDayClick"
-          @data-loaded="handleCalendarDataLoaded"
-        />
+        <div class="calendar-compact">
+          <div class="calendar-compact-header">
+            <el-button :icon="DArrowLeft" circle size="small" @click="prevYear" />
+            <el-button :icon="ArrowLeft" circle size="small" @click="prevMonth" />
+            <span class="calendar-compact-title">{{ currentMonthTitle }}</span>
+            <el-button :icon="ArrowRight" circle size="small" @click="nextMonth" />
+            <el-button :icon="DArrowRight" circle size="small" @click="nextYear" />
+          </div>
+          
+          <el-calendar v-model="calendarValue" class="compact-calendar">
+            <template #date-cell="{ data }">
+              <div 
+                class="calendar-day-cell"
+                :class="{ 
+                  'has-errors': getErrorCount(data.day) > 0,
+                  'is-today': isToday(data.day),
+                  'is-selected': isSelected(data.day)
+                }"
+                @click="handleCalendarDayClick(data.day)"
+              >
+                <div class="day-number">{{ data.day.split('-')[2] }}</div>
+                <div v-if="getErrorCount(data.day) > 0" class="error-count-badge">
+                  {{ getErrorCount(data.day) }}
+                </div>
+              </div>
+            </template>
+          </el-calendar>
+        </div>
       </div>
     </div>
 
@@ -552,14 +575,13 @@
 import { ref, reactive, onMounted, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { Plus, Refresh, Filter, Notebook, Warning, Clock, Check, DataAnalysis, Edit, Setting, Delete, Reading, DArrowLeft, DArrowRight } from "@element-plus/icons-vue";
+import { Plus, Refresh, Filter, Notebook, Warning, Clock, Check, DataAnalysis, Edit, Setting, Delete, Reading, DArrowLeft, DArrowRight, ArrowLeft, ArrowRight } from "@element-plus/icons-vue";
 import SideNavBar from '@/components/SideNavBar.vue';
 // 【新增】引入 axios，对接后端接口
 import axios from "axios";
 // 【新增】引入用户科目工具
 import { getUserSubjects, generateSubjectOptions, hasUserSubjects, getSubjectCode } from "@/utils/userSubjects";
 // 【v3.4.0新增】引入新组件
-import ReviewCalendar from '@/components/error/ReviewCalendar.vue';
 import dayjs from 'dayjs';
 
 /* ============== 基础变量（与上一版完全一致） ============== */
@@ -576,6 +598,16 @@ const userId = ref(localStorage.getItem("edu-user-id") || "default-user");
 
 // 【新增】选中的日期
 const selectedDate = ref('');
+
+// 【新增】日历相关
+const calendarValue = ref(new Date());
+const currentMonth = ref(dayjs());
+const errorCountByDate = ref({});
+
+// 【新增】当前月份标题
+const currentMonthTitle = computed(() => {
+  return currentMonth.value.format('YYYY年MM月');
+});
 
 // 【新增】选中日期的标题
 const selectedDateTitle = computed(() => {
@@ -739,6 +771,95 @@ function handleDayClick(day) {
   ElMessage.info(`查看 ${day.date} 的错题`);
 }
 
+// 【新增】日历相关函数
+function prevYear() {
+  currentMonth.value = currentMonth.value.subtract(1, 'year');
+  calendarValue.value = currentMonth.value.toDate();
+  loadErrorCountByDate();
+}
+
+function nextYear() {
+  currentMonth.value = currentMonth.value.add(1, 'year');
+  calendarValue.value = currentMonth.value.toDate();
+  loadErrorCountByDate();
+}
+
+function prevMonth() {
+  currentMonth.value = currentMonth.value.subtract(1, 'month');
+  calendarValue.value = currentMonth.value.toDate();
+  loadErrorCountByDate();
+}
+
+function nextMonth() {
+  currentMonth.value = currentMonth.value.add(1, 'month');
+  calendarValue.value = currentMonth.value.toDate();
+  loadErrorCountByDate();
+}
+
+function handleCalendarDayClick(day) {
+  const dateStr = dayjs(day).format('YYYY-MM-DD');
+  selectedDate.value = dateStr;
+  currentPage.value = 1;
+  ElMessage.info(`查看 ${dateStr} 的错题`);
+}
+
+function getErrorCount(day) {
+  const dateStr = dayjs(day).format('YYYY-MM-DD');
+  return errorCountByDate.value[dateStr] || 0;
+}
+
+function isToday(day) {
+  return dayjs(day).isSame(dayjs(), 'day');
+}
+
+function isSelected(day) {
+  if (!selectedDate.value) return false;
+  return dayjs(day).format('YYYY-MM-DD') === selectedDate.value;
+}
+
+// 【新增】加载每天的错题数量
+async function loadErrorCountByDate() {
+  try {
+    const userId = localStorage.getItem("edu-user-id") || "default-user";
+    const year = currentMonth.value.year();
+    const month = currentMonth.value.month() + 1;
+    
+    const response = await axios.get(
+      `http://localhost:3001/api/error-book/calendar/${userId}`,
+      {
+        params: { year, month },
+        timeout: 10000
+      }
+    );
+    
+    const data = response.data?.data || response.data;
+    const dates = data?.dates || [];
+    
+    // 转换为对象格式 { 'YYYY-MM-DD': count }
+    const countMap = {};
+    dates.forEach(item => {
+      countMap[item.date] = item.count || 0;
+    });
+    
+    errorCountByDate.value = countMap;
+    
+  } catch (error) {
+    console.error('获取日历数据失败：', error);
+    // 降级方案：从当前错题列表计算
+    calculateErrorCountFromList();
+  }
+}
+
+// 【新增】从错题列表计算每天的数量（降级方案）
+function calculateErrorCountFromList() {
+  const countMap = {};
+  errorList.value.forEach(error => {
+    const dateStr = dayjs(error.addTime).format('YYYY-MM-DD');
+    countMap[dateStr] = (countMap[dateStr] || 0) + 1;
+  });
+  errorCountByDate.value = countMap;
+}
+
 // 【新增】清除日期筛选
 function clearDateFilter() {
   selectedDate.value = '';
@@ -772,6 +893,11 @@ function getSubjectTagType(subject) {
 function handleCalendarDataLoaded(data) {
   console.log('日历数据加载完成:', data);
 }
+
+// 【新增】监听错题列表变化，更新日历数据
+watch(() => errorList.value, () => {
+  calculateErrorCountFromList();
+}, { deep: true });
 
 // 【v3.4.0新增】开始复习
 function handleStartReview(error) {
@@ -897,6 +1023,8 @@ onMounted(async () => {
   userSubjects.value = await getUserSubjects();
   // 加载全局统计数据
   await loadGlobalStats();
+  // 加载日历数据
+  await loadErrorCountByDate();
   // 再加载错题列表
   loadErrorList();
 });
@@ -1451,7 +1579,6 @@ async function batchDeleteErrors() {
   padding: 12px;
   background: #fafafa;
   border-top: 1px solid #e4e7ed;
-  max-height: 400px;
   overflow-y: auto;
 }
 
@@ -1464,44 +1591,161 @@ async function batchDeleteErrors() {
   border-radius: 2px;
 }
 
-/* 调整日历组件在侧边栏中的样式 */
-.sidebar-calendar :deep(.review-calendar) {
-  padding: 0;
-  box-shadow: none;
-  background: transparent;
+/* 紧凑日历样式 */
+.calendar-compact {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.sidebar-calendar :deep(.calendar-header) {
+.calendar-compact-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 12px;
-  padding-bottom: 12px;
-}
-
-.sidebar-calendar :deep(.calendar-title) {
-  font-size: 14px;
-}
-
-.sidebar-calendar :deep(.month-view) {
-  width: 100%;
-}
-
-.sidebar-calendar :deep(.month-grid) {
   gap: 4px;
 }
 
-.sidebar-calendar :deep(.month-day) {
+.calendar-compact-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+  flex: 1;
+  text-align: center;
+}
+
+.calendar-compact-header :deep(.el-button) {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+/* Element Plus 日历组件样式覆盖 */
+.compact-calendar {
+  width: 100%;
+}
+
+.compact-calendar :deep(.el-calendar__header) {
+  display: none;
+}
+
+.compact-calendar :deep(.el-calendar__body) {
+  padding: 0;
+}
+
+.compact-calendar :deep(.el-calendar-table) {
+  width: 100%;
+}
+
+.compact-calendar :deep(.el-calendar-table thead th) {
+  padding: 4px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-align: center;
+}
+
+.compact-calendar :deep(.el-calendar-table td) {
+  padding: 0;
+  border: none;
+}
+
+.compact-calendar :deep(.el-calendar-table td.is-selected) {
+  background: transparent;
+}
+
+.compact-calendar :deep(.el-calendar-day) {
+  padding: 0;
+  height: auto;
+  min-height: auto;
+}
+
+/* 日历单元格 */
+.calendar-day-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  position: relative;
   padding: 4px;
-  font-size: 12px;
+  margin: 2px;
 }
 
-.sidebar-calendar :deep(.day-number) {
-  font-size: 12px;
+.calendar-day-cell:hover {
+  background: #e8f4ff;
+  transform: scale(1.05);
 }
 
-.sidebar-calendar :deep(.indicator-dot) {
-  min-width: 16px;
-  height: 16px;
-  line-height: 16px;
-  font-size: 9px;
+.calendar-day-cell.is-today {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+}
+
+.calendar-day-cell.is-today .day-number {
+  color: white;
+  font-weight: 600;
+}
+
+.calendar-day-cell.is-selected {
+  background: #4facfe;
+  color: white;
+}
+
+.calendar-day-cell.is-selected .day-number {
+  color: white;
+  font-weight: 600;
+}
+
+.calendar-day-cell.has-errors {
+  background: #fff9e6;
+}
+
+.calendar-day-cell.has-errors:hover {
+  background: #ffe6b3;
+}
+
+.day-number {
+  font-size: 12px;
+  font-weight: 500;
+  color: #333;
+  line-height: 1;
+}
+
+.error-count-badge {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  line-height: 14px;
+  background: #f56c6c;
+  color: white;
+  border-radius: 7px;
+  font-size: 10px;
+  padding: 0 3px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.calendar-day-cell.is-today .error-count-badge,
+.calendar-day-cell.is-selected .error-count-badge {
+  background: white;
+  color: #4facfe;
+}
+
+/* 其他月份的日期 */
+.compact-calendar :deep(.el-calendar-table td.is-today) {
+  color: inherit;
+}
+
+.compact-calendar :deep(.el-calendar-table .el-calendar-day:hover) {
+  background: transparent;
 }
 
 /* 右侧：错题列表 */
