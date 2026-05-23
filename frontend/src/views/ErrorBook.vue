@@ -70,6 +70,15 @@
           />
         </div>
       </div>
+      
+      <!-- 复习日历（移到左侧下方） -->
+      <div class="sidebar-calendar">
+        <ReviewCalendar
+          :userId="userId"
+          @day-click="handleDayClick"
+          @data-loaded="handleCalendarDataLoaded"
+        />
+      </div>
     </div>
 
     <!-- 右侧：错题列表 -->
@@ -83,71 +92,93 @@
             size="small"
             @click="toggleSidebar"
           />
-          <span class="file-name">我的错题</span>
+          <span class="file-name">{{ selectedDateTitle }}</span>
           <div class="header-spacer"></div>
           <el-button 
-            v-if="showKnowledgeGraph"
-            :icon="DataAnalysis" 
-            circle 
+            v-if="selectedDate"
+            @click="clearDateFilter"
             size="small"
-            @click="showKnowledgeGraph = false"
-            title="切换到列表视图"
-          />
+          >
+            查看全部
+          </el-button>
         </div>
         
-        <!-- 复习日历 -->
-        <ReviewCalendar
-          :userId="userId"
-          @day-click="handleDayClick"
-          @data-loaded="handleCalendarDataLoaded"
-        />
-        
-        <!-- AI复习建议面板 -->
-        <AIReviewPanel
-          :userId="userId"
-          :todayErrors="todayErrors"
-          @start-review="handleStartReview"
-          @view-knowledge-graph="showKnowledgeGraph = true"
-          @generate-plan="handleGeneratePlan"
-        />
-        
-        <!-- 知识图谱视图 -->
-        <KnowledgeGraph
-          v-if="showKnowledgeGraph"
-          :userId="userId"
-          :errors="errorList"
-          @switch-to-list="showKnowledgeGraph = false"
-          @view-errors="handleViewErrors"
-          @ai-explain="handleAIExplain"
-          @practice="handlePractice"
-        />
-        
-        <!-- 错题列表（增强版卡片） -->
-        <div v-else class="error-list" v-loading="loading">
+        <!-- 错题列表（简洁卡片） -->
+        <div class="error-list" v-loading="loading">
           <el-pagination
-            v-if="errorList.length > pageSize"
+            v-if="displayErrors.length > pageSize"
             v-model:current-page="currentPage"
             :page-size="pageSize"
-            :total="totalCount"
+            :total="displayErrors.length"
             layout="prev, pager, next"
             small
             @current-change="handleCurrentPageChange"
             style="margin-bottom: 20px; text-align: center;"
           />
           
-          <div class="error-enhanced-list">
-            <ErrorCardEnhanced
+          <div class="error-simple-list">
+            <div
               v-for="error in paginatedErrors"
               :key="error.id"
-              :error="error"
-              @start-review="handleStartReview"
-              @view-analysis="handleViewAnalysis"
-              @delay="handleDelay"
-              @mark-mastered="handleMarkMastered"
-            />
+              class="error-simple-card"
+              @click="handleErrorDetail(error)"
+            >
+              <div class="card-header">
+                <div class="card-left">
+                  <el-tag :type="getSubjectTagType(error.subject)" size="small">
+                    {{ getSubjectText(error.subject) }}
+                  </el-tag>
+                  <el-tag type="info" size="small">
+                    {{ getTypeText(error.questionType) }}
+                  </el-tag>
+                </div>
+                <el-tag 
+                  :type="error.masteryStatus === 'mastered' ? 'success' : 'danger'" 
+                  size="small"
+                >
+                  {{ getStatusText(error.masteryStatus) }}
+                </el-tag>
+              </div>
+              
+              <div class="card-title">{{ error.questionTitle }}</div>
+              
+              <div class="card-content">
+                <div class="content-section">
+                  <div class="section-label">错误原因：</div>
+                  <div class="section-text">{{ error.wrongReason }}</div>
+                </div>
+              </div>
+              
+              <div class="card-footer">
+                <span class="footer-time">
+                  <el-icon><Clock /></el-icon>
+                  {{ formatDate(error.addTime) }}
+                </span>
+                <div class="footer-actions">
+                  <el-button 
+                    v-if="error.masteryStatus !== 'mastered'"
+                    type="success" 
+                    size="small"
+                    @click.stop="toggleErrorMastery(error)"
+                  >
+                    标记掌握
+                  </el-button>
+                  <el-button 
+                    type="primary" 
+                    size="small"
+                    @click.stop="handleEditError(error)"
+                  >
+                    编辑
+                  </el-button>
+                </div>
+              </div>
+            </div>
           </div>
           
-          <el-empty v-if="errorList.length === 0 && !loading" description="暂无错题记录" />
+          <el-empty 
+            v-if="displayErrors.length === 0 && !loading" 
+            :description="selectedDate ? `${selectedDate} 没有错题记录` : '暂无错题记录'" 
+          />
         </div>
       </div>
     </div>
@@ -529,9 +560,6 @@ import axios from "axios";
 import { getUserSubjects, generateSubjectOptions, hasUserSubjects, getSubjectCode } from "@/utils/userSubjects";
 // 【v3.4.0新增】引入新组件
 import ReviewCalendar from '@/components/error/ReviewCalendar.vue';
-import AIReviewPanel from '@/components/error/AIReviewPanel.vue';
-import KnowledgeGraph from '@/components/error/KnowledgeGraph.vue';
-import ErrorCardEnhanced from '@/components/error/ErrorCardEnhanced.vue';
 import dayjs from 'dayjs';
 
 /* ============== 基础变量（与上一版完全一致） ============== */
@@ -545,6 +573,17 @@ const sidebarCollapsed = ref(false);
 // 【v3.4.0新增】知识图谱视图切换
 const showKnowledgeGraph = ref(false);
 const userId = ref(localStorage.getItem("edu-user-id") || "default-user");
+
+// 【新增】选中的日期
+const selectedDate = ref('');
+
+// 【新增】选中日期的标题
+const selectedDateTitle = computed(() => {
+  if (selectedDate.value) {
+    return `${selectedDate.value} 的错题`;
+  }
+  return '我的错题';
+});
 
 // 查看错题详情
 const showErrorDetailDialog = ref(false);
@@ -596,36 +635,6 @@ const errorList = ref([]);
 const userSubjects = ref([]);
 const subjectOptions = computed(() => generateSubjectOptions(userSubjects.value));
 
-// 【v3.4.0新增】今日需复习的错题
-const todayErrors = computed(() => {
-  // 筛选需要今日复习的错题
-  return errorList.value.filter(error => {
-    // 如果是未掌握状态，都需要复习
-    if (error.masteryStatus === 'unmastered') {
-      return true;
-    }
-    
-    // 如果有最后复习时间，根据艾宾浩斯曲线判断
-    if (error.lastReviewTime) {
-      const daysSinceLastReview = dayjs().diff(dayjs(error.lastReviewTime), 'day');
-      const reviewCount = error.reviewCount || 0;
-      
-      // 艾宾浩斯遗忘曲线：1天、2天、4天、7天、15天
-      const intervals = [1, 2, 4, 7, 15];
-      const nextReviewDay = intervals[Math.min(reviewCount, intervals.length - 1)];
-      
-      return daysSinceLastReview >= nextReviewDay;
-    }
-    
-    // 新添加的错题（没有复习记录）
-    if (!error.lastReviewTime && error.addTime) {
-      const daysSinceAdd = dayjs().diff(dayjs(error.addTime), 'day');
-      return daysSinceAdd >= 1; // 添加后第二天开始复习
-    }
-    
-    return false;
-  });
-});
 
 // 彩色背景色数组
 const cardColors = [
@@ -697,11 +706,24 @@ function getSubjectColor(index) {
   return colors[index % colors.length];
 }
 
+// 【新增】显示的错题列表（根据日期筛选）
+const displayErrors = computed(() => {
+  if (!selectedDate.value) {
+    return errorList.value;
+  }
+  
+  // 筛选选中日期的错题
+  return errorList.value.filter(error => {
+    const errorDate = dayjs(error.addTime).format('YYYY-MM-DD');
+    return errorDate === selectedDate.value;
+  });
+});
+
 // 分页后的错题列表
 const paginatedErrors = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value;
   const end = start + pageSize.value;
-  return errorList.value.slice(start, end);
+  return displayErrors.value.slice(start, end);
 });
 
 // 切换侧边栏
@@ -712,8 +734,38 @@ function toggleSidebar() {
 // 【v3.4.0新增】日历日期点击
 function handleDayClick(day) {
   console.log('点击日期:', day);
-  // 可以筛选该日期的错题
+  selectedDate.value = day.date;
+  currentPage.value = 1; // 重置到第一页
   ElMessage.info(`查看 ${day.date} 的错题`);
+}
+
+// 【新增】清除日期筛选
+function clearDateFilter() {
+  selectedDate.value = '';
+  currentPage.value = 1;
+  ElMessage.info('查看全部错题');
+}
+
+// 【新增】格式化日期
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  return dayjs(dateStr).format('YYYY-MM-DD HH:mm');
+}
+
+// 【新增】获取科目标签类型
+function getSubjectTagType(subject) {
+  const typeMap = {
+    math: 'primary',
+    chinese: 'success',
+    english: 'warning',
+    physics: 'danger',
+    chemistry: 'info',
+    biology: 'success',
+    history: 'warning',
+    geography: 'primary',
+    politics: 'danger'
+  };
+  return typeMap[subject] || '';
 }
 
 // 【v3.4.0新增】日历数据加载完成
@@ -762,11 +814,7 @@ async function handleMarkMastered(error) {
   }
 }
 
-// 【v3.4.0新增】生成复习计划
-function handleGeneratePlan() {
-  ElMessage.success('AI正在为您生成个性化复习计划...');
-  // 这里可以调用AI接口生成复习计划
-}
+
 
 // 【v3.4.0新增】查看知识点错题
 function handleViewErrors(point) {
@@ -1397,6 +1445,65 @@ async function batchDeleteErrors() {
   flex-shrink: 0;
 }
 
+/* 左侧日历区域 */
+.sidebar-calendar {
+  flex-shrink: 0;
+  padding: 12px;
+  background: #fafafa;
+  border-top: 1px solid #e4e7ed;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.sidebar-calendar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-calendar::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 2px;
+}
+
+/* 调整日历组件在侧边栏中的样式 */
+.sidebar-calendar :deep(.review-calendar) {
+  padding: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.sidebar-calendar :deep(.calendar-header) {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+}
+
+.sidebar-calendar :deep(.calendar-title) {
+  font-size: 14px;
+}
+
+.sidebar-calendar :deep(.month-view) {
+  width: 100%;
+}
+
+.sidebar-calendar :deep(.month-grid) {
+  gap: 4px;
+}
+
+.sidebar-calendar :deep(.month-day) {
+  padding: 4px;
+  font-size: 12px;
+}
+
+.sidebar-calendar :deep(.day-number) {
+  font-size: 12px;
+}
+
+.sidebar-calendar :deep(.indicator-dot) {
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
+  font-size: 9px;
+}
+
 /* 右侧：错题列表 */
 .error-content {
   position: fixed;
@@ -1859,3 +1966,115 @@ async function batchDeleteErrors() {
   }
 }
 </style>
+
+
+/* 简洁错题卡片样式 */
+.error-simple-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.error-simple-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.error-simple-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border-color: #4facfe;
+}
+
+.error-simple-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.error-simple-card .card-left {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.error-simple-card .card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.error-simple-card .card-content {
+  margin-bottom: 16px;
+}
+
+.error-simple-card .content-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px;
+  border-left: 3px solid #4facfe;
+}
+
+.error-simple-card .section-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.error-simple-card .section-text {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.error-simple-card .card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.error-simple-card .footer-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #999;
+}
+
+.error-simple-card .footer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .error-simple-card {
+    padding: 16px;
+  }
+  
+  .error-simple-card .card-footer {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  
+  .error-simple-card .footer-actions {
+    width: 100%;
+  }
+  
+  .error-simple-card .footer-actions :deep(.el-button) {
+    flex: 1;
+  }
+}

@@ -10,7 +10,7 @@
     <div class="panel-content" v-loading="loading">
       <div class="review-summary">
         <div class="summary-item">
-          <div class="summary-icon" style="background: #409eff;">
+          <div class="summary-icon" style="background: #4facfe;">
             <el-icon><Document /></el-icon>
           </div>
           <div class="summary-info">
@@ -20,7 +20,7 @@
         </div>
 
         <div class="summary-item">
-          <div class="summary-icon" style="background: #67c23a;">
+          <div class="summary-icon" style="background: #00f2fe;">
             <el-icon><Clock /></el-icon>
           </div>
           <div class="summary-info">
@@ -252,11 +252,11 @@ watch(() => props.todayErrors, () => {
 
 <style scoped>
 .ai-review-panel {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(79, 172, 254, 0.3);
 }
 
 .panel-header {
@@ -396,7 +396,7 @@ watch(() => props.todayErrors, () => {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #409eff;
+  background: #4facfe;
   color: white;
   display: flex;
   align-items: center;
@@ -412,7 +412,7 @@ watch(() => props.todayErrors, () => {
 }
 
 .step-arrow {
-  color: #409eff;
+  color: #4facfe;
   font-size: 20px;
   font-weight: 600;
 }
@@ -448,17 +448,18 @@ watch(() => props.todayErrors, () => {
   flex: 1;
   min-width: 120px;
   background: white;
-  color: #667eea;
+  color: #4facfe;
   border: none;
 }
 
 .action-buttons :deep(.el-button--primary) {
   background: white;
-  color: #667eea;
+  color: #4facfe;
 }
 
 .action-buttons :deep(.el-button:hover) {
-  background: #f0f0f0;
+  background: rgba(255, 255, 255, 0.9);
+  color: #00f2fe;
 }
 
 /* 响应式设计 */
