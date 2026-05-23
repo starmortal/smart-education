@@ -19,7 +19,7 @@
         <div 
           class="filter-item"
           @click="setContentFilter('all')"
-          :class="{ active: contentFilter === 'all' }"
+          :class="{ active: contentFilter === 'all' && !socialView }"
         >
           <div class="filter-label">
             <el-icon><List /></el-icon>
@@ -27,10 +27,21 @@
           </div>
         </div>
 
+        <div
+          class="filter-item"
+          @click="setContentFilter('latest')"
+          :class="{ active: contentFilter === 'latest' && !socialView }"
+        >
+          <div class="filter-label">
+            <el-icon><Clock /></el-icon>
+            <span>最新问题</span>
+          </div>
+        </div>
+
         <div 
           class="filter-item"
           @click="setContentFilter('following')"
-          :class="{ active: contentFilter === 'following' }"
+          :class="{ active: contentFilter === 'following' && !socialView }"
         >
           <div class="filter-label">
             <el-icon><UserFilled /></el-icon>
@@ -41,7 +52,7 @@
         <div 
           class="filter-item"
           @click="setContentFilter('mine')"
-          :class="{ active: contentFilter === 'mine' }"
+          :class="{ active: contentFilter === 'mine' && !socialView }"
         >
           <div class="filter-label">
             <el-icon><User /></el-icon>
@@ -53,7 +64,7 @@
         <div 
           class="filter-item"
           @click="setContentFilter('favorites')"
-          :class="{ active: contentFilter === 'favorites' }"
+          :class="{ active: contentFilter === 'favorites' && !socialView }"
         >
           <div class="filter-label">
             <el-icon><Star /></el-icon>
@@ -93,31 +104,23 @@
         </div>
         
         <div class="social-stats">
-          <div class="social-stat-item" @click="showFollowingDialog = true">
+          <div
+            class="social-stat-item"
+            :class="{ active: socialView === 'following' }"
+            @click="openSocialView('following')"
+          >
             <el-icon><UserFilled /></el-icon>
             <span>我的关注</span>
             <span class="stat-count">{{ followingCount }}</span>
           </div>
-          <div class="social-stat-item" @click="showFollowersDialog = true">
+          <div
+            class="social-stat-item"
+            :class="{ active: socialView === 'followers' }"
+            @click="openSocialView('followers')"
+          >
             <el-icon><Star /></el-icon>
             <span>我的粉丝</span>
             <span class="stat-count">{{ followerCount }}</span>
-          </div>
-        </div>
-
-        <!-- AI 智能 -->
-        <div class="section-divider">
-          <span>AI 智能</span>
-        </div>
-        
-        <div 
-          class="filter-item ai-filter"
-          @click="setContentFilter('ai-recommend')"
-          :class="{ active: contentFilter === 'ai-recommend' }"
-        >
-          <div class="filter-label">
-            <el-icon><MagicStick /></el-icon>
-            <span>为你推荐</span>
           </div>
         </div>
 
@@ -158,17 +161,86 @@
           <el-button type="primary" :icon="Plus" @click="showAskDialog = true">发起提问</el-button>
         </div>
 
+        <!-- 最新问题提示 -->
+        <div v-if="contentFilter === 'latest' && !socialView && !showInlineDetail" class="tag-filter-bar">
+          <span class="tag-filter-label">最新问题</span>
+          <span class="tag-filter-count">展示按发布时间排序的前 8 条</span>
+        </div>
+
         <!-- 话题筛选提示条 -->
-        <div v-if="tagFilter && !isManageListMode" class="tag-filter-bar">
+        <div v-if="tagFilter && !isManageListMode && !socialView" class="tag-filter-bar">
           <span class="tag-filter-label">话题筛选</span>
           <el-tag type="primary" closable @close="clearTagFilter">#{{ tagFilter }}</el-tag>
           <span class="tag-filter-count">共 {{ filteredQuestions.length }} 条</span>
         </div>
         
         <!-- 问题列表 -->
-        <div class="questions-list" v-loading="loading">
+        <div class="questions-list" v-loading="loading || socialListLoading">
+          <!-- 我的关注 / 我的粉丝：左滑列表与详情 -->
+          <div v-if="socialView" class="community-slide-wrapper">
+            <div class="content-slide-viewport" :class="{ 'show-detail': showSocialUserDetail }">
+              <div class="content-slide-track">
+                <div class="slide-panel slide-panel-list">
+                  <div class="social-follow-list main-manage-list">
+                    <div
+                      v-for="user in currentSocialList"
+                      :key="user.id"
+                      class="follow-item social-follow-item"
+                      :class="{ active: selectedSocialUser?.id === user.id }"
+                      @click="openSocialUserDetail(user)"
+                    >
+                      <el-avatar :size="48" :src="user.avatar" />
+                      <div class="follow-info">
+                        <div class="follow-name">{{ user.nickname }}</div>
+                        <div class="follow-meta">{{ user.school || '未设置' }} · {{ getGradeLabel(user.grade) }}</div>
+                      </div>
+                      <FollowButton
+                        v-if="user.id !== userId"
+                        :target-user-id="user.id"
+                        :is-following="socialView === 'following' ? true : user.isFollowing"
+                        size="small"
+                        @follow-change="handleSocialFollowChange"
+                        @click.stop
+                      />
+                    </div>
+                    <el-empty
+                      v-if="currentSocialList.length === 0 && !socialListLoading"
+                      :description="socialView === 'following' ? '暂无关注' : '暂无粉丝'"
+                      :image-size="100"
+                    />
+                  </div>
+                </div>
+
+                <CommunitySlideDetailPanel
+                  :back-label="socialDetailBackLabel"
+                  :loading="false"
+                  @back="closeSocialUserDetail"
+                >
+                  <div v-if="selectedSocialUser" class="social-user-detail">
+                    <el-avatar :size="72" :src="selectedSocialUser.avatar" />
+                    <div class="social-user-name">{{ selectedSocialUser.nickname }}</div>
+                    <div class="social-user-meta">
+                      {{ selectedSocialUser.school || '未设置' }} · {{ getGradeLabel(selectedSocialUser.grade) }}
+                    </div>
+                    <div class="social-user-actions">
+                      <FollowButton
+                        v-if="selectedSocialUser.id !== userId"
+                        :target-user-id="selectedSocialUser.id"
+                        :is-following="socialView === 'following' ? true : selectedSocialUser.isFollowing"
+                        @follow-change="handleSocialFollowChange"
+                      />
+                      <el-button type="primary" @click="handleViewUserProfile(selectedSocialUser.id)">
+                        查看主页
+                      </el-button>
+                    </div>
+                  </div>
+                </CommunitySlideDetailPanel>
+              </div>
+            </div>
+          </div>
+
           <!-- 我的问题：左滑切换列表与详情 -->
-          <div v-if="contentFilter === 'mine'" class="community-slide-wrapper">
+          <div v-else-if="contentFilter === 'mine'" class="community-slide-wrapper">
             <div class="content-slide-viewport" :class="{ 'show-detail': showInlineDetail }">
               <div class="content-slide-track">
                 <div class="slide-panel slide-panel-list">
@@ -483,7 +555,7 @@
                   </div>
 
                   <div
-                    v-if="!showInlineDetail && filteredQuestions.length > pageSize"
+                    v-if="!showInlineDetail && !isLatestMode && filteredQuestions.length > pageSize"
                     class="pagination-wrapper manage-pagination"
                   >
                     <el-pagination
@@ -542,68 +614,6 @@
       @follow-change="handleFollowChange"
     />
 
-    <!-- 关注列表对话框 -->
-    <el-dialog
-      v-model="showFollowingDialog"
-      title="我的关注"
-      width="600px"
-      center
-      class="blue-border-dialog"
-    >
-      <div v-loading="loadingFollowing" class="follow-list">
-        <div
-          v-for="user in followingList"
-          :key="user.id"
-          class="follow-item"
-          @click="handleViewUserProfile(user.id)"
-        >
-          <el-avatar :size="50" :src="user.avatar" />
-          <div class="follow-info">
-            <div class="follow-name">{{ user.nickname }}</div>
-            <div class="follow-meta">{{ user.school }} · {{ getGradeLabel(user.grade) }}</div>
-          </div>
-          <FollowButton
-            :target-user-id="user.id"
-            :is-following="true"
-            size="small"
-            @follow-change="loadFollowData"
-          />
-        </div>
-        <el-empty v-if="followingList.length === 0 && !loadingFollowing" description="暂无关注" />
-      </div>
-    </el-dialog>
-
-    <!-- 粉丝列表对话框 -->
-    <el-dialog
-      v-model="showFollowersDialog"
-      title="我的粉丝"
-      width="600px"
-      center
-      class="blue-border-dialog"
-    >
-      <div v-loading="loadingFollowers" class="follow-list">
-        <div
-          v-for="user in followersList"
-          :key="user.id"
-          class="follow-item"
-          @click="handleViewUserProfile(user.id)"
-        >
-          <el-avatar :size="50" :src="user.avatar" />
-          <div class="follow-info">
-            <div class="follow-name">{{ user.nickname }}</div>
-            <div class="follow-meta">{{ user.school }} · {{ getGradeLabel(user.grade) }}</div>
-          </div>
-          <FollowButton
-            :target-user-id="user.id"
-            :is-following="user.isFollowing"
-            size="small"
-            @follow-change="loadFollowData"
-          />
-        </div>
-        <el-empty v-if="followersList.length === 0 && !loadingFollowers" description="暂无粉丝" />
-      </div>
-    </el-dialog>
-
     <!-- 发起提问对话框 -->
     <el-dialog
       v-model="showAskDialog"
@@ -644,7 +654,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
   Plus, Delete, Star, ChatDotRound, 
   DataAnalysis, DArrowLeft, DArrowRight, View, CircleCheck, 
-  Clock, TrendCharts, DocumentDelete, List, UserFilled, User, MagicStick,
+  Clock, TrendCharts, DocumentDelete, List, UserFilled, User,
   ArrowLeft
 } from '@element-plus/icons-vue';
 import SideNavBar from '@/components/SideNavBar.vue';
@@ -675,7 +685,7 @@ const userSubjects = ref([]);
 
 // 问题列表
 const questions = ref([]);
-const contentFilter = ref('all'); // all, following, mine, favorites, ai-recommend
+const contentFilter = ref('all'); // all, latest, following, mine, favorites
 const questionStatusFilter = ref('');
 const tagFilter = ref(''); // 热门话题标签筛选
 const currentPage = ref(1);
@@ -686,16 +696,15 @@ const followingCount = ref(0);
 const followerCount = ref(0);
 const followingList = ref([]);
 const followersList = ref([]);
-const loadingFollowing = ref(false);
-const loadingFollowers = ref(false);
-
 // 用户主页
 const showUserProfileDialog = ref(false);
 const selectedUserId = ref('');
 
-// 关注/粉丝对话框
-const showFollowingDialog = ref(false);
-const showFollowersDialog = ref(false);
+// 社交列表（主区域左滑）
+const socialView = ref(''); // following | followers
+const showSocialUserDetail = ref(false);
+const selectedSocialUser = ref(null);
+const socialListLoading = ref(false);
 
 // AI 助手
 const aiAssistantRef = ref(null);
@@ -742,30 +751,56 @@ const isManageListMode = computed(() =>
   contentFilter.value === 'mine' || contentFilter.value === 'favorites'
 );
 
+const isLatestMode = computed(() => contentFilter.value === 'latest');
+
+const currentSocialList = computed(() =>
+  socialView.value === 'following' ? followingList.value : followersList.value
+);
+
+const socialDetailBackLabel = computed(() =>
+  socialView.value === 'following' ? '返回我的关注' : '返回我的粉丝'
+);
+
 const inlineDetailBackLabel = computed(() => {
   const labels = {
     all: '返回全部问题',
+    latest: '返回最新问题',
     following: '返回关注的人',
     mine: '返回我的问题',
-    favorites: '返回我的收藏',
-    'ai-recommend': '返回为你推荐'
+    favorites: '返回我的收藏'
   };
   return labels[contentFilter.value] || '返回列表';
 });
 
 const pageTitle = computed(() => {
+  if (showSocialUserDetail.value) {
+    return '用户详情';
+  }
+  if (socialView.value === 'following') {
+    return '我的关注';
+  }
+  if (socialView.value === 'followers') {
+    return '我的粉丝';
+  }
   if (showInlineDetail.value) {
     return '问题详情';
   }
   const titles = {
     all: '学习社区',
+    latest: '最新问题',
     following: '关注的人',
     mine: '我的问题',
-    favorites: '我的收藏',
-    'ai-recommend': '为你推荐'
+    favorites: '我的收藏'
   };
   return titles[contentFilter.value] || '学习社区';
 });
+
+function parseQuestionTime(question) {
+  const time = question?.createTime;
+  if (!time) return 0;
+  const ts = new Date(time).getTime();
+  return Number.isNaN(ts) ? 0 : ts;
+}
 
 const favoriteQuestions = computed(() => {
   if (!Array.isArray(questions.value) || !favoriteQuestionIds.value.length) return [];
@@ -809,11 +844,9 @@ const filteredQuestions = computed(() => {
   let result = questions.value;
   
   if (contentFilter.value === 'following') {
-    result = result.filter(q => q.isFollowing);
-  } else if (contentFilter.value === 'ai-recommend') {
-    result = result.slice(0, 10);
+    result = result.filter((q) => q.isFollowing);
   }
-  
+
   if (questionStatusFilter.value === 'unsolved') {
     result = result.filter(q => !q.solved);
   } else if (questionStatusFilter.value === 'solved') {
@@ -821,9 +854,15 @@ const filteredQuestions = computed(() => {
   }
 
   if (tagFilter.value) {
-    result = result.filter(q => (q.tags || []).includes(tagFilter.value));
+    result = result.filter((q) => (q.tags || []).includes(tagFilter.value));
   }
-  
+
+  if (contentFilter.value === 'latest') {
+    result = [...result]
+      .sort((a, b) => parseQuestionTime(b) - parseQuestionTime(a))
+      .slice(0, 8);
+  }
+
   return result;
 });
 
@@ -837,6 +876,9 @@ const listTotalCount = computed(() => {
 // 分页后的问题列表
 const paginatedQuestions = computed(() => {
   if (!Array.isArray(filteredQuestions.value)) return [];
+  if (isLatestMode.value) {
+    return filteredQuestions.value;
+  }
   const start = (currentPage.value - 1) * pageSize.value;
   const end = start + pageSize.value;
   return filteredQuestions.value.slice(start, end);
@@ -860,6 +902,9 @@ function toggleStatusFilter(status) {
 // 设置内容筛选
 function setContentFilter(filter) {
   contentFilter.value = filter;
+  socialView.value = '';
+  showSocialUserDetail.value = false;
+  selectedSocialUser.value = null;
   if (filter === 'all') {
     tagFilter.value = '';
   }
@@ -869,22 +914,50 @@ function setContentFilter(filter) {
   selectAll.value = false;
   selectAllFavorites.value = false;
   currentPage.value = 1;
-  
+
   if (filter === 'following') {
     loadFollowingQuestions();
-  } else if (filter === 'ai-recommend') {
-    if (aiAssistantRef.value) {
-      aiAssistantRef.value.refresh();
-    }
   } else if (filter === 'favorites') {
     loadMyFavorites();
+  } else if (filter === 'all' || filter === 'latest') {
+    loadQuestions();
   }
+}
+
+function openSocialView(mode) {
+  socialView.value = mode;
+  showSocialUserDetail.value = false;
+  selectedSocialUser.value = null;
+  showInlineDetail.value = false;
+  currentPage.value = 1;
+  loadFollowData();
+}
+
+function openSocialUserDetail(user) {
+  selectedSocialUser.value = user;
+  showSocialUserDetail.value = true;
+}
+
+function closeSocialUserDetail() {
+  showSocialUserDetail.value = false;
+}
+
+async function handleSocialFollowChange() {
+  await loadFollowData();
+  if (selectedSocialUser.value) {
+    const list = currentSocialList.value;
+    const updated = list.find((u) => u.id === selectedSocialUser.value.id);
+    if (updated) {
+      selectedSocialUser.value = { ...updated };
+    }
+  }
+  await loadQuestions();
 }
 
 // 加载关注数据
 async function loadFollowData() {
+  socialListLoading.value = true;
   try {
-    // 加载关注数量
     const followingRes = await axios.get('http://localhost:3001/api/social/following', {
       params: { userId: userId.value }
     });
@@ -902,6 +975,8 @@ async function loadFollowData() {
     checkQuestionsFollowStatus();
   } catch (error) {
     console.error('加载关注数据失败：', error);
+  } finally {
+    socialListLoading.value = false;
   }
 }
 
@@ -1019,9 +1094,10 @@ async function handleFollowChange(isFollowing, targetUserId) {
 
 // AI 推荐的问题点击
 function handleAIQuestionClick(questionId) {
-  const question = questions.value.find(q => q.id === questionId || q._id === questionId);
+  socialView.value = '';
+  const question = questions.value.find((q) => q.id === questionId || q._id === questionId);
   if (question) {
-    handleQuestionDetail(question);
+    openInlineQuestionDetail(question);
   }
 }
 
@@ -1040,6 +1116,8 @@ async function handleTopicClick(tag) {
 
   tagFilter.value = tag;
   contentFilter.value = 'all';
+  socialView.value = '';
+  showSocialUserDetail.value = false;
   questionStatusFilter.value = '';
   currentPage.value = 1;
 
@@ -1055,9 +1133,10 @@ async function handleTopicClick(tag) {
 
 // 用户主页问题点击
 function handleProfileQuestionClick(questionId) {
-  const question = questions.value.find(q => q.id === questionId || q._id === questionId);
+  const question = questions.value.find((q) => q.id === questionId || q._id === questionId);
   if (question) {
     showUserProfileDialog.value = false;
+    socialView.value = '';
     openInlineQuestionDetail(question);
   }
 }
@@ -1888,6 +1967,11 @@ onMounted(async () => {
   transform: translateX(2px);
 }
 
+.social-stat-item.active {
+  background: #e8f4ff;
+  border-color: #3b82f6;
+}
+
 .social-stat-item span {
   font-size: 13px;
   color: #2c3e50;
@@ -2668,6 +2752,45 @@ onMounted(async () => {
 .follow-meta {
   font-size: 13px;
   color: #6b7280;
+}
+
+.social-follow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.social-follow-item.active {
+  border: 1.5px solid #3b82f6;
+  background: #f0f7ff;
+}
+
+.social-user-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 16px;
+  text-align: center;
+}
+
+.social-user-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.social-user-meta {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.social-user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 8px;
 }
 
 /* 响应式 */
