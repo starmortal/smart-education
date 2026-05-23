@@ -37,6 +37,11 @@ export const sendMessage = (topicId, message, attachments = [], temporaryKnowled
   });
 };
 
+// 流式发送消息
+export const sendMessageStream = (topicId, message, attachments = [], temporaryKnowledgeBases = []) => {
+  return `${BASE_URL}/message/send-stream`;
+};
+
 // 上传文件
 export const uploadFile = (file) => {
   const formData = new FormData();

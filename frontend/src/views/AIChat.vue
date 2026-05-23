@@ -6,7 +6,7 @@
       <div class="panel-header">
         <div class="section-title">
           <el-icon size="16"><Cpu /></el-icon>
-          <span v-if="!sidebarCollapsed">助手管理</span>
+          <span v-if="!sidebarCollapsed">{{ activeTab === 'assistants' ? '助手管理' : '对话管理' }}</span>
         </div>
       </div>
 
@@ -148,9 +148,14 @@
               <el-avatar v-else :size="36" :src="require('@/assets/logo.png')" class="ai-avatar-img" />
             </div>
             <div class="message-content">
-              <div class="message-text" v-html="renderMarkdown(message.content)"></div>
+              <!-- 如果是流式传输中且内容为空，显示加载动画 -->
+              <div v-if="message.isStreaming && !message.content" class="loading-dots">
+                <span></span><span></span><span></span>
+              </div>
+              <!-- 否则显示消息内容 -->
+              <div v-else class="message-text" v-html="renderMarkdown(message.content)"></div>
               <!-- AI 消息快捷操作按钮 -->
-              <div v-if="message.role === 'assistant'" class="message-actions">
+              <div v-if="message.role === 'assistant' && message.content" class="message-actions">
                 <el-tooltip content="保存到笔记" placement="top">
                   <el-button 
                     size="small" 
@@ -207,16 +212,7 @@
             </div>
           </div>
 
-          <div v-if="isLoading" class="message-item assistant">
-            <div class="message-avatar">
-              <el-avatar :size="36" :src="require('@/assets/logo.png')" class="ai-avatar-img" />
-            </div>
-            <div class="message-content">
-              <div class="loading-dots">
-                <span></span><span></span><span></span>
-              </div>
-            </div>
-          </div>
+          <!-- 加载动画已移除，改为在AI消息占位符中显示 -->
         </div>
 
         <!-- 输入区域 -->
@@ -471,6 +467,7 @@ import {
   updateTopic,
   deleteTopic,
   sendMessage,
+  sendMessageStream,
   clearMessages,
   uploadFile
 } from '@/api/chat';
@@ -848,27 +845,91 @@ const handleSendMessage = async () => {
   selectedFiles.value = [];
   isLoading.value = true;
 
+  // 创建AI消息占位符（用于流式更新）
+  const aiMessageIndex = messages.value.length;
+  messages.value.push({
+    role: 'assistant',
+    content: '',
+    timestamp: new Date(),
+    isStreaming: true // 标记为流式传输中
+  });
+
   try {
-    const res = await sendMessage(
-      currentTopic.value._id, 
-      message, 
-      attachments,
-      temporaryKnowledgeBases.value
+    // 使用 EventSource 接收流式数据
+    const streamUrl = sendMessageStream();
+    const eventSource = new EventSource(
+      `${streamUrl}?topicId=${currentTopic.value._id}&message=${encodeURIComponent(message)}&attachments=${encodeURIComponent(JSON.stringify(attachments))}&temporaryKnowledgeBases=${encodeURIComponent(JSON.stringify(temporaryKnowledgeBases.value))}`
     );
-    if (res.code === 200) {
-      // 只添加AI回复消息（用户消息已经显示）
-      messages.value.push(res.data.assistantMessage);
+
+    // 使用 fetch 发送 POST 请求并接收流式响应
+    const response = await fetch(streamUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        topicId: currentTopic.value._id,
+        message: message,
+        attachments: attachments,
+        temporaryKnowledgeBases: temporaryKnowledgeBases.value
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('流式请求失败');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
       
-      // 更新话题标题
-      if (res.data.topic) {
-        currentTopic.value.title = res.data.topic.title;
-        await loadTopics(selectedAssistantForTopics.value._id);
+      if (done) {
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            
+            if (data.type === 'chunk') {
+              // 流式更新AI消息内容
+              messages.value[aiMessageIndex].content += data.content;
+              // 移除流式标记（开始有内容了）
+              if (messages.value[aiMessageIndex].isStreaming) {
+                delete messages.value[aiMessageIndex].isStreaming;
+              }
+            } else if (data.type === 'done') {
+              // 更新话题标题
+              if (data.topic) {
+                currentTopic.value.title = data.topic.title;
+                await loadTopics(selectedAssistantForTopics.value._id);
+              }
+            } else if (data.type === 'error') {
+              ElMessage.error(data.message);
+              // 移除AI消息占位符
+              messages.value.splice(aiMessageIndex, 1);
+              // 移除用户消息
+              messages.value.pop();
+            }
+          } catch (e) {
+            console.error('解析流式数据失败:', e);
+          }
+        }
       }
     }
   } catch (error) {
     console.error('发送消息失败:', error);
     ElMessage.error('发送失败，请重试');
-    // 发送失败，移除已显示的用户消息
+    // 发送失败，移除AI消息占位符和用户消息
+    messages.value.splice(aiMessageIndex, 1);
     messages.value.pop();
   } finally {
     isLoading.value = false;

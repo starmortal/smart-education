@@ -262,7 +262,16 @@ exports.sendMessage = async (req, res) => {
 
     // 自动生成话题标题（如果是第一条消息）
     if (topic.messages.length === 2 && topic.title === '新对话') {
-      topic.title = message.substring(0, 30) + (message.length > 30 ? '...' : '');
+      try {
+        // 使用AI生成简洁的对话标题
+        const titlePrompt = `请根据以下用户问题，生成一个简洁的对话标题（不超过15个字，不要加引号）：\n\n${message}`;
+        const generatedTitle = await ai.chat(titlePrompt, []);
+        topic.title = generatedTitle.trim().replace(/["""]/g, '').substring(0, 30);
+      } catch (error) {
+        // 如果AI生成失败，使用默认方式
+        logger.warn('AI生成标题失败，使用默认方式:', error);
+        topic.title = message.substring(0, 30) + (message.length > 30 ? '...' : '');
+      }
     }
 
     await topic.save();
@@ -300,4 +309,180 @@ exports.clearMessages = async (req, res) => {
   logger.info(`话题消息清空成功: ${id}`);
 
   Response.success(res, topic, '消息已清空');
+};
+
+// 流式发送消息并获取AI回复
+exports.sendMessageStream = async (req, res) => {
+  const { topicId, message, attachments = [], temporaryKnowledgeBases = [] } = req.body;
+
+  if (!topicId) {
+    throw new AppError('话题ID不能为空', 400);
+  }
+
+  if (!message && attachments.length === 0) {
+    throw new AppError('消息内容或附件不能为空', 400);
+  }
+
+  // 获取话题
+  const topic = await Topic.findById(topicId);
+  if (!topic) {
+    throw new AppError('话题不存在', 404);
+  }
+
+  // 获取助手配置
+  const assistant = await Assistant.findById(topic.assistantId);
+  if (!assistant) {
+    throw new AppError('助手不存在', 404);
+  }
+
+  // 添加用户消息
+  const userMessage = {
+    role: 'user',
+    content: message || '',
+    attachments: attachments || [],
+    timestamp: new Date()
+  };
+  topic.messages.push(userMessage);
+
+  // 确定要使用的知识库
+  const knowledgeBasesToUse = temporaryKnowledgeBases.length > 0 
+    ? temporaryKnowledgeBases 
+    : (assistant.knowledgeBases || []);
+
+  // 检索知识库内容
+  let knowledgeContext = '';
+  if (knowledgeBasesToUse.length > 0 && message) {
+    try {
+      const Knowledge = require('../models/Knowledge');
+      const searchResults = [];
+      
+      for (const kbId of knowledgeBasesToUse) {
+        const kb = await Knowledge.findById(kbId);
+        if (kb && kb.vectorCount > 0) {
+          try {
+            const KnowledgeFile = require('../models/KnowledgeFile');
+            const Vectorizer = require('../utils/vectorizer');
+            
+            const files = await KnowledgeFile.find({ 
+              knowledgeId: kbId, 
+              status: 'completed' 
+            });
+            
+            if (files.length > 0) {
+              const queryEmbedding = await Vectorizer.generateEmbedding(message);
+              const allVectors = [];
+              files.forEach(file => {
+                file.vectors.forEach(vector => {
+                  allVectors.push({
+                    ...vector.toObject(),
+                    fileName: file.name,
+                    fileId: file._id
+                  });
+                });
+              });
+              
+              const results = await Vectorizer.searchSimilar(queryEmbedding, allVectors, 3);
+              searchResults.push(...results);
+            }
+          } catch (searchError) {
+            logger.warn(`知识库 ${kbId} 检索失败:`, searchError);
+          }
+        }
+      }
+      
+      if (searchResults.length > 0) {
+        knowledgeContext = '\n\n【参考知识库内容】\n';
+        searchResults.slice(0, 5).forEach((result, index) => {
+          knowledgeContext += `${index + 1}. ${result.text}\n`;
+        });
+        knowledgeContext += '\n请基于以上知识库内容回答用户问题。\n';
+      }
+    } catch (error) {
+      logger.error('知识库检索失败:', error);
+    }
+  }
+
+  // 构建对话历史
+  const history = [];
+  
+  let systemPrompt = assistant.prompt || '';
+  if (knowledgeContext) {
+    systemPrompt += knowledgeContext;
+  }
+  
+  if (systemPrompt) {
+    history.push({
+      role: 'system',
+      content: systemPrompt
+    });
+  }
+
+  const recentMessages = topic.messages.slice(-10);
+  recentMessages.forEach(msg => {
+    history.push({
+      role: msg.role,
+      content: msg.content
+    });
+  });
+
+  try {
+    // 设置SSE响应头
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    let fullContent = '';
+
+    // 调用AI流式获取回复
+    const aiResponse = await ai.chatStream(message, history, (chunk) => {
+      fullContent += chunk;
+      // 发送流式数据
+      res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`);
+    });
+
+    // 添加AI回复到数据库
+    const assistantMessage = {
+      role: 'assistant',
+      content: aiResponse,
+      timestamp: new Date()
+    };
+    topic.messages.push(assistantMessage);
+
+    // 自动生成话题标题（如果是第一条消息）
+    if (topic.messages.length === 2 && topic.title === '新对话') {
+      try {
+        // 使用AI生成简洁的对话标题
+        const titlePrompt = `请根据以下用户问题，生成一个简洁的对话标题（不超过15个字，不要加引号）：\n\n${message}`;
+        const generatedTitle = await ai.chat(titlePrompt, []);
+        topic.title = generatedTitle.trim().replace(/["""]/g, '').substring(0, 30);
+      } catch (error) {
+        // 如果AI生成失败，使用默认方式
+        logger.warn('AI生成标题失败，使用默认方式:', error);
+        topic.title = message.substring(0, 30) + (message.length > 30 ? '...' : '');
+      }
+    }
+
+    await topic.save();
+
+    // 发送完成信号
+    res.write(`data: ${JSON.stringify({ 
+      type: 'done', 
+      userMessage,
+      assistantMessage,
+      topic: {
+        _id: topic._id,
+        title: topic.title,
+        updatedAt: topic.updatedAt
+      }
+    })}\n\n`);
+    
+    res.end();
+    
+    logger.info(`流式消息发送成功，话题: ${topicId}`);
+  } catch (error) {
+    logger.error('AI调用失败:', error);
+    res.write(`data: ${JSON.stringify({ type: 'error', message: 'AI服务暂时不可用，请稍后重试' })}\n\n`);
+    res.end();
+  }
 };

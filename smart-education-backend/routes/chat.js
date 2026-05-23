@@ -64,6 +64,9 @@ router.delete('/topic/:id', asyncHandler(chatController.deleteTopic));
 // 发送消息
 router.post('/message/send', asyncHandler(chatController.sendMessage));
 
+// 流式发送消息
+router.post('/message/send-stream', asyncHandler(chatController.sendMessageStream));
+
 // 清空话题消息
 router.delete('/topic/:id/messages', asyncHandler(chatController.clearMessages));
 
