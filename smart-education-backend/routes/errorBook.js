@@ -4,6 +4,7 @@ const ErrorQuestion = require("../models/ErrorQuestion");
 const Response = require("../utils/response");
 const logger = require("../utils/logger");
 const { asyncHandler, AppError } = require("../middleware/errorHandler");
+const ai = require("../utils/ai");
 
 /**
  * 错题本路由模块
@@ -90,6 +91,33 @@ router.get("/stats/:userId", asyncHandler(async (req, res) => {
     masteredCount,
     subjectStats: subjectStatsObj,
   }, "获取统计数据成功");
+}));
+
+// 获取日历错题数据（按日期统计每天错题数）
+router.get("/calendar/:userId", asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { year, month } = req.query;
+
+  logger.info(`获取日历数据: userId=${userId}, year=${year}, month=${month}`);
+
+  const startDate = new Date(year, month - 1, 1);
+  const endDate = new Date(year, month, 0, 23, 59, 59);
+
+  const pipeline = [
+    { $match: { userId, addTime: { $gte: startDate, $lte: endDate } } },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$addTime" } },
+        count: { $sum: 1 },
+      }
+    },
+    { $sort: { _id: 1 } }
+  ];
+
+  const results = await ErrorQuestion.aggregate(pipeline);
+  const dates = results.map(r => ({ date: r._id, count: r.count }));
+
+  Response.success(res, { dates }, "获取日历数据成功");
 }));
 
 // 获取用户错题列表
@@ -197,6 +225,148 @@ router.delete("/delete/:id", asyncHandler(async (req, res) => {
   logger.info(`错题删除成功: id=${id}`);
   
   Response.success(res, null, "删除错题成功");
+}));
+
+// 构建错题分析数据（工具函数）
+function buildErrorAnalysisData(date, errors) {
+  const subjectTextMap = {
+    math: "数学", chinese: "语文", english: "英语",
+    physics: "物理", chemistry: "化学", biology: "生物",
+    history: "历史", geography: "地理", politics: "政治"
+  };
+  const typeTextMap = {
+    single_choice: "选择题", multiple_choice: "多选题",
+    blank: "填空题", short_answer: "简答题", calculation: "计算题"
+  };
+  const statusTextMap = {
+    unmastered: "未掌握", mastering: "正在掌握", mastered: "已掌握"
+  };
+
+  const subjectStats = {};
+  errors.forEach(e => {
+    const sub = subjectTextMap[e.subject] || e.subject;
+    subjectStats[sub] = (subjectStats[sub] || 0) + 1;
+  });
+
+  const errorsText = errors.map((e, i) => {
+    return `错题${i + 1}：${e.questionTitle}
+- 科目：${subjectTextMap[e.subject] || e.subject}
+- 题型：${typeTextMap[e.questionType] || e.questionType}
+- 状态：${statusTextMap[e.masteryStatus] || e.masteryStatus}
+- 原因：${e.wrongReason || '未填写'}
+- 解析：${e.correctAnalysis || '未填写'}`;
+  }).join('\n\n');
+
+  const subjectDistText = Object.entries(subjectStats)
+    .map(([sub, count]) => `${sub} ${count}道`)
+    .join('、');
+
+  return { errorsText, subjectDistText, subjectStats };
+}
+
+// AI 分析错题（流式输出）
+router.post("/ai-analyze-stream", asyncHandler(async (req, res) => {
+  const { userId, date, errors } = req.body;
+
+  if (!userId || !errors || !Array.isArray(errors) || errors.length === 0) {
+    throw new AppError("用户ID和错题数据为必填项", 400);
+  }
+
+  logger.info(`AI分析错题(流式): userId=${userId}, date=${date || '全部'}, count=${errors.length}`);
+
+  const { errorsText, subjectDistText } = buildErrorAnalysisData(date, errors);
+
+  const prompt = `你是学习分析助手，根据以下学生错题记录做简洁分析。
+
+## 错题概况
+- 日期：${date || '全部错题'}
+- 总数：${errors.length}道
+- 学科：${subjectDistText}
+
+## 错题详情
+${errorsText}
+
+## 输出要求
+用中文和markdown格式，按以下结构，每条一两句话，不要废话：
+
+### 整体情况
+一句话总结掌握水平
+
+### 薄弱学科
+列出最弱的学科及具体问题
+
+### 错误类型
+归纳主要错误原因（概念不清/公式记错/审题失误/计算错误等）
+
+### 改进建议
+2-3条具体可操作的建议`;
+
+  // 设置 SSE 响应头
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+
+  try {
+    await ai.chatStream(prompt, [], (chunk) => {
+      res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`);
+    });
+
+    res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+    res.end();
+    logger.info(`AI分析错题流式完成: userId=${userId}`);
+  } catch (error) {
+    logger.error(`AI分析错题(流式)失败: ${error.message}`);
+    res.write(`data: ${JSON.stringify({ type: 'error', message: 'AI分析失败，请稍后重试' })}\n\n`);
+    res.end();
+  }
+}));
+
+// AI 分析错题（非流式，兼容旧调用）
+router.post("/ai-analyze", asyncHandler(async (req, res) => {
+  const { userId, date, errors } = req.body;
+
+  if (!userId || !errors || !Array.isArray(errors) || errors.length === 0) {
+    throw new AppError("用户ID和错题数据为必填项", 400);
+  }
+
+  logger.info(`AI分析错题: userId=${userId}, date=${date || '全部'}, count=${errors.length}`);
+
+  const { errorsText, subjectDistText } = buildErrorAnalysisData(date, errors);
+
+  const prompt = `你是学习分析助手，根据以下学生错题记录做简洁分析。
+
+## 错题概况
+- 日期：${date || '全部错题'}
+- 总数：${errors.length}道
+- 学科：${subjectDistText}
+
+## 错题详情
+${errorsText}
+
+## 输出要求
+用中文和markdown格式，按以下结构，每条一两句话，不要废话：
+
+### 整体情况
+一句话总结掌握水平
+
+### 薄弱学科
+列出最弱的学科及具体问题
+
+### 错误类型
+归纳主要错误原因（概念不清/公式记错/审题失误/计算错误等）
+
+### 改进建议
+2-3条具体可操作的建议`;
+
+  try {
+    const result = await ai.chat(prompt);
+    logger.info(`AI分析错题完成: userId=${userId}`);
+    Response.success(res, { analysis: result }, "AI分析成功");
+  } catch (error) {
+    logger.error(`AI分析错题失败: ${error.message}`);
+    throw new AppError("AI分析失败，请稍后重试", 500);
+  }
 }));
 
 module.exports = router;

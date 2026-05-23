@@ -125,6 +125,15 @@
           >
             查看全部
           </el-button>
+          <el-button
+            type="primary"
+            size="small"
+            :icon="MagicStick"
+            :disabled="displayErrors.length === 0"
+            @click="handleAIAnalysis"
+          >
+            AI 分析
+          </el-button>
         </div>
         
         <!-- 错题列表（简洁卡片） -->
@@ -142,9 +151,10 @@
           
           <div class="error-simple-list">
             <div
-              v-for="error in paginatedErrors"
+              v-for="(error, index) in paginatedErrors"
               :key="error.id"
               class="error-simple-card"
+              :style="{ borderLeftColor: getSubjectColor(index) }"
               @click="handleErrorDetail(error)"
             >
               <div class="card-header">
@@ -167,9 +177,9 @@
               <div class="card-title">{{ error.questionTitle }}</div>
               
               <div class="card-content">
-                <div class="content-section">
+                <div class="content-section" :style="{ borderLeftColor: getSubjectColor(index) }">
                   <div class="section-label">错误原因：</div>
-                  <div class="section-text">{{ error.wrongReason }}</div>
+                  <div class="section-text">{{ error.wrongReason || '未填写' }}</div>
                 </div>
               </div>
               
@@ -576,6 +586,28 @@
         <el-button @click="showManageErrorDialog = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- ================= AI 分析结果弹窗 ================= -->
+    <el-dialog
+      v-model="showAIAnalysisDialog"
+      title="AI 错题分析报告"
+      width="720px"
+      center
+      :close-on-click-modal="true"
+      class="ai-analysis-dialog"
+    >
+      <div v-loading="aiLoading" class="ai-analysis-body">
+        <div v-if="aiLoading" class="ai-loading-tip">
+          <el-icon class="ai-loading-icon" :size="32"><MagicStick /></el-icon>
+          <p>AI 正在分析您的错题数据...</p>
+        </div>
+        <div v-else-if="aiAnalysisResult" class="ai-analysis-content" v-html="renderedAnalysis"></div>
+        <el-empty v-else description="暂无分析数据" />
+      </div>
+      <template #footer>
+        <el-button @click="showAIAnalysisDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -584,7 +616,7 @@
 import { ref, reactive, onMounted, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { Plus, Refresh, Filter, Notebook, Warning, Clock, Check, DataAnalysis, Edit, Setting, Delete, Reading, DArrowLeft, DArrowRight, ArrowLeft, ArrowRight } from "@element-plus/icons-vue";
+import { Plus, Refresh, Filter, Notebook, Warning, Clock, Check, DataAnalysis, Edit, Setting, Delete, Reading, DArrowLeft, DArrowRight, ArrowLeft, ArrowRight, MagicStick } from "@element-plus/icons-vue";
 import SideNavBar from '@/components/SideNavBar.vue';
 // 【新增】引入 axios，对接后端接口
 import axios from "axios";
@@ -592,6 +624,8 @@ import axios from "axios";
 import { getUserSubjects, generateSubjectOptions, hasUserSubjects, getSubjectCode } from "@/utils/userSubjects";
 // 【v3.4.0新增】引入新组件
 import dayjs from 'dayjs';
+// 【v3.4.4新增】引入 marked 用于渲染 AI 回复
+import { marked } from 'marked';
 
 /* ============== 基础变量（与上一版完全一致） ============== */
 const router = useRouter();
@@ -612,6 +646,16 @@ const selectedDate = ref('');
 const calendarValue = ref(new Date());
 const currentMonth = ref(dayjs());
 const errorCountByDate = ref({});
+
+// 【v3.4.4新增】AI 分析相关
+const showAIAnalysisDialog = ref(false);
+const aiLoading = ref(false);
+const aiAnalysisResult = ref('');
+
+const renderedAnalysis = computed(() => {
+  if (!aiAnalysisResult.value) return '';
+  return marked(aiAnalysisResult.value);
+});
 
 // 【新增】当前月份标题
 const currentMonthTitle = computed(() => {
@@ -1330,6 +1374,83 @@ function handleDeleteError(id) {
     .catch(() => {
       // 用户取消操作，不做任何处理
     });
+}
+
+// 【v3.4.4新增】AI 分析错题（流式）
+async function handleAIAnalysis() {
+  if (displayErrors.value.length === 0) {
+    ElMessage.warning('没有错题数据可供分析');
+    return;
+  }
+
+  showAIAnalysisDialog.value = true;
+  aiLoading.value = true;
+  aiAnalysisResult.value = '';
+
+  const errors = displayErrors.value.map(e => ({
+    questionTitle: e.questionTitle,
+    subject: e.subject,
+    questionType: e.questionType,
+    masteryStatus: e.masteryStatus,
+    wrongReason: e.wrongReason,
+    correctAnalysis: e.correctAnalysis,
+  }));
+
+  try {
+    const response = await fetch('http://localhost:3001/api/error-book/ai-analyze-stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId.value,
+        date: selectedDate.value || '全部错题',
+        errors,
+      }),
+    });
+
+    if (!response.ok) throw new Error('流式请求失败');
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'chunk') {
+              aiAnalysisResult.value += data.content;
+            } else if (data.type === 'error') {
+              ElMessage.error(data.message || 'AI分析失败');
+            }
+          } catch (e) {
+            console.error('解析流式数据失败:', e);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('AI分析失败:', error);
+    if (!aiAnalysisResult.value) {
+      if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
+        aiAnalysisResult.value = '无法连接到服务器，请确认后端服务已启动。';
+      } else {
+        aiAnalysisResult.value = 'AI 分析请求失败，请稍后重试。';
+      }
+    }
+    if (!aiAnalysisResult.value.includes('无法连接')) {
+      ElMessage.error('AI 分析失败，请检查后端服务是否运行');
+    }
+  } finally {
+    aiLoading.value = false;
+  }
 }
 
 // 快速切换错题掌握状态
@@ -2239,24 +2360,27 @@ async function batchDeleteErrors() {
 .error-simple-card {
   background: white;
   border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 20px 20px 20px 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   cursor: pointer;
   transition: all 0.3s ease;
-  border: 2px solid transparent;
+  border: 1px solid #e8ecf1;
+  border-left: 4px solid #4facfe;
+  position: relative;
 }
 
 .error-simple-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  border-color: #4facfe;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  border-color: #d0d7e2;
+  border-left-color: inherit;
 }
 
 .error-simple-card .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .error-simple-card .card-left {
@@ -2266,34 +2390,35 @@ async function batchDeleteErrors() {
 }
 
 .error-simple-card .card-title {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #1a2332;
   margin-bottom: 12px;
   line-height: 1.5;
 }
 
 .error-simple-card .card-content {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .error-simple-card .content-section {
   background: #f8f9fa;
   border-radius: 8px;
-  padding: 12px;
+  padding: 12px 14px;
   border-left: 3px solid #4facfe;
 }
 
 .error-simple-card .section-label {
   font-size: 12px;
-  color: #666;
-  margin-bottom: 6px;
+  color: #888;
+  margin-bottom: 4px;
   font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 .error-simple-card .section-text {
   font-size: 14px;
-  color: #333;
+  color: #444;
   line-height: 1.6;
   word-break: break-word;
 }
@@ -2303,7 +2428,7 @@ async function batchDeleteErrors() {
   justify-content: space-between;
   align-items: center;
   padding-top: 12px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid #f0f2f5;
 }
 
 .error-simple-card .footer-time {
@@ -2311,12 +2436,121 @@ async function batchDeleteErrors() {
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: #999;
+  color: #aaa;
 }
 
 .error-simple-card .footer-actions {
   display: flex;
   gap: 8px;
+}
+
+/* AI 分析弹窗 */
+.ai-analysis-dialog :deep(.el-dialog__body) {
+  padding: 20px 24px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.ai-analysis-body {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-loading-tip {
+  text-align: center;
+  color: #666;
+}
+
+.ai-loading-icon {
+  animation: ai-pulse 1.5s ease-in-out infinite;
+  color: #4facfe;
+  margin-bottom: 12px;
+}
+
+.ai-loading-tip p {
+  font-size: 15px;
+  color: #888;
+}
+
+@keyframes ai-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+.ai-analysis-content {
+  width: 100%;
+  line-height: 1.8;
+  font-size: 14px;
+  color: #333;
+}
+
+.ai-analysis-content h1,
+.ai-analysis-content h2,
+.ai-analysis-content h3,
+.ai-analysis-content h4 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.ai-analysis-content h1 {
+  font-size: 20px;
+  background: linear-gradient(135deg, #4facfe, #0969da);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.ai-analysis-content h2 {
+  font-size: 18px;
+  color: #0969da;
+  border-bottom: 2px solid #e8f4ff;
+  padding-bottom: 6px;
+}
+
+.ai-analysis-content h3 {
+  font-size: 16px;
+  color: #4facfe;
+}
+
+.ai-analysis-content h4 {
+  font-size: 15px;
+  color: #2c3e50;
+}
+
+.ai-analysis-content p {
+  margin-bottom: 10px;
+}
+
+.ai-analysis-content ul,
+.ai-analysis-content ol {
+  padding-left: 20px;
+  margin-bottom: 10px;
+}
+
+.ai-analysis-content li {
+  margin-bottom: 4px;
+}
+
+.ai-analysis-content strong {
+  color: #1a2332;
+}
+
+.ai-analysis-content code {
+  background: #f0f2f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.ai-analysis-content blockquote {
+  border-left: 3px solid #4facfe;
+  padding: 8px 14px;
+  margin: 10px 0;
+  background: #f8f9fa;
+  border-radius: 0 6px 6px 0;
+  color: #555;
 }
 
 /* 响应式设计 */
