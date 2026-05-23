@@ -68,8 +68,11 @@ exports.updateAssistant = async (req, res) => {
     throw new AppError('助手不存在', 404);
   }
 
-  // 系统助手不允许修改提示词和学科
+  // 系统助手不允许修改名称、提示词和知识库
   if (assistant.isSystem) {
+    if (name !== undefined && name !== assistant.name) {
+      throw new AppError('系统助手的名称不可修改', 403);
+    }
     if (prompt !== undefined && prompt !== assistant.prompt) {
       throw new AppError('系统助手的提示词不可修改', 403);
     }
@@ -78,7 +81,7 @@ exports.updateAssistant = async (req, res) => {
     }
   }
 
-  if (name !== undefined) assistant.name = name;
+  if (name !== undefined && !assistant.isSystem) assistant.name = name;
   if (prompt !== undefined && !assistant.isSystem) assistant.prompt = prompt;
   if (model !== undefined) assistant.model = model;
   if (temperature !== undefined) assistant.temperature = temperature;

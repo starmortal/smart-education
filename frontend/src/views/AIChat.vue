@@ -93,6 +93,7 @@
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="rename">重新命名</el-dropdown-item>
+                  <el-dropdown-item command="export">导出为Markdown</el-dropdown-item>
                   <el-dropdown-item command="clear">清空消息</el-dropdown-item>
                   <el-dropdown-item command="delete" divided>删除对话</el-dropdown-item>
                 </el-dropdown-menu>
@@ -347,7 +348,16 @@
     >
       <el-form :model="assistantForm" label-width="100px">
         <el-form-item label="助手名称">
-          <el-input v-model="assistantForm.name" placeholder="请输入助手名称" />
+          <el-input 
+            v-model="assistantForm.name" 
+            placeholder="请输入助手名称"
+            :readonly="assistantForm.isSystem"
+            :disabled="assistantForm.isSystem"
+          />
+          <div v-if="assistantForm.isSystem" style="color: #909399; font-size: 12px; margin-top: 4px;">
+            <el-icon><Lock /></el-icon>
+            系统助手的名称不可修改
+          </div>
         </el-form-item>
         <el-form-item label="系统提示词">
           <el-input
@@ -736,6 +746,9 @@ const handleTopicCommand = async (command, topic) => {
     renamingTopicId.value = topic._id;
     renameTitle.value = topic.title;
     renameDialogVisible.value = true;
+  } else if (command === 'export') {
+    // 导出对话为Markdown
+    await exportTopicAsMarkdown(topic);
   } else if (command === 'clear') {
     try {
       await ElMessageBox.confirm('确定要清空这个对话的所有消息吗？', '提示', {
@@ -795,6 +808,69 @@ const handleRenameTopic = async () => {
   } catch (error) {
     console.error('重命名失败:', error);
     ElMessage.error('重命名失败');
+  }
+};
+
+// 导出对话为Markdown
+const exportTopicAsMarkdown = async (topic) => {
+  try {
+    // 获取完整的对话数据
+    const res = await getTopic(topic._id);
+    if (res.code !== 200) {
+      ElMessage.error('获取对话数据失败');
+      return;
+    }
+
+    const topicData = res.data;
+    const messages = topicData.messages || [];
+
+    // 构建Markdown内容
+    let markdown = `# ${topicData.title}\n\n`;
+    markdown += `> 导出时间：${new Date().toLocaleString('zh-CN')}\n`;
+    markdown += `> 助手：${selectedAssistantForTopics.value?.name || '未知'}\n`;
+    markdown += `> 消息数量：${messages.length}\n\n`;
+    markdown += `---\n\n`;
+
+    // 添加每条消息
+    messages.forEach((msg, index) => {
+      const role = msg.role === 'user' ? '👤 用户' : '🤖 AI助手';
+      const time = new Date(msg.timestamp).toLocaleString('zh-CN');
+      
+      markdown += `## ${role}\n\n`;
+      markdown += `**时间**: ${time}\n\n`;
+      markdown += `${msg.content}\n\n`;
+      
+      // 如果有附件
+      if (msg.attachments && msg.attachments.length > 0) {
+        markdown += `**附件**:\n`;
+        msg.attachments.forEach(att => {
+          markdown += `- [${att.filename}](${att.url})\n`;
+        });
+        markdown += `\n`;
+      }
+      
+      markdown += `---\n\n`;
+    });
+
+    // 创建Blob并下载
+    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // 生成文件名（使用对话标题，移除特殊字符）
+    const fileName = `${topicData.title.replace(/[\\/:*?"<>|]/g, '_')}_${Date.now()}.md`;
+    link.download = fileName;
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    ElMessage.success('对话已导出为Markdown文件');
+  } catch (error) {
+    console.error('导出失败:', error);
+    ElMessage.error('导出失败，请重试');
   }
 };
 
