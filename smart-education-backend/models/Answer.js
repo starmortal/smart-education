@@ -32,6 +32,22 @@ const answerSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  /** 父级回答 ID，为空表示一级回复 */
+  parentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Answer",
+    default: null,
+    index: true,
+  },
+  /** 被回复用户（嵌套回复时展示 @xxx） */
+  replyToUserId: {
+    type: String,
+    default: "",
+  },
+  replyToUserName: {
+    type: String,
+    default: "",
+  },
   createTime: {
     type: Date,
     default: Date.now,

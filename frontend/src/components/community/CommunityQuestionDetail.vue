@@ -46,43 +46,28 @@
     <div class="answers-section">
       <div class="section-title">
         <el-icon><ChatDotRound /></el-icon>
-        <span>回答列表 ({{ answers.length }})</span>
+        <span>回答 {{ totalAnswerCount }}</span>
       </div>
 
       <div class="answers-list">
-        <div v-for="answer in answers" :key="answer.id" class="answer-item">
-          <el-avatar :size="40" :src="answer.userAvatar" />
-          <div class="answer-content-wrapper">
-            <div class="answer-header">
-              <span class="answer-username">{{ answer.userName }}</span>
-              <el-tag v-if="answer.isBest" type="success" size="small">
-                <el-icon><Medal /></el-icon> 最佳答案
-              </el-tag>
-              <span class="answer-time">{{ formatTime(answer.createTime) }}</span>
-            </div>
-            <div class="answer-content" v-html="renderMarkdown(answer.content)"></div>
-            <div class="answer-actions">
-              <el-button
-                text
-                :type="answer.liked ? 'primary' : 'default'"
-                @click="$emit('like-answer', answer.id)"
-              >
-                <el-icon><Star /></el-icon>
-                {{ answer.likeCount }}
-              </el-button>
-              <el-button
-                v-if="!answer.isBest && !question.solved && question.userId === currentUserId"
-                text
-                type="success"
-                @click="$emit('mark-best', answer.id)"
-              >
-                <el-icon><Medal /></el-icon>
-                设为最佳
-              </el-button>
-            </div>
-          </div>
-        </div>
-        <el-empty v-if="answers.length === 0" description="暂无回答" :image-size="80" />
+        <CommunityAnswerThread
+          v-for="answer in answerTree"
+          :key="answer.id"
+          :answer="answer"
+          :depth="0"
+          :question="question"
+          :current-user-id="currentUserId"
+          :format-time="formatTime"
+          :replying-to-id="replyingToId"
+          :nested-reply-content="nestedReplyContent"
+          @like-answer="$emit('like-answer', $event)"
+          @mark-best="$emit('mark-best', $event)"
+          @start-reply="handleStartReply"
+          @cancel-reply="handleCancelReply"
+          @submit-nested-reply="handleSubmitNestedReply"
+          @update:nested-reply-content="nestedReplyContent = $event"
+        />
+        <el-empty v-if="totalAnswerCount === 0" description="暂无回答" :image-size="80" />
       </div>
 
       <div class="answer-input-section">
@@ -95,9 +80,9 @@
             maxlength="500"
             show-word-limit
             @update:model-value="$emit('update:answerContent', $event)"
-            @keydown.enter.exact.prevent="$emit('submit-answer')"
+            @keydown.enter.exact.prevent="handleSubmitRoot"
           />
-          <el-button type="primary" :disabled="!answerContent.trim()" @click="$emit('submit-answer')">
+          <el-button type="primary" :disabled="!answerContent.trim()" @click="handleSubmitRoot">
             发送
           </el-button>
         </div>
@@ -107,9 +92,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { ChatDotRound, Medal, Star } from '@element-plus/icons-vue';
-import { marked } from 'marked';
+import { computed, ref, watch } from 'vue';
+import { ChatDotRound } from '@element-plus/icons-vue';
+import CommunityAnswerThread from './CommunityAnswerThread.vue';
+import { buildAnswerTree, countAllAnswers } from '@/utils/answerTree';
 
 const props = defineProps({
   question: { type: Object, default: null },
@@ -120,7 +106,7 @@ const props = defineProps({
   formatTime: { type: Function, required: true }
 });
 
-defineEmits([
+const emit = defineEmits([
   'update:answerContent',
   'submit-answer',
   'like-answer',
@@ -131,9 +117,46 @@ defineEmits([
 ]);
 
 const questionId = computed(() => props.question?.id || props.question?._id);
+const answerTree = computed(() => buildAnswerTree(props.answers));
+const totalAnswerCount = computed(() => countAllAnswers(props.answers));
 
-function renderMarkdown(content) {
-  return marked(content || '');
+const replyingToId = ref('');
+const replyingTarget = ref(null);
+const nestedReplyContent = ref('');
+
+watch(
+  () => props.answers,
+  () => {
+    handleCancelReply();
+  }
+);
+
+function handleStartReply(answer) {
+  replyingToId.value = answer.id;
+  replyingTarget.value = answer;
+  nestedReplyContent.value = '';
+}
+
+function handleCancelReply() {
+  replyingToId.value = '';
+  replyingTarget.value = null;
+  nestedReplyContent.value = '';
+}
+
+function handleSubmitRoot() {
+  emit('submit-answer', { content: props.answerContent });
+}
+
+function handleSubmitNestedReply() {
+  if (!nestedReplyContent.value.trim() || !replyingTarget.value) return;
+
+  const target = replyingTarget.value;
+  emit('submit-answer', {
+    content: nestedReplyContent.value,
+    parentId: target.id,
+    replyToUserId: target.userId,
+    replyToUserName: target.userName
+  });
 }
 </script>
 
@@ -218,58 +241,23 @@ function renderMarkdown(content) {
 }
 
 .answers-list {
-  margin-top: 16px;
+  margin-top: 10px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-height: none;
-  overflow-y: visible;
+  gap: 6px;
 }
 
-.answer-item {
-  display: flex;
-  gap: 12px;
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 8px;
-}
-
-.answer-content-wrapper {
-  flex: 1;
-}
-
-.answer-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.answer-username {
-  font-size: 14px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.answer-time {
-  font-size: 12px;
-  color: #909399;
-  margin-left: auto;
-}
-
-.answer-content {
-  font-size: 14px;
-  color: #333;
-  line-height: 1.6;
+.answers-section .section-title {
+  font-size: 13px;
 }
 
 .answer-input-section {
-  margin-top: 20px;
+  margin-top: 14px;
 }
 
 .answer-input-bar {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: flex-end;
 }
 
@@ -277,8 +265,16 @@ function renderMarkdown(content) {
   flex: 1;
 }
 
+.answer-input-bar :deep(.el-textarea__inner) {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
 .answer-input-bar .el-button {
   flex-shrink: 0;
-  min-width: 72px;
+  min-width: 56px;
+  height: 30px;
+  font-size: 12px;
+  padding: 0 12px;
 }
 </style>

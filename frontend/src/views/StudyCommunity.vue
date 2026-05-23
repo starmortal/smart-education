@@ -159,7 +159,7 @@
         </div>
 
         <!-- 话题筛选提示条 -->
-        <div v-if="tagFilter && !isInlineListMode" class="tag-filter-bar">
+        <div v-if="tagFilter && !isManageListMode" class="tag-filter-bar">
           <span class="tag-filter-label">话题筛选</span>
           <el-tag type="primary" closable @close="clearTagFilter">#{{ tagFilter }}</el-tag>
           <span class="tag-filter-count">共 {{ filteredQuestions.length }} 条</span>
@@ -242,30 +242,27 @@
                   </div>
                 </div>
 
-                <div class="slide-panel slide-panel-detail">
-                  <div class="inline-detail-topbar">
-                    <el-button :icon="ArrowLeft" text type="primary" @click="closeInlineDetail">
-                      {{ inlineDetailBackLabel }}
-                    </el-button>
-                  </div>
-                  <div v-loading="detailLoading" class="inline-detail-body main-manage-list">
-                    <CommunityQuestionDetail
-                      v-if="currentQuestion"
-                      :question="currentQuestion"
-                      :answers="answers"
-                      v-model:answer-content="answerContent"
-                      :current-user-id="userId"
-                      :grade-label="getGradeLabel(currentQuestion.userGrade)"
-                      :format-time="formatTime"
-                      @submit-answer="handleSubmitAnswer"
-                      @like-answer="handleLikeAnswer"
-                      @mark-best="handleMarkBest"
-                      @mark-solved="handleMarkSolved"
-                      @mark-unsolved="handleMarkUnsolved"
-                      @delete-question="handleDeleteQuestionFromDetail"
-                    />
-                  </div>
-                </div>
+                <CommunitySlideDetailPanel
+                  :back-label="inlineDetailBackLabel"
+                  :loading="detailLoading"
+                  @back="closeInlineDetail"
+                >
+                  <CommunityQuestionDetail
+                    v-if="currentQuestion"
+                    :question="currentQuestion"
+                    :answers="answers"
+                    v-model:answer-content="answerContent"
+                    :current-user-id="userId"
+                    :grade-label="getGradeLabel(currentQuestion.userGrade)"
+                    :format-time="formatTime"
+                    @submit-answer="handleSubmitAnswer"
+                    @like-answer="handleLikeAnswer"
+                    @mark-best="handleMarkBest"
+                    @mark-solved="handleMarkSolved"
+                    @mark-unsolved="handleMarkUnsolved"
+                    @delete-question="handleDeleteQuestionFromDetail"
+                  />
+                </CommunitySlideDetailPanel>
               </div>
             </div>
           </div>
@@ -335,43 +332,47 @@
                   </div>
                 </div>
 
-                <div class="slide-panel slide-panel-detail">
-                  <div class="inline-detail-topbar">
-                    <el-button :icon="ArrowLeft" text type="primary" @click="closeInlineDetail">
-                      返回我的收藏
-                    </el-button>
-                  </div>
-                  <div v-loading="detailLoading" class="inline-detail-body main-manage-list">
-                    <CommunityQuestionDetail
-                      v-if="currentQuestion"
-                      :question="currentQuestion"
-                      :answers="answers"
-                      v-model:answer-content="answerContent"
-                      :current-user-id="userId"
-                      :grade-label="getGradeLabel(currentQuestion.userGrade)"
-                      :format-time="formatTime"
-                      @submit-answer="handleSubmitAnswer"
-                      @like-answer="handleLikeAnswer"
-                      @mark-best="handleMarkBest"
-                      @mark-solved="handleMarkSolved"
-                      @mark-unsolved="handleMarkUnsolved"
-                      @delete-question="handleDeleteQuestionFromDetail"
-                    />
-                  </div>
-                </div>
+                <CommunitySlideDetailPanel
+                  :back-label="inlineDetailBackLabel"
+                  :loading="detailLoading"
+                  @back="closeInlineDetail"
+                >
+                  <CommunityQuestionDetail
+                    v-if="currentQuestion"
+                    :question="currentQuestion"
+                    :answers="answers"
+                    v-model:answer-content="answerContent"
+                    :current-user-id="userId"
+                    :grade-label="getGradeLabel(currentQuestion.userGrade)"
+                    :format-time="formatTime"
+                    @submit-answer="handleSubmitAnswer"
+                    @like-answer="handleLikeAnswer"
+                    @mark-best="handleMarkBest"
+                    @mark-solved="handleMarkSolved"
+                    @mark-unsolved="handleMarkUnsolved"
+                    @delete-question="handleDeleteQuestionFromDetail"
+                  />
+                </CommunitySlideDetailPanel>
               </div>
             </div>
           </div>
 
-          <!-- 普通问题流 -->
-          <div v-else class="questions-feed">
-            <div 
-              v-for="question in paginatedQuestions" 
-              :key="question.id || question._id"
-              class="question-card"
-              :class="{ following: question.isFollowing }"
-              @click="handleQuestionDetail(question)"
-            >
+          <!-- 全部问题 / 关注 / 推荐：左滑查看详情 -->
+          <div v-else class="community-slide-wrapper">
+            <div class="content-slide-viewport" :class="{ 'show-detail': showInlineDetail }">
+              <div class="content-slide-track">
+                <div class="slide-panel slide-panel-list">
+                  <div class="questions-feed">
+                    <div
+                      v-for="question in paginatedQuestions"
+                      :key="question.id || question._id"
+                      class="question-card"
+                      :class="{
+                        following: question.isFollowing,
+                        active: isActiveInlineQuestion(question)
+                      }"
+                      @click="openInlineQuestionDetail(question)"
+                    >
               <!-- 用户信息行 -->
               <div class="card-header">
                 <el-avatar 
@@ -468,28 +469,57 @@
                 </div>
               </div>
             </div>
-          </div>
-          
-          <!-- 空状态（普通列表） -->
-          <div v-if="!isInlineListMode && filteredQuestions.length === 0 && !loading" class="empty-state">
-            <el-icon :size="80" color="#d1d5db"><DocumentDelete /></el-icon>
-            <div class="empty-text">暂无问题</div>
-            <div class="empty-hint">{{ tagFilter ? `#${tagFilter} 下暂无问题，试试其他话题` : '试试调整筛选条件或发起新问题' }}</div>
-          </div>
-          
-          <!-- 分页（普通列表 / 收藏列表） -->
-          <div
-            v-if="!isInlineListMode && listTotalCount > pageSize"
-            class="pagination-wrapper"
-          >
-            <el-pagination
-              v-model:current-page="currentPage"
-              :page-size="pageSize"
-              :total="listTotalCount"
-              layout="prev, pager, next"
-              @current-change="handlePageChange"
-              background
-            />
+                  </div>
+
+                  <div
+                    v-if="!showInlineDetail && filteredQuestions.length === 0 && !loading"
+                    class="empty-state feed-empty"
+                  >
+                    <el-icon :size="80" color="#d1d5db"><DocumentDelete /></el-icon>
+                    <div class="empty-text">暂无问题</div>
+                    <div class="empty-hint">
+                      {{ tagFilter ? `#${tagFilter} 下暂无问题，试试其他话题` : '试试调整筛选条件或发起新问题' }}
+                    </div>
+                  </div>
+
+                  <div
+                    v-if="!showInlineDetail && filteredQuestions.length > pageSize"
+                    class="pagination-wrapper manage-pagination"
+                  >
+                    <el-pagination
+                      v-model:current-page="currentPage"
+                      :page-size="pageSize"
+                      :total="filteredQuestions.length"
+                      layout="prev, pager, next"
+                      @current-change="handlePageChange"
+                      background
+                    />
+                  </div>
+                </div>
+
+                <CommunitySlideDetailPanel
+                  :back-label="inlineDetailBackLabel"
+                  :loading="detailLoading"
+                  @back="closeInlineDetail"
+                >
+                  <CommunityQuestionDetail
+                    v-if="currentQuestion"
+                    :question="currentQuestion"
+                    :answers="answers"
+                    v-model:answer-content="answerContent"
+                    :current-user-id="userId"
+                    :grade-label="getGradeLabel(currentQuestion.userGrade)"
+                    :format-time="formatTime"
+                    @submit-answer="handleSubmitAnswer"
+                    @like-answer="handleLikeAnswer"
+                    @mark-best="handleMarkBest"
+                    @mark-solved="handleMarkSolved"
+                    @mark-unsolved="handleMarkUnsolved"
+                    @delete-question="handleDeleteQuestionFromDetail"
+                  />
+                </CommunitySlideDetailPanel>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -604,31 +634,6 @@
       </template>
     </el-dialog>
 
-    <!-- 问题详情对话框（非「我的问题」场景） -->
-    <el-dialog
-      v-model="showDetailDialog"
-      title="问题详情"
-      width="900px"
-      center
-      class="blue-border-dialog"
-    >
-      <CommunityQuestionDetail
-        v-if="currentQuestion"
-        :question="currentQuestion"
-        :answers="answers"
-        v-model:answer-content="answerContent"
-        :current-user-id="userId"
-        :grade-label="getGradeLabel(currentQuestion.userGrade)"
-        :format-time="formatTime"
-        @submit-answer="handleSubmitAnswer"
-        @like-answer="handleLikeAnswer"
-        @mark-best="handleMarkBest"
-        @mark-solved="handleMarkSolved"
-        @mark-unsolved="handleMarkUnsolved"
-        @delete-question="handleDeleteQuestionFromDetail"
-      />
-    </el-dialog>
-
   </div>
 </template>
 
@@ -647,6 +652,7 @@ import FollowButton from '@/components/social/FollowButton.vue';
 import UserProfileDialog from '@/components/social/UserProfileDialog.vue';
 import AIAssistantPanel from '@/components/ai/AIAssistantPanel.vue';
 import CommunityQuestionDetail from '@/components/community/CommunityQuestionDetail.vue';
+import CommunitySlideDetailPanel from '@/components/community/CommunitySlideDetailPanel.vue';
 import axios from 'axios';
 import { getUserSubjects } from '@/utils/userSubjects';
 
@@ -699,7 +705,6 @@ const favoriteQuestionIds = ref([]);
 
 // 对话框控制
 const showAskDialog = ref(false);
-const showDetailDialog = ref(false);
 const showInlineDetail = ref(false);
 const detailLoading = ref(false);
 
@@ -733,16 +738,23 @@ const selectAll = ref(false);
 const selectedFavorites = ref([]);
 const selectAllFavorites = ref(false);
 
-const isInlineListMode = computed(() =>
+const isManageListMode = computed(() =>
   contentFilter.value === 'mine' || contentFilter.value === 'favorites'
 );
 
-const inlineDetailBackLabel = computed(() =>
-  contentFilter.value === 'favorites' ? '返回我的收藏' : '返回我的问题'
-);
+const inlineDetailBackLabel = computed(() => {
+  const labels = {
+    all: '返回全部问题',
+    following: '返回关注的人',
+    mine: '返回我的问题',
+    favorites: '返回我的收藏',
+    'ai-recommend': '返回为你推荐'
+  };
+  return labels[contentFilter.value] || '返回列表';
+});
 
 const pageTitle = computed(() => {
-  if (isInlineListMode.value && showInlineDetail.value) {
+  if (showInlineDetail.value) {
     return '问题详情';
   }
   const titles = {
@@ -851,9 +863,7 @@ function setContentFilter(filter) {
   if (filter === 'all') {
     tagFilter.value = '';
   }
-  if (filter !== 'mine' && filter !== 'favorites') {
-    showInlineDetail.value = false;
-  }
+  showInlineDetail.value = false;
   selectedQuestions.value = [];
   selectedFavorites.value = [];
   selectAll.value = false;
@@ -1047,7 +1057,8 @@ async function handleTopicClick(tag) {
 function handleProfileQuestionClick(questionId) {
   const question = questions.value.find(q => q.id === questionId || q._id === questionId);
   if (question) {
-    handleQuestionDetail(question);
+    showUserProfileDialog.value = false;
+    openInlineQuestionDetail(question);
   }
 }
 
@@ -1188,19 +1199,12 @@ async function openInlineQuestionDetail(question) {
 // 查看问题详情
 async function handleQuestionDetail(question, options = {}) {
   const qid = getQuestionId(question);
-  const useInline = options.inline === true;
 
   currentQuestion.value = { ...question, id: qid };
   answerContent.value = '';
 
   if (!options.keepView) {
-    if (useInline) {
-      showInlineDetail.value = true;
-      showDetailDialog.value = false;
-    } else {
-      showDetailDialog.value = true;
-      showInlineDetail.value = false;
-    }
+    showInlineDetail.value = true;
   }
 
   detailLoading.value = true;
@@ -1236,35 +1240,40 @@ async function reloadCurrentQuestionDetail() {
 
 async function handleDeleteQuestionFromDetail(questionId) {
   await handleDeleteQuestion(questionId);
-  if (showInlineDetail.value) {
-    closeInlineDetail();
-  } else {
-    showDetailDialog.value = false;
-  }
+  closeInlineDetail();
 }
 
-// 提交回答
-async function handleSubmitAnswer() {
-  if (!answerContent.value.trim()) {
+// 提交回答（支持一级回复与嵌套回复）
+async function handleSubmitAnswer(payload) {
+  const data = typeof payload === 'object' && payload !== null
+    ? payload
+    : { content: answerContent.value };
+
+  if (!data.content?.trim()) {
     ElMessage.warning('请输入回答内容');
     return;
   }
-  
+
+  const qid = getQuestionId(currentQuestion.value);
   try {
     await axios.post(
-      `http://localhost:3001/api/community/questions/${currentQuestion.value.id}/answers`,
+      `http://localhost:3001/api/community/questions/${qid}/answers`,
       {
-        content: answerContent.value,
+        content: data.content.trim(),
         userId: userId.value,
         userName: userInfo.value.nickname,
-        userAvatar: userInfo.value.avatar
+        userAvatar: userInfo.value.avatar,
+        parentId: data.parentId || null,
+        replyToUserId: data.replyToUserId || '',
+        replyToUserName: data.replyToUserName || ''
       }
     );
-    
-    ElMessage.success('回答成功');
-    answerContent.value = '';
-    
-    // 重新加载回答列表
+
+    ElMessage.success(data.parentId ? '回复成功' : '回答成功');
+    if (!data.parentId) {
+      answerContent.value = '';
+    }
+
     await reloadCurrentQuestionDetail();
   } catch (error) {
     console.error('提交回答失败：', error);
@@ -1319,9 +1328,6 @@ async function handleMarkSolved(questionId) {
     });
     
     ElMessage.success('已标记为已解决');
-    if (!showInlineDetail.value) {
-      showDetailDialog.value = false;
-    }
     await loadQuestions();
     if (showInlineDetail.value && currentQuestion.value) {
       await reloadCurrentQuestionDetail();
@@ -1340,9 +1346,6 @@ async function handleMarkUnsolved(questionId) {
     });
     
     ElMessage.success('已标记为未解决');
-    if (!showInlineDetail.value) {
-      showDetailDialog.value = false;
-    }
     await loadQuestions();
     if (showInlineDetail.value && currentQuestion.value) {
       await reloadCurrentQuestionDetail();
@@ -1365,7 +1368,6 @@ async function handleDeleteQuestion(questionId) {
     ElMessage.success('删除成功');
     if (getQuestionId(currentQuestion.value) === questionId) {
       closeInlineDetail();
-      showDetailDialog.value = false;
     }
     await loadQuestions();
   } catch (error) {
@@ -2082,6 +2084,16 @@ onMounted(async () => {
   border-color: #3b82f6;
   background: #f0f7ff;
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.12);
+}
+
+.question-card.active {
+  border-left-color: #3b82f6;
+  background: #f0f7ff;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.12);
+}
+
+.feed-empty {
+  padding: 40px 20px;
 }
 
 /* 极简社交流式布局 */

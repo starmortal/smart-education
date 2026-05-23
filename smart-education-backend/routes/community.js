@@ -272,11 +272,8 @@ router.get('/questions/:id/answers', async (req, res) => {
     
     const likedAnswerIds = new Set(likes.map(l => l.answerId.toString()));
     
-    const answersWithLikeStatus = answers.map(answer => ({
-      ...answer,
-      id: answer._id.toString(),
-      liked: likedAnswerIds.has(answer._id.toString()),
-      createTime: new Date(answer.createTime).toLocaleString('zh-CN', {
+    const formatAnswerTime = (date) =>
+      new Date(date).toLocaleString('zh-CN', {
         timeZone: 'Asia/Shanghai',
         year: 'numeric',
         month: '2-digit',
@@ -285,7 +282,14 @@ router.get('/questions/:id/answers', async (req, res) => {
         minute: '2-digit',
         second: '2-digit',
         hour12: false
-      }).replace(/\//g, '-')
+      }).replace(/\//g, '-');
+
+    const answersWithLikeStatus = answers.map(answer => ({
+      ...answer,
+      id: answer._id.toString(),
+      parentId: answer.parentId ? answer.parentId.toString() : null,
+      liked: likedAnswerIds.has(answer._id.toString()),
+      createTime: formatAnswerTime(answer.createTime)
     }));
     
     return Response.success(res, answersWithLikeStatus, '获取回答列表成功');
@@ -298,49 +302,104 @@ router.get('/questions/:id/answers', async (req, res) => {
 router.post('/questions/:id/answers', async (req, res) => {
   try {
     const questionId = req.params.id;
-    const { content, userId, userName, userAvatar } = req.body;
+    const {
+      content,
+      userId,
+      userName,
+      userAvatar,
+      parentId,
+      replyToUserId,
+      replyToUserName
+    } = req.body;
     
-    if (!content) {
+    if (!content || !String(content).trim()) {
       return Response.badRequest(res, '回答内容不能为空');
+    }
+
+    let resolvedParentId = null;
+    let resolvedReplyToUserId = replyToUserId || '';
+    let resolvedReplyToUserName = replyToUserName || '';
+
+    if (parentId) {
+      const parentAnswer = await Answer.findById(parentId);
+      if (!parentAnswer || parentAnswer.questionId.toString() !== questionId) {
+        return Response.badRequest(res, '父级回复不存在');
+      }
+      // 仅支持两级：回复二级评论时挂到一级评论下
+      if (parentAnswer.parentId) {
+        resolvedParentId = parentAnswer.parentId;
+        resolvedReplyToUserId = parentAnswer.userId;
+        resolvedReplyToUserName = parentAnswer.userName;
+      } else {
+        resolvedParentId = parentAnswer._id;
+        if (!resolvedReplyToUserId) {
+          resolvedReplyToUserId = parentAnswer.userId;
+          resolvedReplyToUserName = parentAnswer.userName;
+        }
+      }
     }
     
     const newAnswer = await Answer.create({
       questionId,
-      content,
+      content: String(content).trim(),
       userId,
       userName: userName || '匿名用户',
       userAvatar: userAvatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png',
       likeCount: 0,
-      isBest: false
+      isBest: false,
+      parentId: resolvedParentId,
+      replyToUserId: resolvedReplyToUserId,
+      replyToUserName: resolvedReplyToUserName
     });
     
     await Question.findByIdAndUpdate(questionId, {
       $inc: { answerCount: 1 }
     });
     
-    // 发送回复通知给问题作者
     try {
       const question = await Question.findById(questionId);
-      if (question && question.userId !== userId) {
+      const displayName = userName || '匿名用户';
+
+      if (resolvedParentId) {
+        const parentAnswer = await Answer.findById(resolvedParentId);
+        if (parentAnswer && parentAnswer.userId !== userId) {
+          await notificationService.sendNotification(
+            parentAnswer.userId,
+            'reply',
+            '💬 您的评论有新回复',
+            `用户 ${displayName} 回复了您`,
+            {
+              relatedId: questionId,
+              relatedType: 'question',
+              relatedData: {
+                userName: displayName,
+                userAvatar: userAvatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png',
+                questionTitle: question?.title || '',
+                questionId
+              }
+            }
+          );
+        }
+      } else if (question && question.userId !== userId) {
         await notificationService.sendNotification(
           question.userId,
-          "reply",
-          "💬 您的问题有新回复",
-          `用户 ${userName || '匿名用户'} 回复了您的问题`,
+          'reply',
+          '💬 您的问题有新回复',
+          `用户 ${displayName} 回复了您的问题`,
           {
             relatedId: questionId,
-            relatedType: "question",
+            relatedType: 'question',
             relatedData: {
-              userName: userName || '匿名用户',
+              userName: displayName,
               userAvatar: userAvatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png',
               questionTitle: question.title,
-              questionId: questionId
+              questionId
             }
           }
         );
       }
     } catch (error) {
-      console.error("发送回复通知失败：", error);
+      console.error('发送回复通知失败：', error);
     }
     
     const formattedTime = new Date(newAnswer.createTime).toLocaleString('zh-CN', {
@@ -357,6 +416,7 @@ router.post('/questions/:id/answers', async (req, res) => {
     return Response.success(res, {
       ...newAnswer.toObject(),
       id: newAnswer._id.toString(),
+      parentId: newAnswer.parentId ? newAnswer.parentId.toString() : null,
       createTime: formattedTime,
       liked: false
     }, '回答成功');
