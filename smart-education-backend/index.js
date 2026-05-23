@@ -101,6 +101,15 @@ mongoose.connection.on('error', (err) => {
 // 执行数据库连接
 connectDB();
 
+// AI 学习计划定时调度（每分钟检查一次）
+const aiPlanScheduler = require("./services/aiPlanSchedulerService");
+setInterval(() => {
+  aiPlanScheduler.tick().catch((err) => {
+    logger.error("AI 计划定时调度异常", err);
+  });
+}, 60 * 1000);
+logger.info("AI 学习计划定时调度已启动（每分钟检查）");
+
 // 路由挂载
 app.use("/api/user", userRouter);
 app.use("/api/ai", aiRouter);

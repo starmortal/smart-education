@@ -178,6 +178,13 @@
               <div class="card-tags">
                 <span class="tag-item">{{ getSubjectText(error.subject) }}</span>
                 <span class="tag-item tag-type">{{ getTypeText(error.questionType) }}</span>
+                <span
+                  v-for="kp in (error.knowledgePoints || []).slice(0, 3)"
+                  :key="kp"
+                  class="tag-item tag-knowledge"
+                >
+                  {{ kp }}
+                </span>
               </div>
 
               <!-- 分隔线 -->
@@ -2111,6 +2118,11 @@ async function batchDeleteErrors() {
 .error-card .tag-item.tag-type {
   background: rgba(107, 114, 128, 0.08);
   color: #6b7280;
+}
+
+.error-card .tag-item.tag-knowledge {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
 }
 
 .error-card .card-divider {

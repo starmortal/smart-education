@@ -5,12 +5,164 @@ const { formatBeijingTime, formatBeijingTimeSimple } = require("../utils/timeHel
 const Response = require("../utils/response");
 const logger = require("../utils/logger");
 const { asyncHandler, AppError } = require("../middleware/errorHandler");
+const { buildLearningProfile } = require("../services/learningProfileService");
+const {
+  previewAiPlans,
+  previewAiPlansStream,
+  confirmAiPlans,
+  adjustPlansByProgress,
+} = require("../services/aiPlanService");
+const {
+  getAiPlanSettings,
+  saveAiPlanSettings,
+} = require("../services/aiPlanSettingsService");
+const aiPlanScheduler = require("../services/aiPlanSchedulerService");
 
 /**
  * 学习计划路由模块
- * 功能：学习计划的增删改查、进度跟踪、状态管理
+ * 功能：学习计划的增删改查、进度跟踪、状态管理、AI 智能制定
  * 用途：帮助学生制定学习计划，培养良好的学习习惯
  */
+
+// 获取用户学习画像（AI 制定计划用）
+router.get("/learning-profile", asyncHandler(async (req, res) => {
+  const userId = req.headers["x-user-id"] || req.query.userId;
+  if (!userId) {
+    throw new AppError("用户ID不能为空", 400);
+  }
+
+  const dataSources = req.query.dataSources
+    ? req.query.dataSources.split(",")
+    : undefined;
+
+  const profile = await buildLearningProfile(userId, dataSources);
+  Response.success(res, profile, "获取学习画像成功");
+}));
+
+// AI 生成计划预览
+router.post("/ai-generate/preview", asyncHandler(async (req, res) => {
+  const userId = req.headers["x-user-id"] || req.body.userId;
+  if (!userId) {
+    throw new AppError("用户ID不能为空", 400);
+  }
+
+  const {
+    dataSources,
+    durationDays = 7,
+    focusSubjects = [],
+    maxPlans = 6,
+  } = req.body;
+
+  logger.info(`AI 生成计划预览: userId=${userId}, durationDays=${durationDays}`);
+
+  const result = await previewAiPlans(userId, {
+    dataSources,
+    durationDays,
+    focusSubjects,
+    maxPlans,
+  });
+
+  Response.success(res, result, "生成计划草案成功");
+}));
+
+// AI 生成计划预览（流式 SSE）
+router.post("/ai-generate/preview-stream", asyncHandler(async (req, res) => {
+  const userId = req.headers["x-user-id"] || req.body.userId;
+  if (!userId) {
+    throw new AppError("用户ID不能为空", 400);
+  }
+
+  const {
+    dataSources,
+    durationDays = 7,
+    focusSubjects = [],
+    maxPlans = 6,
+  } = req.body;
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+
+  const emit = (payload) => {
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  };
+
+  try {
+    await previewAiPlansStream(
+      userId,
+      { dataSources, durationDays, focusSubjects, maxPlans },
+      emit
+    );
+    emit({ type: "done" });
+    res.end();
+  } catch (error) {
+    logger.error("AI 流式生成计划失败", error);
+    emit({ type: "error", message: error.message || "生成失败" });
+    res.end();
+  }
+}));
+
+// 根据进度智能调整计划
+router.post("/ai-generate/adjust", asyncHandler(async (req, res) => {
+  const userId = req.headers["x-user-id"] || req.body.userId;
+  if (!userId) {
+    throw new AppError("用户ID不能为空", 400);
+  }
+
+  const { apply = false, durationDays = 7 } = req.body;
+  const result = await adjustPlansByProgress(userId, { apply, durationDays });
+  Response.success(res, result, apply ? "计划调整已应用" : "获取调整建议成功");
+}));
+
+// 获取 AI 制定计划偏好
+router.get("/ai-settings", asyncHandler(async (req, res) => {
+  const userId = req.headers["x-user-id"] || req.query.userId;
+  if (!userId) {
+    throw new AppError("用户ID不能为空", 400);
+  }
+  const settings = await getAiPlanSettings(userId);
+  Response.success(res, settings, "获取 AI 计划设置成功");
+}));
+
+// 保存 AI 制定计划偏好
+router.put("/ai-settings", asyncHandler(async (req, res) => {
+  const userId = req.headers["x-user-id"] || req.body.userId;
+  if (!userId) {
+    throw new AppError("用户ID不能为空", 400);
+  }
+  const settings = await saveAiPlanSettings(userId, req.body);
+  Response.success(res, settings, "保存 AI 计划设置成功");
+}));
+
+// 立即执行一次定时生成（手动触发）
+router.post("/ai-schedule/run-now", asyncHandler(async (req, res) => {
+  const userId = req.headers["x-user-id"] || req.body.userId;
+  if (!userId) {
+    throw new AppError("用户ID不能为空", 400);
+  }
+
+  const result = await aiPlanScheduler.runNow(userId);
+  if (result.skipped) {
+    return Response.success(res, result, result.reason === 'no_plans' ? '暂无可生成的计划' : '未执行生成');
+  }
+  Response.success(res, result, `已自动生成并导入 ${result.count} 条计划，通知已发送`);
+}));
+
+// AI 计划确认导入
+router.post("/ai-generate/confirm", asyncHandler(async (req, res) => {
+  const userId = req.headers["x-user-id"] || req.body.userId;
+  const { plans } = req.body;
+
+  if (!userId) {
+    throw new AppError("用户ID不能为空", 400);
+  }
+
+  logger.info(`AI 导入计划: userId=${userId}, count=${plans?.length || 0}`);
+
+  const result = await confirmAiPlans(userId, plans);
+  Response.success(res, result, `成功导入 ${result.count} 条计划`);
+}));
 
 // 获取用户学习计划统计数据
 router.get("/stats/:userId", asyncHandler(async (req, res) => {

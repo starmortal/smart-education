@@ -5,6 +5,7 @@ const Response = require("../utils/response");
 const logger = require("../utils/logger");
 const { asyncHandler, AppError } = require("../middleware/errorHandler");
 const ai = require("../utils/ai");
+const { annotateErrorQuestion, batchAnnotateUserErrors, extractKnowledgePoints } = require("../services/knowledgePointService");
 
 /**
  * 错题本路由模块
@@ -14,13 +15,25 @@ const ai = require("../utils/ai");
 
 // 添加错题接口
 router.post("/add", asyncHandler(async (req, res) => {
-  const { userId, questionTitle, subject, questionType, wrongReason, correctAnalysis, userAnswer } = req.body;
+  const { userId, questionTitle, subject, questionType, wrongReason, correctAnalysis, userAnswer, knowledgePoints } = req.body;
 
   if (!userId || !questionTitle || !subject) {
     throw new AppError("用户ID、题目标题、科目为必填项", 400);
   }
 
   logger.info(`添加错题: userId=${userId}, questionTitle=${questionTitle}`);
+
+  let resolvedKnowledgePoints = Array.isArray(knowledgePoints)
+    ? knowledgePoints.filter(Boolean).slice(0, 5)
+    : [];
+
+  if (resolvedKnowledgePoints.length === 0) {
+    resolvedKnowledgePoints = await extractKnowledgePoints({
+      questionTitle,
+      subject,
+      wrongReason: wrongReason || '',
+    });
+  }
 
   const newErrorQuestion = new ErrorQuestion({
     userId,
@@ -29,11 +42,17 @@ router.post("/add", asyncHandler(async (req, res) => {
     questionType: questionType || "single_choice",
     masteryStatus: "unmastered",
     wrongReason: wrongReason || "",
+    knowledgePoints: resolvedKnowledgePoints,
     correctAnalysis: correctAnalysis || "",
     userAnswer: userAnswer || "",
   });
 
   await newErrorQuestion.save();
+
+  // 后台补全知识点（若首次为兜底结果）
+  annotateErrorQuestion(newErrorQuestion._id).catch((err) => {
+    logger.warn(`错题知识点补标注失败: ${newErrorQuestion._id}`, err.message);
+  });
 
   logger.info(`错题添加成功: errorQuestionId=${newErrorQuestion._id}`);
 
@@ -143,6 +162,7 @@ router.get("/list/:userId", asyncHandler(async (req, res) => {
     id: eq._id,
     userId: eq.userId,
     questionTitle: eq.questionTitle,
+    knowledgePoints: eq.knowledgePoints || [],
     subject: eq.subject,
     questionType: eq.questionType,
     masteryStatus: eq.masteryStatus,
@@ -367,6 +387,26 @@ ${errorsText}
     logger.error(`AI分析错题失败: ${error.message}`);
     throw new AppError("AI分析失败，请稍后重试", 500);
   }
+}));
+
+// 批量 AI 标注错题知识点
+router.post("/batch-annotate-knowledge", asyncHandler(async (req, res) => {
+  const { userId, limit = 20 } = req.body;
+  if (!userId) {
+    throw new AppError("用户ID为必填项", 400);
+  }
+  const count = await batchAnnotateUserErrors(userId, limit);
+  Response.success(res, { count }, `已标注 ${count} 道错题知识点`);
+}));
+
+// 单题提取知识点（预览）
+router.post("/extract-knowledge-points", asyncHandler(async (req, res) => {
+  const { questionTitle, subject, wrongReason } = req.body;
+  if (!questionTitle || !subject) {
+    throw new AppError("题目标题和科目为必填项", 400);
+  }
+  const knowledgePoints = await extractKnowledgePoints({ questionTitle, subject, wrongReason });
+  Response.success(res, { knowledgePoints }, "知识点提取成功");
 }));
 
 module.exports = router;

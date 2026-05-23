@@ -30,6 +30,10 @@ const errorQuestionSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  knowledgePoints: {
+    type: [String],
+    default: [],
+  },
   correctAnalysis: {
     type: String,
     default: "",

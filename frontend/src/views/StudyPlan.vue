@@ -109,6 +109,10 @@
             @click="toggleSidebar"
           />
           <span class="file-name">我的计划</span>
+          <div class="header-spacer"></div>
+          <el-button type="primary" :icon="MagicStick" @click="showAiPlanDrawer = true">
+            AI 智能制定
+          </el-button>
         </div>
         
         <!-- 时间轴视图 -->
@@ -418,6 +422,13 @@
         <el-button @click="showManagePlanDialog = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <AiPlanGeneratorDrawer
+      v-model="showAiPlanDrawer"
+      :user-id="currentUserId"
+      :user-subjects="userSubjects"
+      @imported="handleAiPlansImported"
+    />
   </div>
 </template>
 
@@ -426,8 +437,9 @@
 import { ref, reactive, onMounted, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { Plus, Calendar, Edit, Setting, Delete, DArrowLeft, DArrowRight } from "@element-plus/icons-vue";
+import { Plus, Calendar, Edit, Setting, Delete, DArrowLeft, DArrowRight, MagicStick } from "@element-plus/icons-vue";
 import SideNavBar from '@/components/SideNavBar.vue';
+import AiPlanGeneratorDrawer from '@/components/plan/AiPlanGeneratorDrawer.vue';
 // 【新增】引入 axios，对接后端接口
 import axios from "axios";
 // 【新增】引入用户科目工具
@@ -459,6 +471,8 @@ const pageSize = ref(9999); // 时间轴展示全部计划
 const totalCount = ref(0);
 
 const showFilterDialog = ref(false);
+const showAiPlanDrawer = ref(false);
+const currentUserId = ref(localStorage.getItem('edu-user-id') || '');
 
 /* 筛选表单 */
 const filterForm = reactive({
@@ -603,6 +617,11 @@ function getSubjectText(subject) {
 }
 
 /* 生命周期 */
+async function handleAiPlansImported() {
+  await loadGlobalStats();
+  loadPlanList();
+}
+
 onMounted(async () => {
   // 先加载用户科目
   userSubjects.value = await getUserSubjects();

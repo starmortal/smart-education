@@ -52,6 +52,23 @@ const userSchema = new mongoose.Schema({
     of: Number,
     default: {},
   },
+  aiPlanSettings: {
+    enabled: { type: Boolean, default: true },
+    dataSources: {
+      type: [String],
+      default: ['profile', 'exam', 'errorBook', 'studyPlan', 'chat', 'note', 'community'],
+    },
+    durationDays: { type: Number, default: 7 },
+    focusSubjects: { type: [String], default: [] },
+    autoAdjust: { type: Boolean, default: false },
+    scheduleEnabled: { type: Boolean, default: false },
+    scheduleTime: { type: String, default: '08:00' },
+    scheduleFrequency: { type: String, enum: ['daily', 'weekly'], default: 'daily' },
+    scheduleWeekday: { type: Number, default: 1, min: 1, max: 7 },
+    plansPerRun: { type: Number, default: 3, min: 1, max: 10 },
+    lastRunKey: { type: String, default: '' },
+    lastScheduledRunAt: { type: Date, default: null },
+  },
 });
 
 userSchema.index({ email: 1 });
