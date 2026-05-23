@@ -121,35 +121,6 @@
     </div>
 
     <!-- 右键菜单 -->
-    <vue-context-menu
-      v-model:show="showContextMenu"
-      :options="contextMenuOptions"
-      @select="handleContextMenuSelect"
-    >
-      <template v-if="contextMenuNode && !contextMenuNode.isFolder">
-        <context-menu-item label="重命名" :value="'rename'">
-          <template #icon><el-icon><Edit /></el-icon></template>
-        </context-menu-item>
-        <context-menu-item label="编辑标签" :value="'tags'">
-          <template #icon><el-icon><PriceTag /></el-icon></template>
-        </context-menu-item>
-        <context-menu-sperator />
-        <context-menu-item label="删除" :value="'delete'" class="danger">
-          <template #icon><el-icon><Delete /></el-icon></template>
-        </context-menu-item>
-      </template>
-      <template v-else-if="contextMenuNode">
-        <context-menu-item label="重命名" :value="'rename'">
-          <template #icon><el-icon><Edit /></el-icon></template>
-        </context-menu-item>
-        <context-menu-sperator />
-        <context-menu-item label="删除" :value="'delete'" class="danger">
-          <template #icon><el-icon><Delete /></el-icon></template>
-        </context-menu-item>
-      </template>
-    </vue-context-menu>
-
-    <!-- 自定义右键菜单 -->
     <div 
       v-show="showContextMenu" 
       class="custom-context-menu"
@@ -257,7 +228,7 @@ const sortOrder = ref('updateTime');
 const showContextMenu = ref(false);
 const contextMenuPos = ref({ x: 0, y: 0 });
 const contextMenuNode = ref(null);
-const contextMenuRef = ref(null);
+let contextMenuCloseHandler = null;
 
 // 重命名
 const showRenameDialog = ref(false);
@@ -448,23 +419,34 @@ function handleNodeClick(data) {
   currentNote.value = { ...data };
 }
 
+function closeContextMenu(clearNode = false) {
+  showContextMenu.value = false;
+  if (contextMenuCloseHandler) {
+    document.removeEventListener('click', contextMenuCloseHandler);
+    contextMenuCloseHandler = null;
+  }
+  if (clearNode) {
+    contextMenuNode.value = null;
+  }
+}
+
 // 右键菜单
-function handleContextMenu(event, data, node) {
+function handleContextMenu(event, data) {
   event.preventDefault();
   event.stopPropagation();
-  
+
+  closeContextMenu();
+
   contextMenuNode.value = data;
   contextMenuPos.value = { x: event.clientX, y: event.clientY };
   showContextMenu.value = true;
-  
-  // 点击其他地方关闭菜单
+
   nextTick(() => {
-    const closeMenu = (e) => {
-      showContextMenu.value = false;
-      document.removeEventListener('click', closeMenu);
+    contextMenuCloseHandler = () => {
+      closeContextMenu(true);
     };
     setTimeout(() => {
-      document.addEventListener('click', closeMenu);
+      document.addEventListener('click', contextMenuCloseHandler);
     }, 100);
   });
 }
@@ -472,8 +454,8 @@ function handleContextMenu(event, data, node) {
 // 重命名
 function handleRename() {
   if (!contextMenuNode.value) return;
-  
-  showContextMenu.value = false;
+
+  closeContextMenu();
   renameValue.value = contextMenuNode.value.noteTitle;
   showRenameDialog.value = true;
 }
@@ -481,8 +463,8 @@ function handleRename() {
 // 编辑标签
 function handleEditTags() {
   if (!contextMenuNode.value) return;
-  
-  showContextMenu.value = false;
+
+  closeContextMenu();
   editingTags.value = [...(contextMenuNode.value.noteTags || [])];
   showTagsDialog.value = true;
 }
@@ -548,26 +530,29 @@ async function confirmRename() {
 // 删除
 async function handleDelete() {
   if (!contextMenuNode.value) return;
-  
+
+  const targetNode = contextMenuNode.value;
+  closeContextMenu();
+
   try {
-    const message = contextMenuNode.value.isFolder 
-      ? '确定要删除这个文件夹吗？文件夹内的所有内容也会被删除。' 
+    const message = targetNode.isFolder
+      ? '确定要删除这个文件夹吗？文件夹内的所有内容也会被删除。'
       : '确定要删除这篇笔记吗？';
-    
+
     await ElMessageBox.confirm(message, '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning',
     });
-    
-    await noteApi.delete(contextMenuNode.value.id);
+
+    await noteApi.delete(targetNode.id);
     ElMessage.success('删除成功');
-    
-    // 如果删除的是当前笔记，清空当前笔记
-    if (currentNote.value?.id === contextMenuNode.value.id) {
+
+    if (currentNote.value?.id === targetNode.id) {
       currentNote.value = null;
     }
-    
+
+    contextMenuNode.value = null;
     await loadNoteList();
   } catch (error) {
     if (error !== 'cancel') {

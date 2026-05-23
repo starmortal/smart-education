@@ -123,7 +123,14 @@
     </div>
 
     <!-- 右侧主内容 -->
-    <div class="community-content" :class="{ expanded: sidebarCollapsed, 'with-ai-panel': !aiPanelCollapsed }">
+    <div
+      class="community-content"
+      :class="{
+        expanded: sidebarCollapsed,
+        'with-ai-panel': !aiPanelCollapsed,
+        'with-ai-panel-collapsed': aiPanelCollapsed
+      }"
+    >
       <div class="content-container">
         <!-- 顶部标题栏 -->
         <div class="editor-header">
@@ -605,6 +612,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
   Plus, Setting, Delete, Star, Medal, ChatDotRound, 
@@ -619,6 +627,7 @@ import axios from 'axios';
 import { marked } from 'marked';
 import { getUserSubjects } from '@/utils/userSubjects';
 
+const router = useRouter();
 const loading = ref(false);
 const sidebarCollapsed = ref(false);
 const aiPanelCollapsed = ref(false);
@@ -833,10 +842,9 @@ function handleViewUserProfile(targetUserId) {
   showUserProfileDialog.value = true;
 }
 
-// 查看我的主页
+// 跳转到个人中心并打开资料编辑
 function handleViewMyProfile() {
-  // 可以跳转到个人中心页面
-  ElMessage.info('点击头像查看个人中心');
+  router.push({ path: '/profile', query: { edit: '1' } });
 }
 
 // 关注状态变化
@@ -1675,6 +1683,10 @@ onMounted(async () => {
 
 .community-content.with-ai-panel {
   right: 320px;
+}
+
+.community-content.with-ai-panel-collapsed {
+  right: 56px;
 }
 
 .content-container {

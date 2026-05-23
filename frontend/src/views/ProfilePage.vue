@@ -763,6 +763,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed, nextTick } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
   User, 
@@ -819,6 +820,9 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+const route = useRoute();
+const router = useRouter();
 
 const saveLoading = ref(false);
 const examLoading = ref(false);
@@ -2146,10 +2150,15 @@ function destroyCharts() {
   percentageChart = null;  // 新增
 }
 
-onMounted(() => {
-  loadUserProfile();
+onMounted(async () => {
+  await loadUserProfile();
   loadExamList();
-  loadAnalysisHistory();  // 加载分析历史记录
+  loadAnalysisHistory();
+
+  if (route.query.edit === '1' || route.query.edit === 'true') {
+    showEditDialog.value = true;
+    router.replace({ path: '/profile' });
+  }
 });
 
 // 初始化得分率图表（新增）

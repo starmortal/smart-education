@@ -1,22 +1,23 @@
 <template>
   <div class="ai-assistant-panel" :class="{ collapsed: isCollapsed }">
-    <!-- 折叠按钮 -->
-    <div class="collapse-btn" @click="toggleCollapse">
-      <el-icon :size="20">
-        <component :is="isCollapsed ? DArrowLeft : DArrowRight" />
-      </el-icon>
-    </div>
-
-    <!-- 面板内容 -->
-    <div class="panel-content" v-show="!isCollapsed">
-      <!-- 标题 -->
-      <div class="panel-header">
+    <!-- 顶栏：与左侧筛选区同高，含折叠按钮 -->
+    <div class="panel-header-bar">
+      <el-button
+        :icon="isCollapsed ? DArrowLeft : DArrowRight"
+        circle
+        size="small"
+        @click="toggleCollapse"
+      />
+      <div v-show="!isCollapsed" class="panel-header-title">
         <div class="ai-icon-wrapper">
-          <el-icon :size="24" class="ai-icon"><MagicStick /></el-icon>
+          <el-icon :size="20" class="ai-icon"><MagicStick /></el-icon>
         </div>
         <span class="panel-title">AI 学习助手</span>
       </div>
+    </div>
 
+    <!-- 面板内容 -->
+    <div class="panel-body" v-show="!isCollapsed">
       <!-- 智能推荐 -->
       <div class="panel-section">
         <div class="section-title">
@@ -119,13 +120,11 @@ const emit = defineEmits(['questionClick', 'topicClick', 'update:collapsed']);
 const isCollapsed = ref(false);
 const userId = localStorage.getItem('edu-user-id') || '';
 
-// 数据
 const recommendedQuestions = ref([]);
 const learningAdvice = ref(null);
 const hotTopics = ref([]);
 const communityStats = ref(null);
 
-// 加载状态
 const loadingRecommend = ref(false);
 const loadingAdvice = ref(false);
 const loadingTopics = ref(false);
@@ -133,11 +132,9 @@ const loadingStats = ref(false);
 
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value;
-  // 发射折叠状态变化事件
   emit('update:collapsed', isCollapsed.value);
 };
 
-// 加载推荐问题
 const loadRecommendations = async () => {
   loadingRecommend.value = true;
   try {
@@ -152,7 +149,6 @@ const loadRecommendations = async () => {
   }
 };
 
-// 加载学习建议
 const loadAdvice = async () => {
   loadingAdvice.value = true;
   try {
@@ -167,7 +163,6 @@ const loadAdvice = async () => {
   }
 };
 
-// 加载热门话题
 const loadHotTopics = async () => {
   loadingTopics.value = true;
   try {
@@ -180,7 +175,6 @@ const loadHotTopics = async () => {
   }
 };
 
-// 加载社区统计
 const loadStats = async () => {
   loadingStats.value = true;
   try {
@@ -200,7 +194,6 @@ onMounted(() => {
   loadStats();
 });
 
-// 暴露刷新方法
 defineExpose({
   refresh: () => {
     loadRecommendations();
@@ -213,85 +206,93 @@ defineExpose({
 
 <style scoped>
 .ai-assistant-panel {
+  --panel-width: 320px;
+  --collapsed-visible: 56px;
   position: fixed;
   right: 0;
-  top: 56px;
+  top: 0;
   bottom: 0;
-  width: 320px;
-  background: white;
-  border-left: 1px solid #e5e7eb;
-  overflow-y: auto;
-  transition: transform 0.3s;
-  z-index: 99;
+  width: var(--panel-width);
+  background: #fff;
+  border-left: 1px solid #e4e7ed;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  transition: transform 0.3s ease;
+  box-sizing: border-box;
 }
 
 .ai-assistant-panel.collapsed {
-  transform: translateX(320px);
+  transform: translateX(calc(var(--panel-width) - var(--collapsed-visible)));
 }
 
-.collapse-btn {
-  position: absolute;
-  left: -36px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 36px;
-  height: 72px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-right: none;
-  border-radius: 8px 0 0 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.collapse-btn:hover {
-  background: #f9fafb;
-}
-
-.panel-content {
-  padding: 20px;
-}
-
-.panel-header {
+.panel-header-bar {
+  flex-shrink: 0;
+  height: 56px;
+  padding: 0 16px;
+  border-bottom: 1px solid #e4e7ed;
+  background: #fff;
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #e5e7eb;
+  box-sizing: border-box;
+}
+
+.panel-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
 }
 
 .ai-icon-wrapper {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
-  border-radius: 10px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .ai-icon {
   color: white;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
 }
 
 .panel-title {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #2c3e50;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  background: #fafafa;
+  box-sizing: border-box;
+}
+
+.panel-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.panel-body::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 2px;
 }
 
 .panel-section {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+}
+
+.panel-section:last-child {
+  margin-bottom: 0;
 }
 
 .section-title {
@@ -361,8 +362,9 @@ defineExpose({
 
 .advice-content {
   padding: 12px;
-  background: #f9fafb;
+  background: #fff;
   border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .advice-summary {
@@ -404,10 +406,11 @@ defineExpose({
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: #f9fafb;
+  background: #fff;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .topic-item:hover {
@@ -428,8 +431,9 @@ defineExpose({
 
 .stats-content {
   padding: 12px;
-  background: #f9fafb;
+  background: #fff;
   border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .stats-grid {
@@ -461,17 +465,9 @@ defineExpose({
   color: #9ca3af;
 }
 
-/* 滚动条样式 */
-.ai-assistant-panel::-webkit-scrollbar {
-  width: 6px;
-}
-
-.ai-assistant-panel::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
-}
-
-.ai-assistant-panel::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+@media (max-width: 1200px) {
+  .ai-assistant-panel {
+    display: none;
+  }
 }
 </style>
