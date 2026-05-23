@@ -8,6 +8,20 @@
           <el-icon size="16"><Cpu /></el-icon>
           <span v-if="!sidebarCollapsed">{{ activeTab === 'assistants' ? '助手管理' : '对话管理' }}</span>
         </div>
+        <!-- 新建按钮 -->
+        <el-tooltip 
+          v-if="!sidebarCollapsed" 
+          :content="activeTab === 'assistants' ? '新建助手' : '新建对话'" 
+          placement="bottom"
+        >
+          <el-button 
+            :icon="Plus" 
+            circle 
+            size="small"
+            @click="activeTab === 'assistants' ? handleCreateAssistant() : handleCreateTopic()"
+            :disabled="activeTab === 'topics' && !selectedAssistantForTopics"
+          />
+        </el-tooltip>
       </div>
 
       <!-- 自定义标签按钮 -->
@@ -28,12 +42,6 @@
 
       <!-- 助手标签内容 -->
       <div v-show="activeTab === 'assistants'" class="tab-content">
-        <div class="panel-header">
-          <el-button type="primary" :icon="Plus" @click="handleCreateAssistant" style="width: 100%;">
-            新建助手
-          </el-button>
-        </div>
-
         <div class="item-list">
           <div
             v-for="assistant in assistants"
@@ -64,18 +72,6 @@
 
       <!-- 对话标签内容 -->
       <div v-show="activeTab === 'topics'" class="tab-content">
-        <div class="panel-header">
-          <el-button
-            type="primary"
-            :icon="Plus"
-            @click="handleCreateTopic"
-            :disabled="!selectedAssistantForTopics"
-            style="width: 100%;"
-          >
-            新建对话
-          </el-button>
-        </div>
-
         <div class="item-list">
           <div
             v-for="topic in topics"
