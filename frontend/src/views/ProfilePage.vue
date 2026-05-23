@@ -172,14 +172,15 @@
               <div class="exam-name">{{ exam.examName }}</div>
               <div class="exam-date">{{ exam.examDate }}</div>
               <div class="exam-actions">
-                <el-button
-                  size="small"
-                  type="primary"
-                  :icon="TrendCharts"
-                  circle
-                  @click="showExamChart(exam)"
-                  title="查看图表"
-                />
+                <el-tooltip content="查看图表" placement="top">
+                  <el-button
+                    size="small"
+                    type="primary"
+                    :icon="TrendCharts"
+                    circle
+                    @click="showExamChart(exam)"
+                  />
+                </el-tooltip>
                 <el-button
                   size="small"
                   type="danger"
@@ -786,6 +787,7 @@ import {
 import axios from 'axios';
 import * as echarts from 'echarts';
 import eventBus from '@/utils/eventBus';
+import { CHART_TOOLTIP_BASE } from '@/constants/tooltip';
 import { marked } from 'marked';
 
 const apiClient = axios.create({
@@ -1809,6 +1811,7 @@ function updateRadarChart() {
       }
     },
     tooltip: {
+      ...CHART_TOOLTIP_BASE,
       trigger: 'item',
       formatter: (params) => {
         let result = `${exam.examName}<br/>`;
@@ -1912,6 +1915,7 @@ function initTrendChart() {
       }
     },
     tooltip: {
+      ...CHART_TOOLTIP_BASE,
       trigger: 'axis',
       axisPointer: {
         type: 'cross'
@@ -2047,6 +2051,7 @@ function initBarChart() {
       }
     },
     tooltip: {
+      ...CHART_TOOLTIP_BASE,
       trigger: 'axis',
       axisPointer: {
         type: 'shadow'
@@ -2241,6 +2246,7 @@ function updatePercentageChart() {
       }
     },
     tooltip: {
+      ...CHART_TOOLTIP_BASE,
       trigger: 'axis',
       axisPointer: {
         type: 'shadow'

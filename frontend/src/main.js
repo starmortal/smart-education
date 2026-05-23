@@ -13,11 +13,17 @@ import zhCn from 'element-plus/dist/locale/zh-cn.mjs';
 import * as ElementPlusIconsVue from "@element-plus/icons-vue";
 // 导入设计令牌（全局样式变量）
 import "./styles/design-tokens.css";
+import "./styles/tooltip.css";
 // 导入 Socket.IO 客户端
 import socketClient from "./utils/socket";
+import { setupTooltipDefaults } from "./plugins/tooltipConfig";
+import { initDelayTooltips } from "./utils/delayTooltip";
 
 // 创建Vue应用实例
 const app = createApp(App);
+
+// 全局 Tooltip 默认：浅灰样式 + 1.2 秒延迟
+setupTooltipDefaults();
 
 // 注册Element Plus图标（全局可用）
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
@@ -50,4 +56,9 @@ router.afterEach((to) => {
   if (to.path === '/login') {
     socketClient.disconnect();
   }
+
+  // 第三方编辑器工具栏等原生 title 提示统一延迟显示
+  setTimeout(() => {
+    document.querySelectorAll('.md-editor').forEach((el) => initDelayTooltips(el));
+  }, 300);
 });

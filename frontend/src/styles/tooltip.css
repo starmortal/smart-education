@@ -1,0 +1,38 @@
+/* Element Plus 悬浮提示：统一浅灰背景 */
+.el-popper[role='tooltip'].is-light,
+.el-popper[role='tooltip'].is-dark {
+  background: #f3f4f6 !important;
+  border: 1px solid #e5e7eb !important;
+  color: #4b5563 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08) !important;
+}
+
+.el-popper[role='tooltip'].is-light > .el-popper__arrow::before,
+.el-popper[role='tooltip'].is-dark > .el-popper__arrow::before {
+  background: #f3f4f6 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* 原生 title 延迟提示（第三方组件如 md-editor） */
+.app-native-delay-tooltip {
+  position: fixed;
+  z-index: 9999;
+  max-width: 280px;
+  padding: 6px 10px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 1.5;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, calc(-100% - 4px));
+  transition: opacity 0.15s ease;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  white-space: nowrap;
+}
+
+.app-native-delay-tooltip.visible {
+  opacity: 1;
+}

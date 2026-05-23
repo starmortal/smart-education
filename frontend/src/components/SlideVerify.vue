@@ -50,9 +50,11 @@
     </div>
     
     <!-- 刷新按钮 -->
-    <div class="refresh-button" @click="refreshPuzzle" title="刷新验证码">
-      <el-icon><Refresh /></el-icon>
-    </div>
+    <el-tooltip content="刷新验证码" placement="top">
+      <div class="refresh-button" @click="refreshPuzzle">
+        <el-icon><Refresh /></el-icon>
+      </div>
+    </el-tooltip>
   </div>
 </template>
 

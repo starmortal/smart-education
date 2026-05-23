@@ -118,6 +118,7 @@ import {
 import { ElMessage } from 'element-plus';
 import * as echarts from 'echarts';
 import axios from 'axios';
+import { CHART_TOOLTIP_BASE } from '@/constants/tooltip';
 
 const props = defineProps({
   userId: {
@@ -153,6 +154,7 @@ function initChart() {
   
   const option = {
     tooltip: {
+      ...CHART_TOOLTIP_BASE,
       trigger: 'item',
       formatter: function(params) {
         if (params.dataType === 'node') {

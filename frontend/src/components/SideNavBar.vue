@@ -12,7 +12,6 @@
         :key="item.path"
         :content="item.label"
         placement="right"
-        effect="dark"
       >
         <div
           :class="['nav-item', { active: currentPath === item.path }]"

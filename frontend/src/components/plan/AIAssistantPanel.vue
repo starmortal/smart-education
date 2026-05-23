@@ -9,27 +9,30 @@
         </el-tag>
       </div>
       <div class="header-actions">
-        <el-button 
-          :icon="Refresh" 
-          circle 
-          size="small"
-          @click="refreshSuggestion"
-          title="刷新建议"
-        />
-        <el-button 
-          :icon="isMinimized ? ArrowDown : ArrowUp" 
-          circle 
-          size="small"
-          @click="toggleMinimize"
-          :title="isMinimized ? '展开' : '收起'"
-        />
-        <el-button 
-          :icon="Setting" 
-          circle 
-          size="small"
-          @click="showSettings"
-          title="设置"
-        />
+        <el-tooltip content="刷新建议" placement="top">
+          <el-button 
+            :icon="Refresh" 
+            circle 
+            size="small"
+            @click="refreshSuggestion"
+          />
+        </el-tooltip>
+        <el-tooltip :content="isMinimized ? '展开' : '收起'" placement="top">
+          <el-button 
+            :icon="isMinimized ? ArrowDown : ArrowUp" 
+            circle 
+            size="small"
+            @click="toggleMinimize"
+          />
+        </el-tooltip>
+        <el-tooltip content="设置" placement="top">
+          <el-button 
+            :icon="Setting" 
+            circle 
+            size="small"
+            @click="showSettings"
+          />
+        </el-tooltip>
       </div>
     </div>
 

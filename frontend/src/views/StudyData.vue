@@ -119,7 +119,7 @@
           prop="content"
           label="内容"
           min-width="250"
-          show-overflow-tooltip
+          :show-overflow-tooltip="TABLE_OVERFLOW_TOOLTIP"
         />
         <el-table-column
           prop="value"
@@ -212,6 +212,7 @@ import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 // 【新增】引入 axios，对接后端 /api/study-data 接口
 import axios from "axios";
+import { TABLE_OVERFLOW_TOOLTIP } from "@/constants/tooltip";
 import {
   Refresh,
   Download,

@@ -161,11 +161,6 @@
           <el-button type="primary" :icon="Plus" @click="showAskDialog = true">发起提问</el-button>
         </div>
 
-        <!-- 最新问题提示 -->
-        <div v-if="contentFilter === 'latest' && !socialView && !showInlineDetail" class="tag-filter-bar">
-          <span class="tag-filter-label">最新问题</span>
-          <span class="tag-filter-count">展示按发布时间排序的前 8 条</span>
-        </div>
 
         <!-- 话题筛选提示条 -->
         <div v-if="tagFilter && !isManageListMode && !socialView" class="tag-filter-bar">
