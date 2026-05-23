@@ -28,6 +28,16 @@ const knowledgeSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  isSystem: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  subject: {
+    type: String,
+    enum: ['math', 'physics', 'history', 'chemistry', 'biology', 'english', 'geography', 'general'],
+    default: 'general'
+  },
   createdAt: {
     type: Date,
     default: Date.now

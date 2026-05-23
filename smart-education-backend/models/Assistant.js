@@ -46,9 +46,15 @@ const assistantSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Knowledge'
   }],
-  isDefault: {
+  isSystem: {
     type: Boolean,
-    default: false
+    default: false,
+    index: true
+  },
+  subject: {
+    type: String,
+    enum: ['math', 'physics', 'history', 'chemistry', 'biology', 'english', 'geography', 'general'],
+    default: 'general'
   },
   createdAt: {
     type: Date,

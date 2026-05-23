@@ -6,8 +6,8 @@ const { asyncHandler } = require('../middleware/errorHandler');
 // 创建助手
 router.post('/create', asyncHandler(assistantController.createAssistant));
 
-// 创建默认助手
-router.post('/create-default', asyncHandler(assistantController.createDefaultAssistant));
+// 初始化系统学科助手
+router.get('/init-system', asyncHandler(assistantController.getOrInitSystemAssistants));
 
 // 获取用户的所有助手
 router.get('/list', asyncHandler(assistantController.getAssistants));

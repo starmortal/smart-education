@@ -42,7 +42,10 @@
             @click="selectAssistantAndSwitchToTopics(assistant)"
           >
             <div class="item-info">
-              <div class="item-name">{{ assistant.name }}</div>
+              <div class="item-name">
+                {{ assistant.name }}
+                <el-tag v-if="assistant.isSystem" type="info" size="small" style="margin-left: 8px;">系统</el-tag>
+              </div>
             </div>
             <el-dropdown trigger="click" @command="(cmd) => handleAssistantCommand(cmd, assistant)">
               <el-icon class="more-icon" @click.stop>
@@ -51,7 +54,7 @@
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="edit">编辑助手</el-dropdown-item>
-                  <el-dropdown-item command="delete" divided>删除助手</el-dropdown-item>
+                  <el-dropdown-item v-if="!assistant.isSystem" command="delete" divided>删除助手</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -356,7 +359,13 @@
             type="textarea"
             :rows="8"
             placeholder="请输入系统提示词（可选）"
+            :readonly="assistantForm.isSystem"
+            :disabled="assistantForm.isSystem"
           />
+          <div v-if="assistantForm.isSystem" style="color: #909399; font-size: 12px; margin-top: 4px;">
+            <el-icon><Lock /></el-icon>
+            系统助手的提示词不可修改
+          </div>
         </el-form-item>
         <el-form-item label="关联知识库">
           <el-select
@@ -365,6 +374,7 @@
             filterable
             placeholder="选择默认使用的知识库"
             style="width: 100%"
+            :disabled="assistantForm.isSystem"
           >
             <el-option
               v-for="kb in knowledgeBases"
@@ -373,7 +383,11 @@
               :value="kb._id"
             />
           </el-select>
-          <div style="color: #909399; font-size: 12px; margin-top: 4px;">
+          <div v-if="assistantForm.isSystem" style="color: #909399; font-size: 12px; margin-top: 4px;">
+            <el-icon><Lock /></el-icon>
+            系统助手的知识库不可修改
+          </div>
+          <div v-else style="color: #909399; font-size: 12px; margin-top: 4px;">
             使用此助手时将自动检索这些知识库
           </div>
         </el-form-item>
@@ -432,7 +446,7 @@
 <script setup>
 import { ref, onMounted, nextTick, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, MoreFilled, ChatDotRound, Cpu, Promotion, Paperclip, Close, Document, FolderOpened, DArrowLeft, DArrowRight, CopyDocument } from '@element-plus/icons-vue';
+import { Plus, MoreFilled, ChatDotRound, Cpu, Promotion, Paperclip, Close, Document, FolderOpened, DArrowLeft, DArrowRight, CopyDocument, Lock } from '@element-plus/icons-vue';
 import { marked } from 'marked';
 
 // 配置 marked 选项
@@ -448,7 +462,7 @@ import {
   createAssistant,
   updateAssistant,
   deleteAssistant,
-  createDefaultAssistant
+  initSystemAssistants
 } from '@/api/assistant';
 import {
   getTopics,
@@ -514,6 +528,15 @@ const pendingSaveContent = ref('');
 onMounted(async () => {
   await loadAssistants();
   await loadKnowledgeBases();
+  
+  // 初始化系统学科助手
+  try {
+    await initSystemAssistants(userId.value);
+    await loadAssistants(); // 重新加载助手列表
+  } catch (error) {
+    console.error('初始化系统助手失败:', error);
+  }
+  
   // 默认选择第一个助手并切换到对话标签
   if (assistants.value.length > 0) {
     await selectAssistantAndSwitchToTopics(assistants.value[0]);
@@ -542,12 +565,6 @@ const loadAssistants = async () => {
     console.log('加载助手响应:', res);
     if (res.code === 200) {
       assistants.value = res.data;
-      
-      // 如果没有助手，创建默认助手
-      if (assistants.value.length === 0) {
-        await createDefaultAssistant(userId.value);
-        await loadAssistants();
-      }
     }
   } catch (error) {
     console.error('加载助手失败:', error);
@@ -622,7 +639,8 @@ const handleCreateAssistant = () => {
   assistantForm.value = { 
     name: '', 
     prompt: '',
-    knowledgeBases: []
+    knowledgeBases: [],
+    isSystem: false
   };
   assistantDialogVisible.value = true;
 };
@@ -662,7 +680,8 @@ const handleAssistantCommand = async (command, assistant) => {
     assistantForm.value = {
       name: assistant.name,
       prompt: assistant.prompt || '',
-      knowledgeBases: assistant.knowledgeBases || []
+      knowledgeBases: assistant.knowledgeBases || [],
+      isSystem: assistant.isSystem || false
     };
     assistantDialogVisible.value = true;
   } else if (command === 'delete') {

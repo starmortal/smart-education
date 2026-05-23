@@ -7,9 +7,9 @@ export const createAssistant = (data) => {
   return request.post(`${BASE_URL}/create`, data);
 };
 
-// 创建默认助手
-export const createDefaultAssistant = (userId) => {
-  return request.post(`${BASE_URL}/create-default`, { userId });
+// 初始化系统学科助手
+export const initSystemAssistants = (userId) => {
+  return request.get(`${BASE_URL}/init-system`, { params: { userId } });
 };
 
 // 获取用户的所有助手
