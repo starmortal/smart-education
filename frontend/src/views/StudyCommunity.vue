@@ -159,7 +159,7 @@
         </div>
 
         <!-- 话题筛选提示条 -->
-        <div v-if="tagFilter && !isManageMode" class="tag-filter-bar">
+        <div v-if="tagFilter && !isInlineListMode" class="tag-filter-bar">
           <span class="tag-filter-label">话题筛选</span>
           <el-tag type="primary" closable @close="clearTagFilter">#{{ tagFilter }}</el-tag>
           <span class="tag-filter-count">共 {{ filteredQuestions.length }} 条</span>
@@ -167,98 +167,200 @@
         
         <!-- 问题列表 -->
         <div class="questions-list" v-loading="loading">
-          <!-- 我的问题 / 我的收藏：管理工具栏 -->
-          <div v-if="isManageMode" class="manage-toolbar">
-            <template v-if="contentFilter === 'mine'">
-              <el-checkbox v-model="selectAll" @change="handleSelectAll">全选</el-checkbox>
-              <el-button
-                v-if="selectedQuestions.length > 0"
-                type="danger"
-                size="small"
-                :icon="Delete"
-                @click="handleBatchDelete"
-              >
-                删除选中 ({{ selectedQuestions.length }})
-              </el-button>
-            </template>
-            <template v-else>
-              <el-checkbox v-model="selectAllFavorites" @change="handleSelectAllFavorites">全选</el-checkbox>
-              <el-button
-                v-if="selectedFavorites.length > 0"
-                type="danger"
-                size="small"
-                :icon="Delete"
-                @click="handleBatchDeleteFavorites"
-              >
-                取消收藏 ({{ selectedFavorites.length }})
-              </el-button>
-            </template>
-          </div>
+          <!-- 我的问题：左滑切换列表与详情 -->
+          <div v-if="contentFilter === 'mine'" class="community-slide-wrapper">
+            <div class="content-slide-viewport" :class="{ 'show-detail': showInlineDetail }">
+              <div class="content-slide-track">
+                <div class="slide-panel slide-panel-list">
+                  <div class="manage-toolbar mine-toolbar">
+                    <el-checkbox v-model="selectAll" @change="handleSelectAll">全选</el-checkbox>
+                    <el-button
+                      v-if="selectedQuestions.length > 0"
+                      type="danger"
+                      size="small"
+                      :icon="Delete"
+                      @click="handleBatchDelete"
+                    >
+                      删除选中 ({{ selectedQuestions.length }})
+                    </el-button>
+                  </div>
+                  <div class="my-questions-list main-manage-list">
+                    <div
+                      v-for="question in paginatedManageItems"
+                      :key="question.id || question._id"
+                      class="my-question-item"
+                      :class="{ active: isActiveInlineQuestion(question) }"
+                      @click="openInlineQuestionDetail(question)"
+                    >
+                      <el-checkbox
+                        :model-value="selectedQuestions.includes(question.id || question._id)"
+                        @change="(val) => handleQuestionCheck(val, question.id || question._id)"
+                        @click.stop
+                      />
+                      <div class="my-question-content">
+                        <div class="my-question-title">{{ question.title }}</div>
+                        <div class="my-question-meta">
+                          <el-tag size="small" :type="question.solved ? 'success' : 'warning'">
+                            {{ question.solved ? '已解决' : '待解决' }}
+                          </el-tag>
+                          <span>{{ question.answerCount || 0 }} 个回答</span>
+                          <span>{{ formatTime(question.createTime) }}</span>
+                        </div>
+                      </div>
+                      <div class="my-question-actions" @click.stop>
+                        <el-button
+                          v-if="!question.solved"
+                          type="success"
+                          size="small"
+                          @click="handleMarkSolved(question.id || question._id)"
+                        >
+                          标记已解决
+                        </el-button>
+                        <el-button
+                          type="danger"
+                          size="small"
+                          @click="handleDeleteQuestion(question.id || question._id)"
+                        >
+                          删除
+                        </el-button>
+                      </div>
+                    </div>
+                    <el-empty v-if="manageListItems.length === 0 && !loading" description="暂无疑问" :image-size="100" />
+                  </div>
+                  <div
+                    v-if="!showInlineDetail && manageListItems.length > pageSize"
+                    class="pagination-wrapper manage-pagination"
+                  >
+                    <el-pagination
+                      v-model:current-page="currentPage"
+                      :page-size="pageSize"
+                      :total="manageListItems.length"
+                      layout="prev, pager, next"
+                      @current-change="handlePageChange"
+                      background
+                    />
+                  </div>
+                </div>
 
-          <!-- 我的问题列表 -->
-          <div v-if="contentFilter === 'mine'" class="my-questions-list main-manage-list">
-            <div v-for="question in paginatedManageItems" :key="question.id || question._id" class="my-question-item">
-              <el-checkbox
-                :model-value="selectedQuestions.includes(question.id || question._id)"
-                @change="(val) => handleQuestionCheck(val, question.id || question._id)"
-              />
-              <div class="my-question-content" @click="handleQuestionDetail(question)">
-                <div class="my-question-title">{{ question.title }}</div>
-                <div class="my-question-meta">
-                  <el-tag size="small" :type="question.solved ? 'success' : 'warning'">
-                    {{ question.solved ? '已解决' : '待解决' }}
-                  </el-tag>
-                  <span>{{ question.answerCount || 0 }} 个回答</span>
-                  <span>{{ formatTime(question.createTime) }}</span>
+                <div class="slide-panel slide-panel-detail">
+                  <div class="inline-detail-topbar">
+                    <el-button :icon="ArrowLeft" text type="primary" @click="closeInlineDetail">
+                      {{ inlineDetailBackLabel }}
+                    </el-button>
+                  </div>
+                  <div v-loading="detailLoading" class="inline-detail-body main-manage-list">
+                    <CommunityQuestionDetail
+                      v-if="currentQuestion"
+                      :question="currentQuestion"
+                      :answers="answers"
+                      v-model:answer-content="answerContent"
+                      :current-user-id="userId"
+                      :grade-label="getGradeLabel(currentQuestion.userGrade)"
+                      :format-time="formatTime"
+                      @submit-answer="handleSubmitAnswer"
+                      @like-answer="handleLikeAnswer"
+                      @mark-best="handleMarkBest"
+                      @mark-solved="handleMarkSolved"
+                      @mark-unsolved="handleMarkUnsolved"
+                      @delete-question="handleDeleteQuestionFromDetail"
+                    />
+                  </div>
                 </div>
               </div>
-              <div class="my-question-actions">
-                <el-button
-                  v-if="!question.solved"
-                  type="success"
-                  size="small"
-                  @click.stop="handleMarkSolved(question.id || question._id)"
-                >
-                  标记已解决
-                </el-button>
-                <el-button
-                  type="danger"
-                  size="small"
-                  @click.stop="handleDeleteQuestion(question.id || question._id)"
-                >
-                  删除
-                </el-button>
-              </div>
             </div>
-            <el-empty v-if="manageListItems.length === 0 && !loading" description="暂无疑问" :image-size="100" />
           </div>
 
-          <!-- 我的收藏列表 -->
-          <div v-else-if="contentFilter === 'favorites'" class="favorites-manage-list main-manage-list">
-            <div v-for="question in paginatedManageItems" :key="question.id || question._id" class="favorite-manage-item">
-              <el-checkbox
-                :model-value="selectedFavorites.includes(question.id || question._id)"
-                @change="(val) => handleFavoriteCheck(val, question.id || question._id)"
-              />
-              <div class="favorite-manage-content" @click="handleQuestionDetail(question)">
-                <div class="favorite-manage-title">{{ question.title }}</div>
-                <div class="favorite-manage-meta">
-                  <span>{{ question.userName }}</span>
-                  <el-tag size="small" :type="question.solved ? 'success' : 'warning'">
-                    {{ question.solved ? '已解决' : '待解决' }}
-                  </el-tag>
-                  <span>{{ formatTime(question.createTime) }}</span>
+          <!-- 我的收藏：左滑切换列表与详情 -->
+          <div v-else-if="contentFilter === 'favorites'" class="community-slide-wrapper">
+            <div class="content-slide-viewport" :class="{ 'show-detail': showInlineDetail }">
+              <div class="content-slide-track">
+                <div class="slide-panel slide-panel-list">
+                  <div class="manage-toolbar mine-toolbar">
+                    <el-checkbox v-model="selectAllFavorites" @change="handleSelectAllFavorites">全选</el-checkbox>
+                    <el-button
+                      v-if="selectedFavorites.length > 0"
+                      type="danger"
+                      size="small"
+                      :icon="Delete"
+                      @click="handleBatchDeleteFavorites"
+                    >
+                      取消收藏 ({{ selectedFavorites.length }})
+                    </el-button>
+                  </div>
+                  <div class="favorites-manage-list main-manage-list">
+                    <div
+                      v-for="question in paginatedManageItems"
+                      :key="question.id || question._id"
+                      class="favorite-manage-item"
+                      :class="{ active: isActiveInlineQuestion(question) }"
+                      @click="openInlineQuestionDetail(question)"
+                    >
+                      <el-checkbox
+                        :model-value="selectedFavorites.includes(question.id || question._id)"
+                        @change="(val) => handleFavoriteCheck(val, question.id || question._id)"
+                        @click.stop
+                      />
+                      <div class="favorite-manage-content">
+                        <div class="favorite-manage-title">{{ question.title }}</div>
+                        <div class="favorite-manage-meta">
+                          <span>{{ question.userName }}</span>
+                          <el-tag size="small" :type="question.solved ? 'success' : 'warning'">
+                            {{ question.solved ? '已解决' : '待解决' }}
+                          </el-tag>
+                          <span>{{ formatTime(question.createTime) }}</span>
+                        </div>
+                      </div>
+                      <el-button
+                        type="danger"
+                        size="small"
+                        @click.stop="removeFavorite(question.id || question._id)"
+                      >
+                        取消收藏
+                      </el-button>
+                    </div>
+                    <el-empty v-if="manageListItems.length === 0 && !loading" description="暂无收藏" :image-size="100" />
+                  </div>
+                  <div
+                    v-if="!showInlineDetail && manageListItems.length > pageSize"
+                    class="pagination-wrapper manage-pagination"
+                  >
+                    <el-pagination
+                      v-model:current-page="currentPage"
+                      :page-size="pageSize"
+                      :total="manageListItems.length"
+                      layout="prev, pager, next"
+                      @current-change="handlePageChange"
+                      background
+                    />
+                  </div>
+                </div>
+
+                <div class="slide-panel slide-panel-detail">
+                  <div class="inline-detail-topbar">
+                    <el-button :icon="ArrowLeft" text type="primary" @click="closeInlineDetail">
+                      返回我的收藏
+                    </el-button>
+                  </div>
+                  <div v-loading="detailLoading" class="inline-detail-body main-manage-list">
+                    <CommunityQuestionDetail
+                      v-if="currentQuestion"
+                      :question="currentQuestion"
+                      :answers="answers"
+                      v-model:answer-content="answerContent"
+                      :current-user-id="userId"
+                      :grade-label="getGradeLabel(currentQuestion.userGrade)"
+                      :format-time="formatTime"
+                      @submit-answer="handleSubmitAnswer"
+                      @like-answer="handleLikeAnswer"
+                      @mark-best="handleMarkBest"
+                      @mark-solved="handleMarkSolved"
+                      @mark-unsolved="handleMarkUnsolved"
+                      @delete-question="handleDeleteQuestionFromDetail"
+                    />
+                  </div>
                 </div>
               </div>
-              <el-button
-                type="danger"
-                size="small"
-                @click.stop="removeFavorite(question.id || question._id)"
-              >
-                取消收藏
-              </el-button>
             </div>
-            <el-empty v-if="manageListItems.length === 0 && !loading" description="暂无收藏" :image-size="100" />
           </div>
 
           <!-- 普通问题流 -->
@@ -369,14 +471,17 @@
           </div>
           
           <!-- 空状态（普通列表） -->
-          <div v-if="!isManageMode && filteredQuestions.length === 0 && !loading" class="empty-state">
+          <div v-if="!isInlineListMode && filteredQuestions.length === 0 && !loading" class="empty-state">
             <el-icon :size="80" color="#d1d5db"><DocumentDelete /></el-icon>
             <div class="empty-text">暂无问题</div>
             <div class="empty-hint">{{ tagFilter ? `#${tagFilter} 下暂无问题，试试其他话题` : '试试调整筛选条件或发起新问题' }}</div>
           </div>
           
-          <!-- 分页 -->
-          <div class="pagination-wrapper" v-if="listTotalCount > pageSize">
+          <!-- 分页（普通列表 / 收藏列表） -->
+          <div
+            v-if="!isInlineListMode && listTotalCount > pageSize"
+            class="pagination-wrapper"
+          >
             <el-pagination
               v-model:current-page="currentPage"
               :page-size="pageSize"
@@ -499,7 +604,7 @@
       </template>
     </el-dialog>
 
-    <!-- 问题详情对话框 -->
+    <!-- 问题详情对话框（非「我的问题」场景） -->
     <el-dialog
       v-model="showDetailDialog"
       title="问题详情"
@@ -507,111 +612,21 @@
       center
       class="blue-border-dialog"
     >
-      <div v-if="currentQuestion" class="question-detail">
-        <div class="detail-header">
-          <el-avatar :size="50" :src="currentQuestion.userAvatar" />
-          <div class="detail-user-info">
-            <div class="detail-username">{{ currentQuestion.userName }}</div>
-            <div class="detail-meta">{{ currentQuestion.userSchool }} · {{ getGradeLabel(currentQuestion.userGrade) }}</div>
-            <div class="detail-time">{{ formatTime(currentQuestion.createTime) }}</div>
-          </div>
-          <el-tag :type="currentQuestion.solved ? 'success' : 'warning'">
-            {{ currentQuestion.solved ? '已解决' : '待解决' }}
-          </el-tag>
-        </div>
-        
-        <div class="detail-title">{{ currentQuestion.title }}</div>
-        <div class="detail-content">{{ currentQuestion.content }}</div>
-        
-        <div class="detail-tags">
-          <el-tag v-for="(tag, idx) in currentQuestion.tags" :key="idx" size="small" type="primary">
-            {{ tag }}
-          </el-tag>
-        </div>
-
-        <div class="detail-actions" v-if="currentQuestion.userId === userId">
-          <el-button 
-            v-if="!currentQuestion.solved" 
-            type="success" 
-            size="small"
-            @click="handleMarkSolved(currentQuestion.id)"
-          >
-            标记已解决
-          </el-button>
-          <el-button 
-            v-else 
-            type="warning" 
-            size="small"
-            @click="handleMarkUnsolved(currentQuestion.id)"
-          >
-            标记未解决
-          </el-button>
-        </div>
-
-        <div class="answers-section">
-          <div class="section-title">
-            <el-icon><ChatDotRound /></el-icon>
-            <span>回答列表 ({{ answers.length }})</span>
-          </div>
-          
-          <div class="answers-list">
-            <div v-for="answer in answers" :key="answer.id" class="answer-item">
-              <el-avatar :size="40" :src="answer.userAvatar" />
-              <div class="answer-content-wrapper">
-                <div class="answer-header">
-                  <span class="answer-username">{{ answer.userName }}</span>
-                  <el-tag v-if="answer.isBest" type="success" size="small">
-                    <el-icon><Medal /></el-icon> 最佳答案
-                  </el-tag>
-                  <span class="answer-time">{{ formatTime(answer.createTime) }}</span>
-                </div>
-                <div class="answer-content" v-html="renderMarkdown(answer.content)"></div>
-                <div class="answer-actions">
-                  <el-button 
-                    text 
-                    :type="answer.liked ? 'primary' : 'default'"
-                    @click="handleLikeAnswer(answer.id)"
-                  >
-                    <el-icon><Star /></el-icon>
-                    {{ answer.likeCount }}
-                  </el-button>
-                  <el-button 
-                    v-if="!answer.isBest && !currentQuestion.solved && currentQuestion.userId === userId"
-                    text 
-                    type="success"
-                    @click="handleMarkBest(answer.id)"
-                  >
-                    <el-icon><Medal /></el-icon>
-                    设为最佳
-                  </el-button>
-                </div>
-              </div>
-            </div>
-            <el-empty v-if="answers.length === 0" description="暂无回答" :image-size="80" />
-          </div>
-
-          <div class="answer-input-section">
-            <div class="answer-input-bar">
-              <el-input
-                v-model="answerContent"
-                type="textarea"
-                :autosize="{ minRows: 2, maxRows: 6 }"
-                placeholder="写下你的回答，Enter 发送"
-                maxlength="500"
-                show-word-limit
-                @keydown.enter.exact.prevent="handleSubmitAnswer"
-              />
-              <el-button
-                type="primary"
-                :disabled="!answerContent.trim()"
-                @click="handleSubmitAnswer"
-              >
-                发送
-              </el-button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <CommunityQuestionDetail
+        v-if="currentQuestion"
+        :question="currentQuestion"
+        :answers="answers"
+        v-model:answer-content="answerContent"
+        :current-user-id="userId"
+        :grade-label="getGradeLabel(currentQuestion.userGrade)"
+        :format-time="formatTime"
+        @submit-answer="handleSubmitAnswer"
+        @like-answer="handleLikeAnswer"
+        @mark-best="handleMarkBest"
+        @mark-solved="handleMarkSolved"
+        @mark-unsolved="handleMarkUnsolved"
+        @delete-question="handleDeleteQuestionFromDetail"
+      />
     </el-dialog>
 
   </div>
@@ -622,16 +637,17 @@ import { ref, reactive, computed, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
-  Plus, Delete, Star, Medal, ChatDotRound, 
+  Plus, Delete, Star, ChatDotRound, 
   DataAnalysis, DArrowLeft, DArrowRight, View, CircleCheck, 
-  Clock, TrendCharts, DocumentDelete, List, UserFilled, User, MagicStick
+  Clock, TrendCharts, DocumentDelete, List, UserFilled, User, MagicStick,
+  ArrowLeft
 } from '@element-plus/icons-vue';
 import SideNavBar from '@/components/SideNavBar.vue';
 import FollowButton from '@/components/social/FollowButton.vue';
 import UserProfileDialog from '@/components/social/UserProfileDialog.vue';
 import AIAssistantPanel from '@/components/ai/AIAssistantPanel.vue';
+import CommunityQuestionDetail from '@/components/community/CommunityQuestionDetail.vue';
 import axios from 'axios';
-import { marked } from 'marked';
 import { getUserSubjects } from '@/utils/userSubjects';
 
 const router = useRouter();
@@ -684,6 +700,8 @@ const favoriteQuestionIds = ref([]);
 // 对话框控制
 const showAskDialog = ref(false);
 const showDetailDialog = ref(false);
+const showInlineDetail = ref(false);
+const detailLoading = ref(false);
 
 // 当前问题和回答
 const currentQuestion = ref(null);
@@ -715,11 +733,18 @@ const selectAll = ref(false);
 const selectedFavorites = ref([]);
 const selectAllFavorites = ref(false);
 
-const isManageMode = computed(() =>
+const isInlineListMode = computed(() =>
   contentFilter.value === 'mine' || contentFilter.value === 'favorites'
 );
 
+const inlineDetailBackLabel = computed(() =>
+  contentFilter.value === 'favorites' ? '返回我的收藏' : '返回我的问题'
+);
+
 const pageTitle = computed(() => {
+  if (isInlineListMode.value && showInlineDetail.value) {
+    return '问题详情';
+  }
   const titles = {
     all: '学习社区',
     following: '关注的人',
@@ -790,9 +815,12 @@ const filteredQuestions = computed(() => {
   return result;
 });
 
-const listTotalCount = computed(() =>
-  isManageMode.value ? manageListItems.value.length : filteredQuestions.value.length
-);
+const listTotalCount = computed(() => {
+  if (contentFilter.value === 'mine' || contentFilter.value === 'favorites') {
+    return manageListItems.value.length;
+  }
+  return filteredQuestions.value.length;
+});
 
 // 分页后的问题列表
 const paginatedQuestions = computed(() => {
@@ -822,6 +850,9 @@ function setContentFilter(filter) {
   contentFilter.value = filter;
   if (filter === 'all') {
     tagFilter.value = '';
+  }
+  if (filter !== 'mine' && filter !== 'favorites') {
+    showInlineDetail.value = false;
   }
   selectedQuestions.value = [];
   selectedFavorites.value = [];
@@ -1046,11 +1077,6 @@ function getGradeLabel(grade) {
   return gradeMap[grade] || '未设置';
 }
 
-// 渲染Markdown
-function renderMarkdown(content) {
-  return marked(content || '');
-}
-
 // 判断是否已收藏
 function isFavorited(questionId) {
   return favoriteQuestionIds.value.map(String).includes(String(questionId));
@@ -1142,28 +1168,78 @@ async function handleSubmitQuestion() {
   }
 }
 
+function getQuestionId(question) {
+  return question?.id || question?._id;
+}
+
+function isActiveInlineQuestion(question) {
+  if (!showInlineDetail.value || !currentQuestion.value) return false;
+  return getQuestionId(question) === getQuestionId(currentQuestion.value);
+}
+
+function closeInlineDetail() {
+  showInlineDetail.value = false;
+}
+
+async function openInlineQuestionDetail(question) {
+  await handleQuestionDetail(question, { inline: true });
+}
+
 // 查看问题详情
-async function handleQuestionDetail(question) {
-  currentQuestion.value = question;
+async function handleQuestionDetail(question, options = {}) {
+  const qid = getQuestionId(question);
+  const useInline = options.inline === true;
+
+  currentQuestion.value = { ...question, id: qid };
   answerContent.value = '';
-  showDetailDialog.value = true;
-  
+
+  if (!options.keepView) {
+    if (useInline) {
+      showInlineDetail.value = true;
+      showDetailDialog.value = false;
+    } else {
+      showDetailDialog.value = true;
+      showInlineDetail.value = false;
+    }
+  }
+
+  detailLoading.value = true;
   try {
-    // 加载问题详情（包含用户信息）
     const userRes = await axios.get(`http://localhost:3001/api/user/profile/${question.userId}`);
     if (userRes.data) {
-      currentQuestion.value.userSchool = userRes.data.school || '未设置';
-      currentQuestion.value.userGrade = userRes.data.grade || '';
+      currentQuestion.value = {
+        ...currentQuestion.value,
+        userSchool: userRes.data.school || '未设置',
+        userGrade: userRes.data.grade || ''
+      };
     }
-    
-    // 加载回答列表
+
     const answersRes = await axios.get(
-      `http://localhost:3001/api/community/questions/${question.id}/answers`,
+      `http://localhost:3001/api/community/questions/${qid}/answers`,
       { params: { userId: userId.value } }
     );
     answers.value = answersRes.data.data || [];
   } catch (error) {
     console.error('加载问题详情失败：', error);
+  } finally {
+    detailLoading.value = false;
+  }
+}
+
+async function reloadCurrentQuestionDetail() {
+  if (!currentQuestion.value) return;
+  await handleQuestionDetail(currentQuestion.value, {
+    inline: showInlineDetail.value,
+    keepView: true
+  });
+}
+
+async function handleDeleteQuestionFromDetail(questionId) {
+  await handleDeleteQuestion(questionId);
+  if (showInlineDetail.value) {
+    closeInlineDetail();
+  } else {
+    showDetailDialog.value = false;
   }
 }
 
@@ -1189,7 +1265,7 @@ async function handleSubmitAnswer() {
     answerContent.value = '';
     
     // 重新加载回答列表
-    await handleQuestionDetail(currentQuestion.value);
+    await reloadCurrentQuestionDetail();
   } catch (error) {
     console.error('提交回答失败：', error);
     ElMessage.error('提交失败');
@@ -1211,7 +1287,7 @@ async function handleLikeAnswer(answerId) {
     }
     
     // 重新加载回答列表
-    await handleQuestionDetail(currentQuestion.value);
+    await reloadCurrentQuestionDetail();
   } catch (error) {
     console.error('点赞失败：', error);
     ElMessage.error('操作失败');
@@ -1227,7 +1303,7 @@ async function handleMarkBest(answerId) {
     });
     
     ElMessage.success('已设为最佳答案');
-    await handleQuestionDetail(currentQuestion.value);
+    await reloadCurrentQuestionDetail();
     await loadQuestions();
   } catch (error) {
     console.error('设置最佳答案失败：', error);
@@ -1243,8 +1319,13 @@ async function handleMarkSolved(questionId) {
     });
     
     ElMessage.success('已标记为已解决');
-    showDetailDialog.value = false;
+    if (!showInlineDetail.value) {
+      showDetailDialog.value = false;
+    }
     await loadQuestions();
+    if (showInlineDetail.value && currentQuestion.value) {
+      await reloadCurrentQuestionDetail();
+    }
   } catch (error) {
     console.error('标记失败：', error);
     ElMessage.error('操作失败');
@@ -1259,8 +1340,13 @@ async function handleMarkUnsolved(questionId) {
     });
     
     ElMessage.success('已标记为未解决');
-    showDetailDialog.value = false;
+    if (!showInlineDetail.value) {
+      showDetailDialog.value = false;
+    }
     await loadQuestions();
+    if (showInlineDetail.value && currentQuestion.value) {
+      await reloadCurrentQuestionDetail();
+    }
   } catch (error) {
     console.error('标记失败：', error);
     ElMessage.error('操作失败');
@@ -1277,6 +1363,10 @@ async function handleDeleteQuestion(questionId) {
     });
     
     ElMessage.success('删除成功');
+    if (getQuestionId(currentQuestion.value) === questionId) {
+      closeInlineDetail();
+      showDetailDialog.value = false;
+    }
     await loadQuestions();
   } catch (error) {
     if (error !== 'cancel') {
@@ -1371,6 +1461,9 @@ async function removeFavorite(questionId) {
       data: { userId: userId.value }
     });
     ElMessage.success('已取消收藏');
+    if (getQuestionId(currentQuestion.value) === questionId) {
+      closeInlineDetail();
+    }
     await loadMyFavorites();
   } catch (error) {
     console.error('取消收藏失败：', error);
@@ -1398,7 +1491,15 @@ async function handleBatchDeleteFavorites() {
       });
     }
     
-    ElMessage.success(`成功删除 ${selectedFavorites.value.length} 个收藏`);
+    const deletedIds = [...selectedFavorites.value];
+    ElMessage.success(`成功删除 ${deletedIds.length} 个收藏`);
+    if (
+      showInlineDetail.value &&
+      currentQuestion.value &&
+      deletedIds.includes(getQuestionId(currentQuestion.value))
+    ) {
+      closeInlineDetail();
+    }
     selectedFavorites.value = [];
     selectAllFavorites.value = false;
     await loadMyFavorites();
@@ -1894,6 +1995,93 @@ onMounted(async () => {
   background: #f9fafb;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+}
+
+/* 我的问题 / 我的收藏：左滑列表 / 详情 */
+.community-slide-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  animation: community-panel-enter 0.35s ease-out;
+}
+
+@keyframes community-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.content-slide-viewport {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.content-slide-track {
+  display: flex;
+  width: 200%;
+  height: 100%;
+  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.content-slide-viewport.show-detail .content-slide-track {
+  transform: translateX(-50%);
+}
+
+.slide-panel {
+  width: 50%;
+  height: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.slide-panel-list {
+  overflow-y: auto;
+}
+
+.slide-panel-detail {
+  background: #f9fafb;
+}
+
+.mine-toolbar {
+  margin-top: 0;
+}
+
+.inline-detail-topbar {
+  padding: 12px 32px;
+  background: #fff;
+  border-bottom: 1px solid #e4e7ed;
+  flex-shrink: 0;
+}
+
+.inline-detail-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-top: 8px;
+  padding-bottom: 32px;
+}
+
+.manage-pagination {
+  padding-bottom: 16px;
+}
+
+.my-question-item.active,
+.favorite-manage-item.active {
+  border-color: #3b82f6;
+  background: #f0f7ff;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.12);
 }
 
 /* 极简社交流式布局 */
