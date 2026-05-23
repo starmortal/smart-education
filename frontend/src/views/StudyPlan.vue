@@ -668,14 +668,16 @@ async function loadGlobalStats() {
       { timeout: 10000 }
     );
     
-    if (res.data) {
+    // 修复：axios响应数据在 res.data.data 中
+    const statsData = res.data?.data || res.data;
+    if (statsData) {
       globalStats.value = {
-        totalCount: res.data.totalCount || 0,
-        notStartedCount: res.data.notStartedCount || 0,
-        inProgressCount: res.data.inProgressCount || 0,
-        completedCount: res.data.completedCount || 0,
-        overdueCount: res.data.overdueCount || 0,
-        statusStats: res.data.statusStats || {}
+        totalCount: statsData.totalCount || 0,
+        notStartedCount: statsData.notStartedCount || 0,
+        inProgressCount: statsData.inProgressCount || 0,
+        completedCount: statsData.completedCount || 0,
+        overdueCount: statsData.overdueCount || 0,
+        statusStats: statsData.statusStats || {}
       };
     }
   } catch (error) {
@@ -700,7 +702,9 @@ async function loadPlanListForStats() {
       timeout: 10000,
     });
     
-    const allPlans = res.data?.plans || [];
+    // 修复：axios响应数据在 res.data.data 中
+    const listData = res.data?.data || res.data;
+    const allPlans = listData?.plans || [];
     const statusStatsObj = {
       not_started: 0,
       in_progress: 0,
@@ -749,8 +753,10 @@ async function loadPlanList() {
       },
       timeout: 10000,
     });
-    planList.value = res.data?.plans || [];
-    totalCount.value = res.data?.count || 0;
+    // 修复：axios响应数据在 res.data.data 中
+    const listData = res.data?.data || res.data;
+    planList.value = listData?.plans || [];
+    totalCount.value = listData?.count || 0;
   } catch (error) {
     console.error("获取学习计划失败：", error);
     ElMessage.error(
