@@ -136,91 +136,113 @@
           </el-button>
         </div>
         
-        <!-- 错题列表（简洁卡片） -->
+        <!-- 错题列表（参照学习社区问题卡片样式） -->
         <div class="error-list" v-loading="loading">
-          <el-pagination
-            v-if="displayErrors.length > pageSize"
-            v-model:current-page="currentPage"
-            :page-size="pageSize"
-            :total="displayErrors.length"
-            layout="prev, pager, next"
-            small
-            @current-change="handleCurrentPageChange"
-            style="margin-bottom: 20px; text-align: center;"
-          />
-          
-          <div class="error-simple-list">
+          <div class="error-feed">
             <div
-              v-for="(error, index) in paginatedErrors"
+              v-for="error in paginatedErrors"
               :key="error.id"
-              class="error-simple-card"
-              :style="{ borderLeftColor: getSubjectColor(index) }"
+              class="error-card"
+              :class="{ mastered: error.masteryStatus === 'mastered' }"
+              :style="{ borderLeftColor: getSubjectBorderColor(error.subject) }"
               @click="handleErrorDetail(error)"
             >
+              <!-- 元信息行 -->
               <div class="card-header">
-                <div class="card-left">
-                  <el-tag :type="getSubjectTagType(error.subject)" size="small">
-                    {{ getSubjectText(error.subject) }}
-                  </el-tag>
-                  <el-tag type="info" size="small">
-                    {{ getTypeText(error.questionType) }}
-                  </el-tag>
-                </div>
-                <el-tag 
-                  :type="error.masteryStatus === 'mastered' ? 'success' : 'danger'" 
-                  size="small"
+                <div
+                  class="card-subject-icon"
+                  :style="{ background: getSubjectBorderColor(error.subject) }"
                 >
-                  {{ getStatusText(error.masteryStatus) }}
-                </el-tag>
-              </div>
-              
-              <div class="card-title">{{ error.questionTitle }}</div>
-              
-              <div class="card-content">
-                <div class="content-section" :style="{ borderLeftColor: getSubjectColor(index) }">
-                  <div class="section-label">错误原因：</div>
-                  <div class="section-text">{{ error.wrongReason || '未填写' }}</div>
+                  <el-icon :size="20" color="#fff"><Notebook /></el-icon>
+                </div>
+                <div class="card-meta-info">
+                  <div class="card-meta-title">{{ getSubjectText(error.subject) }}</div>
+                  <div class="card-meta">
+                    <span>{{ getTypeText(error.questionType) }}</span>
+                    <span class="meta-dot">·</span>
+                    <span>{{ formatDate(error.addTime) }}</span>
+                  </div>
                 </div>
               </div>
-              
-              <div class="card-footer">
-                <span class="footer-time">
-                  <el-icon><Clock /></el-icon>
-                  {{ formatDate(error.addTime) }}
-                </span>
-                <div class="footer-actions">
-                  <el-button 
-                    v-if="error.masteryStatus !== 'mastered'"
-                    type="success" 
-                    size="small"
-                    @click.stop="toggleErrorMastery(error)"
+
+              <!-- 错题标题 -->
+              <div class="card-title">{{ error.questionTitle }}</div>
+
+              <!-- 错误原因预览 -->
+              <div class="card-content" v-if="error.wrongReason">
+                {{ truncateText(error.wrongReason, 100) }}
+              </div>
+              <div class="card-content card-content-empty" v-else>未填写错误原因</div>
+
+              <!-- 标签 -->
+              <div class="card-tags">
+                <span class="tag-item">{{ getSubjectText(error.subject) }}</span>
+                <span class="tag-item tag-type">{{ getTypeText(error.questionType) }}</span>
+              </div>
+
+              <!-- 分隔线 -->
+              <div class="card-divider"></div>
+
+              <!-- 底部统计与操作 -->
+              <div class="card-stats">
+                <div class="stat-item">
+                  <el-icon :size="16"><View /></el-icon>
+                  <span>查看详情</span>
+                </div>
+                <div class="card-stats-right">
+                  <div
+                    class="stat-item status-badge"
+                    :class="{
+                      mastered: error.masteryStatus === 'mastered',
+                      mastering: error.masteryStatus === 'mastering'
+                    }"
                   >
-                    标记掌握
-                  </el-button>
-                  <el-button 
-                    type="primary" 
-                    size="small"
-                    @click.stop="handleEditError(error)"
-                  >
-                    编辑
-                  </el-button>
-                  <el-button 
-                    type="danger" 
-                    size="small"
-                    :icon="Delete"
-                    @click.stop="handleDeleteError(error.id)"
-                  >
-                    删除
-                  </el-button>
+                    <el-icon :size="16" v-if="error.masteryStatus === 'mastered'"><CircleCheck /></el-icon>
+                    <el-icon :size="16" v-else><Clock /></el-icon>
+                    <span>{{ getStatusText(error.masteryStatus) }}</span>
+                  </div>
+                  <div class="card-actions" @click.stop>
+                    <el-button
+                      v-if="error.masteryStatus !== 'mastered'"
+                      type="success"
+                      size="small"
+                      text
+                      @click="toggleErrorMastery(error)"
+                    >
+                      标记掌握
+                    </el-button>
+                    <el-button type="primary" size="small" text @click="handleEditError(error)">
+                      编辑
+                    </el-button>
+                    <el-button
+                      type="danger"
+                      size="small"
+                      text
+                      :icon="Delete"
+                      @click="handleDeleteError(error.id)"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          
-          <el-empty 
-            v-if="displayErrors.length === 0 && !loading" 
-            :description="selectedDate ? `${selectedDate} 没有错题记录` : '暂无错题记录'" 
-          />
+
+          <div v-if="displayErrors.length === 0 && !loading" class="empty-state">
+            <el-icon :size="80" color="#d1d5db"><Notebook /></el-icon>
+            <div class="empty-text">{{ selectedDate ? `${selectedDate} 没有错题记录` : '暂无错题记录' }}</div>
+            <div class="empty-hint">点击左侧「添加错题」开始记录</div>
+          </div>
+
+          <div class="pagination-wrapper" v-if="displayErrors.length > pageSize">
+            <el-pagination
+              v-model:current-page="currentPage"
+              :page-size="pageSize"
+              :total="displayErrors.length"
+              layout="prev, pager, next"
+              background
+              @current-change="handleCurrentPageChange"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -587,22 +609,26 @@
       </template>
     </el-dialog>
 
-    <!-- ================= AI 分析结果弹窗 ================= -->
+    <!-- ================= AI 分析结果弹窗（样式对齐个人中心 AI 成绩分析） ================= -->
     <el-dialog
       v-model="showAIAnalysisDialog"
       title="AI 错题分析报告"
-      width="720px"
-      center
+      width="700px"
       :close-on-click-modal="true"
+      :lock-scroll="true"
       class="ai-analysis-dialog"
     >
-      <div v-loading="aiLoading" class="ai-analysis-body">
-        <div v-if="aiLoading" class="ai-loading-tip">
-          <el-icon class="ai-loading-icon" :size="32"><MagicStick /></el-icon>
-          <p>AI 正在分析您的错题数据...</p>
+      <div class="ai-analysis-content">
+        <el-empty
+          v-if="!aiAnalysisResult && !aiLoading"
+          description="暂无分析数据"
+          :image-size="80"
+        />
+        <div v-if="aiAnalysisResult" class="markdown-content" v-html="renderedAnalysis"></div>
+        <div v-if="aiLoading" class="streaming-indicator">
+          <el-icon class="is-loading"><Loading /></el-icon>
+          <span>{{ aiAnalysisResult ? 'AI 正在继续分析...' : 'AI 正在分析您的错题数据...' }}</span>
         </div>
-        <div v-else-if="aiAnalysisResult" class="ai-analysis-content" v-html="renderedAnalysis"></div>
-        <el-empty v-else description="暂无分析数据" />
       </div>
       <template #footer>
         <el-button @click="showAIAnalysisDialog = false">关闭</el-button>
@@ -616,7 +642,7 @@
 import { ref, reactive, onMounted, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { Plus, Refresh, Filter, Notebook, Warning, Clock, Check, DataAnalysis, Edit, Setting, Delete, Reading, DArrowLeft, DArrowRight, ArrowLeft, ArrowRight, MagicStick } from "@element-plus/icons-vue";
+import { Plus, Refresh, Filter, Notebook, Warning, Clock, Check, DataAnalysis, Edit, Setting, Delete, Reading, DArrowLeft, DArrowRight, ArrowLeft, ArrowRight, MagicStick, View, CircleCheck, Loading } from "@element-plus/icons-vue";
 import SideNavBar from '@/components/SideNavBar.vue';
 // 【新增】引入 axios，对接后端接口
 import axios from "axios";
@@ -789,6 +815,28 @@ function getSubjectColor(index) {
     '#34495e'
   ];
   return colors[index % colors.length];
+}
+
+// 【v3.4.5】按科目获取左边框/图标色（与学习社区卡片风格一致）
+const subjectBorderColorMap = {
+  math: '#0969da',
+  chinese: '#35b778',
+  english: '#f59e0b',
+  physics: '#e74c3c',
+  chemistry: '#9b59b6',
+  biology: '#10b981',
+  history: '#e67e22',
+  geography: '#3b82f6',
+  politics: '#ec4899'
+};
+
+function getSubjectBorderColor(subject) {
+  return subjectBorderColorMap[subject] || '#3b82f6';
+}
+
+function truncateText(text, maxLen = 100) {
+  if (!text) return '';
+  return text.length > maxLen ? `${text.substring(0, maxLen)}...` : text;
 }
 
 // 【新增】显示的错题列表（根据日期筛选）
@@ -1932,15 +1980,244 @@ async function batchDeleteErrors() {
   flex: 1;
 }
 
-/* 错题列表 */
+/* 错题列表（参照学习社区 feed 布局） */
 .error-list {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
-  padding: 20px;
-  background: #fff;
+  overflow-y: auto;
+  padding: 0;
+  background: #f9fafb;
+}
+
+.error-feed {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+  align-content: start;
+}
+
+/* 错题卡片（对齐学习社区 question-card） */
+.error-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: none;
+  border-left: 3px solid transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  height: fit-content;
+}
+
+.error-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.error-card.mastered {
+  border-left-color: #10b981 !important;
+}
+
+.error-card .card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.card-subject-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.card-meta-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-meta-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  line-height: 1.4;
+}
+
+.error-card .card-meta {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.4;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta-dot {
+  color: #d1d5db;
+}
+
+.error-card .card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.error-card .card-content {
+  font-size: 15px;
+  color: #374151;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.error-card .card-content-empty {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.error-card .card-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.error-card .tag-item {
+  padding: 4px 12px;
+  background: rgba(59, 130, 246, 0.08);
+  color: #3b82f6;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.error-card .tag-item.tag-type {
+  background: rgba(107, 114, 128, 0.08);
+  color: #6b7280;
+}
+
+.error-card .card-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #e5e7eb 20%, #e5e7eb 80%, transparent);
+  margin: 4px 0;
+}
+
+.error-card .card-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.error-card .stat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.error-card .stat-item .el-icon {
+  color: #9ca3af;
+}
+
+.error-card .card-stats-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.error-card .status-badge {
+  padding: 4px 10px;
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 8px;
+  font-weight: 500;
+  color: #f59e0b;
+}
+
+.error-card .status-badge.mastered {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.error-card .status-badge.mastering {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.error-card .status-badge .el-icon {
+  color: inherit;
+}
+
+.error-card .card-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-top: 16px;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: 8px;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 32px 20px;
+  background: #f9fafb;
+}
+
+.pagination-wrapper :deep(.el-pagination) {
+  gap: 8px;
+}
+
+.pagination-wrapper :deep(.el-pager li) {
+  border-radius: 8px;
+  min-width: 36px;
+  height: 36px;
+  line-height: 36px;
+  font-weight: 500;
+}
+
+.pagination-wrapper :deep(.el-pager li.is-active) {
+  background: #3b82f6;
 }
 
 /* 错题网格布局（2行4列，每个占1/8） */
@@ -2346,230 +2623,177 @@ async function batchDeleteErrors() {
   .error-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .error-feed {
+    padding: 16px 12px;
+    grid-template-columns: 1fr;
+  }
+
+  .error-card {
+    padding: 20px 16px;
+  }
+
+  .error-card .card-stats {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .error-card .card-stats-right {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
 }
-</style>
 
-
-/* 简洁错题卡片样式 */
-.error-simple-list {
+/* AI 分析弹窗（对齐个人中心 AI 成绩分析） */
+.ai-analysis-dialog :deep(.el-dialog) {
+  margin-top: 8vh !important;
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
-  gap: 16px;
 }
 
-.error-simple-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px 20px 20px 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid #e8ecf1;
-  border-left: 4px solid #4facfe;
-  position: relative;
+.ai-analysis-dialog :deep(.el-dialog__header) {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e4e7ed;
 }
 
-.error-simple-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-  border-color: #d0d7e2;
-  border-left-color: inherit;
-}
-
-.error-simple-card .card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.error-simple-card .card-left {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.error-simple-card .card-title {
-  font-size: 17px;
-  font-weight: 600;
-  color: #1a2332;
-  margin-bottom: 12px;
-  line-height: 1.5;
-}
-
-.error-simple-card .card-content {
-  margin-bottom: 14px;
-}
-
-.error-simple-card .content-section {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 12px 14px;
-  border-left: 3px solid #4facfe;
-}
-
-.error-simple-card .section-label {
-  font-size: 12px;
-  color: #888;
-  margin-bottom: 4px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-}
-
-.error-simple-card .section-text {
-  font-size: 14px;
-  color: #444;
-  line-height: 1.6;
-  word-break: break-word;
-}
-
-.error-simple-card .card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 12px;
-  border-top: 1px solid #f0f2f5;
-}
-
-.error-simple-card .footer-time {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  color: #aaa;
-}
-
-.error-simple-card .footer-actions {
-  display: flex;
-  gap: 8px;
-}
-
-/* AI 分析弹窗 */
 .ai-analysis-dialog :deep(.el-dialog__body) {
-  padding: 20px 24px;
-  max-height: 60vh;
-  overflow-y: auto;
+  padding: 0;
+  flex: 1;
+  overflow: hidden;
+  max-height: calc(80vh - 140px);
 }
 
-.ai-analysis-body {
-  min-height: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ai-loading-tip {
-  text-align: center;
-  color: #666;
-}
-
-.ai-loading-icon {
-  animation: ai-pulse 1.5s ease-in-out infinite;
-  color: #4facfe;
-  margin-bottom: 12px;
-}
-
-.ai-loading-tip p {
-  font-size: 15px;
-  color: #888;
-}
-
-@keyframes ai-pulse {
-  0%, 100% { opacity: 0.5; transform: scale(0.95); }
-  50% { opacity: 1; transform: scale(1.05); }
+.ai-analysis-dialog :deep(.el-dialog__footer) {
+  padding: 16px 24px;
+  border-top: 1px solid #e4e7ed;
 }
 
 .ai-analysis-content {
-  width: 100%;
-  line-height: 1.8;
+  height: 100%;
+  max-height: calc(80vh - 140px);
+  overflow-y: auto;
+  padding: 20px 24px;
+  position: relative;
+  min-height: 200px;
+}
+
+.ai-analysis-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ai-analysis-content::-webkit-scrollbar-track {
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+
+.ai-analysis-content::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 4px;
+}
+
+.ai-analysis-content::-webkit-scrollbar-thumb:hover {
+  background: #909399;
+}
+
+.streaming-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #f0f7ff;
+  border-radius: 8px;
+  color: #0969da;
   font-size: 14px;
+  margin-top: 16px;
+}
+
+.streaming-indicator .el-icon {
+  font-size: 18px;
+}
+
+.markdown-content {
+  line-height: 1.8;
   color: #333;
 }
 
-.ai-analysis-content h1,
-.ai-analysis-content h2,
-.ai-analysis-content h3,
-.ai-analysis-content h4 {
-  margin-top: 20px;
-  margin-bottom: 10px;
-}
-
-.ai-analysis-content h1 {
+.markdown-content :deep(h1) {
   font-size: 20px;
-  background: linear-gradient(135deg, #4facfe, #0969da);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.ai-analysis-content h2 {
-  font-size: 18px;
+  font-weight: 600;
   color: #0969da;
-  border-bottom: 2px solid #e8f4ff;
-  padding-bottom: 6px;
+  margin: 0 0 20px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e4e7ed;
 }
 
-.ai-analysis-content h3 {
+.markdown-content :deep(h2) {
+  font-size: 18px;
+  font-weight: 600;
+  color: #0969da;
+  margin: 24px 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e4e7ed;
+}
+
+.markdown-content :deep(h3) {
   font-size: 16px;
-  color: #4facfe;
+  font-weight: 600;
+  color: #333;
+  margin: 20px 0 12px 0;
 }
 
-.ai-analysis-content h4 {
+.markdown-content :deep(h4) {
   font-size: 15px;
-  color: #2c3e50;
+  font-weight: 600;
+  color: #0969da;
+  margin: 16px 0 10px 0;
 }
 
-.ai-analysis-content p {
-  margin-bottom: 10px;
+.markdown-content :deep(p) {
+  margin: 12px 0;
+  font-size: 14px;
+  line-height: 1.8;
 }
 
-.ai-analysis-content ul,
-.ai-analysis-content ol {
-  padding-left: 20px;
-  margin-bottom: 10px;
+.markdown-content :deep(ul),
+.markdown-content :deep(ol) {
+  margin: 12px 0;
+  padding-left: 24px;
 }
 
-.ai-analysis-content li {
-  margin-bottom: 4px;
+.markdown-content :deep(li) {
+  margin: 8px 0;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
-.ai-analysis-content strong {
-  color: #1a2332;
+.markdown-content :deep(strong) {
+  font-weight: 600;
+  color: #0969da;
 }
 
-.ai-analysis-content code {
-  background: #f0f2f5;
+.markdown-content :deep(code) {
+  background: #f5f7fa;
   padding: 2px 6px;
   border-radius: 4px;
+  font-family: 'Courier New', monospace;
   font-size: 13px;
 }
 
-.ai-analysis-content blockquote {
-  border-left: 3px solid #4facfe;
-  padding: 8px 14px;
-  margin: 10px 0;
-  background: #f8f9fa;
-  border-radius: 0 6px 6px 0;
-  color: #555;
+.markdown-content :deep(blockquote) {
+  border-left: 4px solid #0969da;
+  padding: 12px 16px;
+  margin: 16px 0;
+  color: #666;
+  background: #f5f7fa;
+  border-radius: 4px;
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .error-simple-card {
-    padding: 16px;
-  }
-  
-  .error-simple-card .card-footer {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
-  }
-  
-  .error-simple-card .footer-actions {
-    width: 100%;
-  }
-  
-  .error-simple-card .footer-actions :deep(.el-button) {
-    flex: 1;
-  }
+.markdown-content :deep(hr) {
+  border: none;
+  border-top: 1px solid #e4e7ed;
+  margin: 20px 0;
 }
+</style>
