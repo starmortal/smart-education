@@ -26,10 +26,9 @@
           @click="selectKnowledge(kb)"
         >
           <div class="item-info">
-            <div class="item-name">{{ kb.name }}</div>
-            <div class="item-stats">
-              <span>{{ kb.fileCount }} 文件</span>
-              <span>{{ kb.vectorCount }} 向量</span>
+            <div class="item-name">
+              {{ kb.name }}
+              <el-tag v-if="kb.isSystem" type="info" size="small" style="margin-left: 8px;">系统</el-tag>
             </div>
           </div>
           <el-dropdown trigger="click" @command="(cmd) => handleKnowledgeCommand(cmd, kb)">
@@ -39,7 +38,7 @@
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="edit">编辑</el-dropdown-item>
-                <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+                <el-dropdown-item v-if="!kb.isSystem" command="delete" divided>删除</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -158,23 +157,39 @@
     </el-dialog>
 
     <!-- 添加文本对话框 -->
-    <el-dialog v-model="textDialogVisible" title="添加文本" width="600px">
-      <el-form :model="textForm" label-width="80px">
-        <el-form-item label="标题">
-          <el-input v-model="textForm.name" placeholder="请输入标题" />
-        </el-form-item>
-        <el-form-item label="内容">
-          <el-input
-            v-model="textForm.content"
-            type="textarea"
-            :rows="10"
-            placeholder="请输入文本内容"
+    <el-dialog 
+      v-model="textDialogVisible" 
+      width="80%"
+      :close-on-click-modal="false"
+      :show-close="false"
+      class="text-editor-dialog"
+    >
+      <template #header>
+        <div class="custom-dialog-header">
+          <span class="dialog-title">添加文本</span>
+          <el-input 
+            v-model="textForm.name" 
+            placeholder="请输入文件名" 
+            class="filename-input"
           />
-        </el-form-item>
-      </el-form>
+          <el-icon class="dialog-close" @click="textDialogVisible = false">
+            <Close />
+          </el-icon>
+        </div>
+      </template>
+      <div class="text-editor-container">
+        <MdEditor
+          v-model="textForm.content"
+          language="zh-CN"
+          :toolbars="toolbars"
+          placeholder="输入文本内容..."
+        />
+      </div>
       <template #footer>
-        <el-button @click="textDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveText" :loading="textSaving">确定</el-button>
+        <div class="dialog-footer">
+          <el-button @click="textDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSaveText" :loading="textSaving">保存</el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -247,6 +262,8 @@ import {
   DArrowLeft,
   DArrowRight
 } from '@element-plus/icons-vue';
+import { MdEditor } from 'md-editor-v3';
+import 'md-editor-v3/lib/style.css';
 import {
   getKnowledgeBases,
   createKnowledgeBase,
@@ -299,6 +316,19 @@ const fileInputRef = ref(null);
 
 // 侧边栏折叠状态
 const sidebarCollapsed = ref(false);
+
+// 编辑器工具栏配置
+const toolbars = [
+  'bold', 'underline', 'italic', 'strikeThrough',
+  '-',
+  'title', 'sub', 'sup', 'quote', 'unorderedList', 'orderedList',
+  '-',
+  'codeRow', 'code', 'link', 'image', 'table',
+  '-',
+  'revoke', 'next',
+  '=',
+  'pageFullscreen', 'fullscreen', 'preview', 'catalog'
+];
 
 // 切换侧边栏
 const toggleSidebar = () => {
@@ -685,14 +715,6 @@ const formatDate = (date) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-bottom: 4px;
-}
-
-.item-stats {
-  font-size: 12px;
-  color: #999;
-  display: flex;
-  gap: 12px;
 }
 
 .more-icon {
@@ -837,5 +859,85 @@ const formatDate = (date) => {
 
 .no-results p {
   margin-top: 12px;
+}
+
+/* 文本编辑器对话框样式 */
+.text-editor-dialog :deep(.el-dialog) {
+  height: 70vh !important;
+  max-height: 70vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 15vh auto !important;
+}
+
+.text-editor-dialog :deep(.el-dialog__header) {
+  padding: 0 !important;
+  margin: 0 !important;
+  border-bottom: 1px solid #e4e7ed;
+  flex-shrink: 0;
+}
+
+.custom-dialog-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  gap: 16px;
+}
+
+.dialog-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  white-space: nowrap;
+}
+
+.filename-input {
+  width: 300px;
+}
+
+.dialog-close {
+  margin-left: auto;
+  font-size: 20px;
+  cursor: pointer;
+  color: #909399;
+  transition: color 0.3s;
+}
+
+.dialog-close:hover {
+  color: #409eff;
+}
+
+.text-editor-dialog :deep(.el-dialog__body) {
+  padding: 0 !important;
+  flex: 1 !important;
+  overflow: hidden !important;
+  height: auto !important;
+}
+
+.text-editor-dialog :deep(.el-dialog__footer) {
+  padding: 16px 20px;
+  border-top: 1px solid #e4e7ed;
+  flex-shrink: 0;
+}
+
+.text-editor-dialog :deep(.el-dialog__headerbtn) {
+  display: none !important;
+}
+
+.text-editor-container {
+  height: 100%;
+  overflow: hidden;
+}
+
+.text-editor-container :deep(.md-editor) {
+  height: 100% !important;
+  border: none;
+}
+
+.dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style>

@@ -79,6 +79,11 @@ exports.deleteKnowledgeBase = async (req, res) => {
       return Response.notFound(res, '知识库不存在');
     }
     
+    // 检查是否为系统知识库
+    if (knowledge.isSystem) {
+      return Response.error(res, '系统知识库不能删除', 403);
+    }
+    
     await KnowledgeFile.deleteMany({ knowledgeId: id });
     await Knowledge.findByIdAndDelete(id);
     
