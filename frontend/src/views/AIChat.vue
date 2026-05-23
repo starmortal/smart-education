@@ -834,6 +834,16 @@ const handleSendMessage = async () => {
     }
   }
   
+  // 立即显示用户消息（优化用户体验）
+  const userMessage = {
+    role: 'user',
+    content: message,
+    attachments: attachments,
+    timestamp: new Date()
+  };
+  messages.value.push(userMessage);
+  
+  // 清空输入框和文件选择
   inputMessage.value = '';
   selectedFiles.value = [];
   isLoading.value = true;
@@ -846,7 +856,7 @@ const handleSendMessage = async () => {
       temporaryKnowledgeBases.value
     );
     if (res.code === 200) {
-      messages.value.push(res.data.userMessage);
+      // 只添加AI回复消息（用户消息已经显示）
       messages.value.push(res.data.assistantMessage);
       
       // 更新话题标题
@@ -858,6 +868,8 @@ const handleSendMessage = async () => {
   } catch (error) {
     console.error('发送消息失败:', error);
     ElMessage.error('发送失败，请重试');
+    // 发送失败，移除已显示的用户消息
+    messages.value.pop();
   } finally {
     isLoading.value = false;
   }
