@@ -12,18 +12,18 @@ class AI {
   constructor() {
     // 从环境变量读取配置
     this.apiKey = process.env.OPENAI_API_KEY || process.env.DEEPSEEK_API_KEY;
-    this.baseURL = process.env.OPENAI_BASE_URL || 'https://api.deepseek.com';
-    this.model = process.env.OPENAI_MODEL || 'deepseek-chat';
+    this.baseURL = process.env.OPENAI_BASE_URL || 'https://api.siliconflow.cn/v1';
+    this.model = process.env.OPENAI_MODEL || 'deepseek-ai/DeepSeek-V3';
     
     if (!this.apiKey) {
       console.warn('⚠️ OPENAI_API_KEY 未配置，请在 .env 文件中设置');
+      this.client = null;
+    } else {
+      this.client = new OpenAI({
+        apiKey: this.apiKey,
+        baseURL: this.baseURL,
+      });
     }
-    
-    // 初始化 OpenAI 客户端
-    this.client = new OpenAI({
-      apiKey: this.apiKey,
-      baseURL: this.baseURL,
-    });
     
     console.log('🔧 AI服务初始化完成');
     console.log('📝 API Key:', this.apiKey ? this.apiKey.substring(0, 10) + '...' : '未配置');
@@ -38,6 +38,10 @@ class AI {
    * @returns {Promise<string>} - AI回复内容
    */
   async chat(message, history = []) {
+    if (!this.client) {
+      throw new Error('AI 服务未配置，请检查 OPENAI_API_KEY 等环境变量');
+    }
+
     try {
       console.log('🔄 调用 AI API...');
       console.log(`🔄 使用模型: ${this.model}`);
@@ -77,6 +81,10 @@ class AI {
    * @returns {Promise<string>} - 完整的AI回复内容
    */
   async chatStream(message, history = [], onChunk = null) {
+    if (!this.client) {
+      throw new Error('AI 服务未配置，请检查 OPENAI_API_KEY 等环境变量');
+    }
+
     try {
       console.log(`🤖 开始流式调用，模型: ${this.model}`);
 
@@ -113,7 +121,11 @@ class AI {
     } catch (error) {
       console.error("❌ 流式调用失败：", error.message);
       console.log("⚠️ 降级使用非流式调用");
-      return await this.chat(message, history);
+      const result = await this.chat(message, history);
+      if (onChunk && result) {
+        onChunk(result);
+      }
+      return result;
     }
   }
 
