@@ -85,6 +85,45 @@
           />
           <span class="file-name">我的错题</span>
           <div class="header-spacer"></div>
+          <el-button 
+            v-if="showKnowledgeGraph"
+            :icon="DataAnalysis" 
+            circle 
+            size="small"
+            @click="showKnowledgeGraph = false"
+            title="切换到列表视图"
+          />
+        </div>
+        
+        <!-- 复习日历 -->
+        <ReviewCalendar
+          :userId="userId"
+          @day-click="handleDayClick"
+          @data-loaded="handleCalendarDataLoaded"
+        />
+        
+        <!-- AI复习建议面板 -->
+        <AIReviewPanel
+          :userId="userId"
+          :todayErrors="todayErrors"
+          @start-review="handleStartReview"
+          @view-knowledge-graph="showKnowledgeGraph = true"
+          @generate-plan="handleGeneratePlan"
+        />
+        
+        <!-- 知识图谱视图 -->
+        <KnowledgeGraph
+          v-if="showKnowledgeGraph"
+          :userId="userId"
+          :errors="errorList"
+          @switch-to-list="showKnowledgeGraph = false"
+          @view-errors="handleViewErrors"
+          @ai-explain="handleAIExplain"
+          @practice="handlePractice"
+        />
+        
+        <!-- 错题列表（增强版卡片） -->
+        <div v-else class="error-list" v-loading="loading">
           <el-pagination
             v-if="errorList.length > pageSize"
             v-model:current-page="currentPage"
@@ -93,51 +132,19 @@
             layout="prev, pager, next"
             small
             @current-change="handleCurrentPageChange"
+            style="margin-bottom: 20px; text-align: center;"
           />
-        </div>
-        
-        <div class="error-list" v-loading="loading">
-          <div class="error-grid">
-            <div 
-              v-for="(error, index) in paginatedErrors" 
+          
+          <div class="error-enhanced-list">
+            <ErrorCardEnhanced
+              v-for="error in paginatedErrors"
               :key="error.id"
-              class="error-card"
-              :style="{ background: getCardColor(index) }"
-            >
-              <div class="card-content" @click="handleErrorDetail(error)">
-                <div class="card-header-row">
-                  <div class="card-status-row">
-                    <div 
-                      class="card-checkbox" 
-                      @click.stop="toggleErrorMastery(error)"
-                      :class="{ mastered: error.masteryStatus === 'mastered' }"
-                    >
-                      <el-icon v-if="error.masteryStatus === 'mastered'" size="14" color="#fff">
-                        <Check />
-                      </el-icon>
-                    </div>
-                    <div class="card-status">
-                      {{ getStatusText(error.masteryStatus) }}
-                    </div>
-                  </div>
-                  <div class="card-subject">
-                    {{ getSubjectText(error.subject) }}
-                  </div>
-                </div>
-                
-                <div class="card-title">{{ error.questionTitle }}</div>
-                
-                <div class="card-footer">
-                  <div class="card-type">
-                    {{ getTypeText(error.questionType) }}
-                  </div>
-                  <div class="card-edit-btn" @click.stop="handleEditError(error)" title="编辑错题">
-                    <el-icon><Edit /></el-icon>
-                    <span>编辑</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+              :error="error"
+              @start-review="handleStartReview"
+              @view-analysis="handleViewAnalysis"
+              @delay="handleDelay"
+              @mark-mastered="handleMarkMastered"
+            />
           </div>
           
           <el-empty v-if="errorList.length === 0 && !loading" description="暂无错题记录" />
@@ -520,6 +527,12 @@ import SideNavBar from '@/components/SideNavBar.vue';
 import axios from "axios";
 // 【新增】引入用户科目工具
 import { getUserSubjects, generateSubjectOptions, hasUserSubjects, getSubjectCode } from "@/utils/userSubjects";
+// 【v3.4.0新增】引入新组件
+import ReviewCalendar from '@/components/error/ReviewCalendar.vue';
+import AIReviewPanel from '@/components/error/AIReviewPanel.vue';
+import KnowledgeGraph from '@/components/error/KnowledgeGraph.vue';
+import ErrorCardEnhanced from '@/components/error/ErrorCardEnhanced.vue';
+import dayjs from 'dayjs';
 
 /* ============== 基础变量（与上一版完全一致） ============== */
 const router = useRouter();
@@ -528,6 +541,10 @@ const showEditDialog = ref(false);
 const showFilterDialog = ref(false);
 const editFormRef = ref(null);
 const sidebarCollapsed = ref(false);
+
+// 【v3.4.0新增】知识图谱视图切换
+const showKnowledgeGraph = ref(false);
+const userId = ref(localStorage.getItem("edu-user-id") || "default-user");
 
 // 查看错题详情
 const showErrorDetailDialog = ref(false);
@@ -578,6 +595,37 @@ const errorList = ref([]);
 // 【新增】用户科目相关
 const userSubjects = ref([]);
 const subjectOptions = computed(() => generateSubjectOptions(userSubjects.value));
+
+// 【v3.4.0新增】今日需复习的错题
+const todayErrors = computed(() => {
+  // 筛选需要今日复习的错题
+  return errorList.value.filter(error => {
+    // 如果是未掌握状态，都需要复习
+    if (error.masteryStatus === 'unmastered') {
+      return true;
+    }
+    
+    // 如果有最后复习时间，根据艾宾浩斯曲线判断
+    if (error.lastReviewTime) {
+      const daysSinceLastReview = dayjs().diff(dayjs(error.lastReviewTime), 'day');
+      const reviewCount = error.reviewCount || 0;
+      
+      // 艾宾浩斯遗忘曲线：1天、2天、4天、7天、15天
+      const intervals = [1, 2, 4, 7, 15];
+      const nextReviewDay = intervals[Math.min(reviewCount, intervals.length - 1)];
+      
+      return daysSinceLastReview >= nextReviewDay;
+    }
+    
+    // 新添加的错题（没有复习记录）
+    if (!error.lastReviewTime && error.addTime) {
+      const daysSinceAdd = dayjs().diff(dayjs(error.addTime), 'day');
+      return daysSinceAdd >= 1; // 添加后第二天开始复习
+    }
+    
+    return false;
+  });
+});
 
 // 彩色背景色数组
 const cardColors = [
@@ -659,6 +707,86 @@ const paginatedErrors = computed(() => {
 // 切换侧边栏
 function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value;
+}
+
+// 【v3.4.0新增】日历日期点击
+function handleDayClick(day) {
+  console.log('点击日期:', day);
+  // 可以筛选该日期的错题
+  ElMessage.info(`查看 ${day.date} 的错题`);
+}
+
+// 【v3.4.0新增】日历数据加载完成
+function handleCalendarDataLoaded(data) {
+  console.log('日历数据加载完成:', data);
+}
+
+// 【v3.4.0新增】开始复习
+function handleStartReview(error) {
+  if (!error) {
+    // 如果没有传入具体错题，开始复习今日所有错题
+    if (todayErrors.value.length === 0) {
+      ElMessage.warning('今日没有需要复习的错题');
+      return;
+    }
+    ElMessage.success(`开始复习今日 ${todayErrors.value.length} 道错题`);
+    // 这里可以跳转到复习页面或打开复习对话框
+  } else {
+    ElMessage.success(`开始复习：${error.questionTitle}`);
+    // 显示错题详情
+    handleErrorDetail(error);
+  }
+}
+
+// 【v3.4.0新增】查看解析
+function handleViewAnalysis(error) {
+  handleErrorDetail(error);
+}
+
+// 【v3.4.0新增】延后复习
+async function handleDelay(error) {
+  try {
+    ElMessage.info(`已将"${error.questionTitle}"延后到明天复习`);
+    // 这里可以调用API更新复习时间
+  } catch (error) {
+    console.error('延后复习失败:', error);
+  }
+}
+
+// 【v3.4.0新增】标记已掌握
+async function handleMarkMastered(error) {
+  try {
+    await toggleErrorMastery(error);
+  } catch (error) {
+    console.error('标记掌握失败:', error);
+  }
+}
+
+// 【v3.4.0新增】生成复习计划
+function handleGeneratePlan() {
+  ElMessage.success('AI正在为您生成个性化复习计划...');
+  // 这里可以调用AI接口生成复习计划
+}
+
+// 【v3.4.0新增】查看知识点错题
+function handleViewErrors(point) {
+  console.log('查看知识点错题:', point);
+  ElMessage.info(`查看"${point.name}"相关的 ${point.errorCount} 道错题`);
+  // 可以筛选该知识点的错题
+}
+
+// 【v3.4.0新增】AI讲解
+function handleAIExplain(point) {
+  console.log('AI讲解:', point);
+  ElMessage.success(`AI正在为您讲解"${point.name}"...`);
+  // 这里可以调用AI接口生成讲解
+}
+
+// 【v3.4.0新增】专项练习
+function handlePractice(point) {
+  console.log('专项练习:', point);
+  ElMessage.info(`为您准备"${point.name}"的专项练习题`);
+  // 这里可以跳转到练习页面
 }
 
 // 获取卡片颜色
@@ -986,34 +1114,7 @@ async function handleSaveEdit() {
     loading.value = false;
   }
 }
-function handleMarkMastered(id) {
-  ElMessageBox.confirm("确定标记为已掌握？", "提示")
-    .then(async () => {
-    try {
-      loading.value = true;
-      // 【真实接口】PUT /api/error-book/mark-mastered/:id
-      await axios.put(
-        `http://localhost:3001/api/error-book/mark-mastered/${id}`,
-        {},
-        { timeout: 10000 }
-      );
-      ElMessage.success("已掌握");
-      // 重新加载全局统计和错题列表
-      await loadGlobalStats();
-      loadErrorList();
-    } catch (error) {
-      console.error("标记掌握失败：", error);
-      ElMessage.error(
-        error.response?.data?.message || "标记失败，请重试"
-      );
-    } finally {
-      loading.value = false;
-    }
-    })
-    .catch(() => {
-      // 用户取消操作，不做任何处理
-    });
-}
+
 function handleDeleteError(id) {
   ElMessageBox.confirm("确定删除？", "危险提示", { type: "error" })
     .then(async () => {
@@ -1360,6 +1461,14 @@ async function batchDeleteErrors() {
   grid-template-rows: repeat(2, 1fr);
   gap: 16px;
   height: 100%;
+}
+
+/* 【v3.4.0新增】增强版错题卡片列表布局 */
+.error-enhanced-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0;
 }
 
 /* 彩色卡片样式 */

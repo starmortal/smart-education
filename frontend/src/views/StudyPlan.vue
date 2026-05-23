@@ -110,6 +110,36 @@
           />
           <span class="file-name">我的计划</span>
           <div class="header-spacer"></div>
+          <el-button 
+            :icon="viewMode === 'timeline' ? DataAnalysis : Calendar" 
+            circle 
+            size="small"
+            @click="toggleViewMode"
+            :title="viewMode === 'timeline' ? '切换到卡片视图' : '切换到时间轴视图'"
+          />
+        </div>
+        
+        <!-- AI助手面板 -->
+        <AIAssistantPanel
+          v-if="viewMode === 'timeline'"
+          :userId="userId"
+          :todayPlans="todayPlans"
+          @start-learning="handleStartLearning"
+          @view-details="handlePlanDetail"
+          @adjust-plan="handleAdjustPlan"
+        />
+        
+        <!-- 时间轴视图 -->
+        <TimelineView
+          v-if="viewMode === 'timeline'"
+          :plans="planList"
+          @start-learning="handleStartLearning"
+          @view-details="handlePlanDetail"
+          @adjust-plan="handleEditPlan"
+        />
+        
+        <!-- 原有的卡片视图 -->
+        <div v-else class="plan-list" v-loading="loading">
           <el-pagination
             v-if="planList.length > pageSize"
             v-model:current-page="currentPage"
@@ -118,10 +148,9 @@
             layout="prev, pager, next"
             small
             @current-change="handleCurrentPageChange"
+            style="margin-bottom: 20px; text-align: center;"
           />
-        </div>
-        
-        <div class="plan-list" v-loading="loading">
+          
           <div class="plan-grid">
             <div 
               v-for="(plan, index) in paginatedPlans" 
@@ -488,6 +517,10 @@ import SideNavBar from '@/components/SideNavBar.vue';
 import axios from "axios";
 // 【新增】引入用户科目工具
 import { getUserSubjects, generateSubjectOptions, hasUserSubjects, getSubjectCode } from "@/utils/userSubjects";
+// 【v3.4.0新增】引入新组件
+import AIAssistantPanel from '@/components/plan/AIAssistantPanel.vue';
+import TimelineView from '@/components/plan/TimelineView.vue';
+import dayjs from 'dayjs';
 
 /* ============== 基础变量（与上一版完全一致） ============== */
 const router = useRouter();
@@ -496,6 +529,10 @@ const showPlanDialog = ref(false);
 const isEdit = ref(false);
 const planFormRef = ref(null);
 const sidebarCollapsed = ref(false);
+
+// 【v3.4.0新增】视图模式切换
+const viewMode = ref('timeline'); // 'timeline' 或 'card'
+const userId = ref(localStorage.getItem("edu-user-id") || "default-user");
 
 // 查看计划详情
 const showPlanDetailDialog = ref(false);
@@ -547,6 +584,15 @@ const planList = ref([]);
 const userSubjects = ref([]);
 const subjectOptions = computed(() => generateSubjectOptions(userSubjects.value));
 
+// 【v3.4.0新增】今日计划
+const todayPlans = computed(() => {
+  const today = dayjs().startOf('day');
+  return planList.value.filter(plan => 
+    dayjs(plan.startTime).isSame(today, 'day') || 
+    (plan.planStatus === 'in_progress' && dayjs(plan.startTime).isBefore(today))
+  );
+});
+
 // 彩色背景色数组
 const cardColors = [
   'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -591,6 +637,51 @@ const paginatedPlans = computed(() => {
 // 切换侧边栏
 function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value;
+}
+
+// 【v3.4.0新增】切换视图模式
+function toggleViewMode() {
+  viewMode.value = viewMode.value === 'timeline' ? 'card' : 'timeline';
+}
+
+// 【v3.4.0新增】开始学习
+function handleStartLearning(plan) {
+  if (!plan) {
+    ElMessage.warning('请选择要学习的计划');
+    return;
+  }
+  
+  // 如果计划未开始，自动更新为进行中
+  if (plan.planStatus === 'not_started') {
+    updatePlanStatus(plan.id, 'in_progress');
+  }
+  
+  ElMessage.success(`开始学习：${plan.planTitle}`);
+  // 这里可以跳转到学习页面或打开学习对话框
+}
+
+// 【v3.4.0新增】调整计划
+function handleAdjustPlan(plan) {
+  if (plan) {
+    handleEditPlan(plan);
+  } else {
+    ElMessage.info('请选择要调整的计划');
+  }
+}
+
+// 【v3.4.0新增】更新计划状态
+async function updatePlanStatus(planId, status) {
+  try {
+    await axios.put(
+      `http://localhost:3001/api/study-plan/update/${planId}`,
+      { planStatus: status },
+      { timeout: 10000 }
+    );
+    await loadGlobalStats();
+    loadPlanList();
+  } catch (error) {
+    console.error('更新计划状态失败：', error);
+  }
 }
 
 // 【新增】获取科目颜色（循环使用预定义颜色）
