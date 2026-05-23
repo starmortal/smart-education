@@ -84,7 +84,7 @@
           
           <el-calendar v-model="calendarValue" class="compact-calendar">
             <template #date-cell="{ data }">
-              <div 
+              <div v-if="isCurrentMonth(data.day)"
                 class="calendar-day-cell"
                 :class="{ 
                   'has-errors': getErrorCount(data.day) > 0,
@@ -98,6 +98,7 @@
                   {{ getErrorCount(data.day) }}
                 </div>
               </div>
+              <div v-else class="calendar-day-cell other-month"></div>
             </template>
           </el-calendar>
         </div>
@@ -192,6 +193,14 @@
                     @click.stop="handleEditError(error)"
                   >
                     编辑
+                  </el-button>
+                  <el-button 
+                    type="danger" 
+                    size="small"
+                    :icon="Delete"
+                    @click.stop="handleDeleteError(error.id)"
+                  >
+                    删除
                   </el-button>
                 </div>
               </div>
@@ -815,6 +824,10 @@ function isToday(day) {
 function isSelected(day) {
   if (!selectedDate.value) return false;
   return dayjs(day).format('YYYY-MM-DD') === selectedDate.value;
+}
+
+function isCurrentMonth(day) {
+  return dayjs(day).format('YYYY-MM') === currentMonth.value.format('YYYY-MM');
 }
 
 // 【新增】加载每天的错题数量
@@ -1700,6 +1713,10 @@ async function batchDeleteErrors() {
 .calendar-day-cell.is-selected .day-number {
   color: white;
   font-weight: 600;
+}
+
+.calendar-day-cell.other-month {
+  visibility: hidden;
 }
 
 .calendar-day-cell.has-errors {
