@@ -104,7 +104,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:modelValue', 'questionClick']);
+const emit = defineEmits(['update:modelValue', 'questionClick', 'followChange']);
 
 const visible = ref(props.modelValue);
 const loading = ref(false);
@@ -141,8 +141,14 @@ const handleClose = () => {
   visible.value = false;
 };
 
-const handleFollowChange = () => {
-  // 重新加载用户信息
+const handleFollowChange = (isFollowing) => {
+  if (profile.value?.followStatus) {
+    profile.value.followStatus.isFollowing = isFollowing;
+    if (!isFollowing) {
+      profile.value.followStatus.isMutual = false;
+    }
+  }
+  emit('followChange', isFollowing, props.userId);
   loadProfile();
 };
 

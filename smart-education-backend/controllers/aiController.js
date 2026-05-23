@@ -96,33 +96,49 @@ exports.analyzeQuestion = async (req, res) => {
   }
 };
 
-// AI 推荐问题
+// AI 推荐问题（按社区问题标签热度推荐）
 exports.recommendQuestions = async (req, res) => {
   try {
     const { userId } = req.query;
-    
-    // 获取用户信息
-    const user = await User.findById(userId).select('grade subjects');
-    
-    if (!user) {
-      return Response.notFound(res, '用户不存在');
+
+    const allQuestions = await Question.find().select('tags');
+    const tagCount = {};
+
+    allQuestions.forEach((q) => {
+      (q.tags || []).forEach((tag) => {
+        if (tag) {
+          tagCount[tag] = (tagCount[tag] || 0) + 1;
+        }
+      });
+    });
+
+    const topTags = Object.entries(tagCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([tag]) => tag);
+
+    if (topTags.length === 0) {
+      return Response.success(res, [], 'AI推荐成功');
     }
-    
-    // 基于用户年级和科目推荐问题
+
     const questions = await Question.find({
-      tags: { $in: user.subjects || [] },
-      userId: { $ne: userId }, // 排除自己的问题
-      solved: false // 优先推荐未解决的问题
+      tags: { $in: topTags },
+      userId: { $ne: userId },
+      solved: false
     })
-    .sort({ createTime: -1 })
-    .limit(10);
-    
-    // 为每个问题添加推荐理由
-    const recommendations = questions.map(q => ({
-      ...q.toObject(),
-      recommendReason: `基于你的学科：${user.subjects?.join('、') || '通用'}`
-    }));
-    
+      .sort({ answerCount: -1, viewCount: -1, createTime: -1 })
+      .limit(10);
+
+    const recommendations = questions.map((q) => {
+      const matchedTag = (q.tags || []).find((t) => topTags.includes(t)) || topTags[0];
+      const count = tagCount[matchedTag] || 0;
+      return {
+        ...q.toObject(),
+        id: q._id.toString(),
+        recommendReason: `社区热门：${matchedTag}（${count} 个相关问题）`
+      };
+    });
+
     Response.success(res, recommendations, 'AI推荐成功');
   } catch (error) {
     logger.error('AI推荐问题失败：', error);
@@ -222,30 +238,26 @@ exports.getLearningAdvice = async (req, res) => {
   }
 };
 
-// 获取热门话题
+// 获取热门话题（按全站问题标签出现次数统计）
 exports.getHotTopics = async (req, res) => {
   try {
-    // 统计最近7天的标签使用频率
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    const questions = await Question.find({
-      createTime: { $gte: sevenDaysAgo }
-    }).select('tags');
-    
+    const questions = await Question.find().select('tags');
+
     const tagCount = {};
-    
-    questions.forEach(q => {
-      q.tags.forEach(tag => {
-        tagCount[tag] = (tagCount[tag] || 0) + 1;
+
+    questions.forEach((q) => {
+      (q.tags || []).forEach((tag) => {
+        if (tag) {
+          tagCount[tag] = (tagCount[tag] || 0) + 1;
+        }
       });
     });
-    
+
     const hotTopics = Object.entries(tagCount)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
       .map(([tag, count]) => ({ tag, count }));
-    
+
     Response.success(res, hotTopics, '获取热门话题成功');
   } catch (error) {
     logger.error('获取热门话题失败：', error);

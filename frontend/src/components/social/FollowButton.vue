@@ -71,7 +71,7 @@ const handleClick = async () => {
       });
       ElMessage.success('已取消关注');
       emit('update:isFollowing', false);
-      emit('followChange', false);
+      emit('followChange', false, props.targetUserId);
     } else {
       // 关注
       await axios.post(`http://localhost:3001/api/social/follow/${props.targetUserId}`, {
@@ -79,7 +79,7 @@ const handleClick = async () => {
       });
       ElMessage.success('关注成功');
       emit('update:isFollowing', true);
-      emit('followChange', true);
+      emit('followChange', true, props.targetUserId);
     }
   } catch (error) {
     console.error('关注操作失败：', error);
@@ -118,20 +118,8 @@ const handleClick = async () => {
 }
 
 .follow-btn.following:hover {
-  background: #fee2e2;
-  color: #dc2626;
-  border-color: #fecaca;
-}
-
-.follow-btn.following:hover span::after {
-  content: '取消关注';
-  position: absolute;
-  left: 0;
-  right: 0;
-}
-
-.follow-btn.following span {
-  position: relative;
+  background: #e5e7eb;
+  border-color: #d1d5db;
 }
 
 .follow-btn.mutual {

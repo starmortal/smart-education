@@ -47,6 +47,19 @@
             <el-icon><User /></el-icon>
             <span>我的问题</span>
           </div>
+          <span v-if="myQuestions.length" class="stat-count">{{ myQuestions.length }}</span>
+        </div>
+
+        <div 
+          class="filter-item"
+          @click="setContentFilter('favorites')"
+          :class="{ active: contentFilter === 'favorites' }"
+        >
+          <div class="filter-label">
+            <el-icon><Star /></el-icon>
+            <span>我的收藏</span>
+          </div>
+          <span v-if="favoriteQuestionIds.length" class="stat-count">{{ favoriteQuestionIds.length }}</span>
         </div>
 
         <!-- 状态筛选 -->
@@ -140,16 +153,116 @@
             size="small"
             @click="toggleSidebar"
           />
-          <span class="file-name">学习社区</span>
+          <span class="file-name">{{ pageTitle }}</span>
           <div class="header-spacer"></div>
-          <el-button :icon="Star" @click="showFavoritesDialog = true">管理收藏</el-button>
           <el-button type="primary" :icon="Plus" @click="showAskDialog = true">发起提问</el-button>
-          <el-button :icon="Setting" @click="showManageDialog = true">管理我的疑问</el-button>
+        </div>
+
+        <!-- 话题筛选提示条 -->
+        <div v-if="tagFilter && !isManageMode" class="tag-filter-bar">
+          <span class="tag-filter-label">话题筛选</span>
+          <el-tag type="primary" closable @close="clearTagFilter">#{{ tagFilter }}</el-tag>
+          <span class="tag-filter-count">共 {{ filteredQuestions.length }} 条</span>
         </div>
         
-        <!-- 问题列表 - 极简社交流式布局 -->
+        <!-- 问题列表 -->
         <div class="questions-list" v-loading="loading">
-          <div class="questions-feed">
+          <!-- 我的问题 / 我的收藏：管理工具栏 -->
+          <div v-if="isManageMode" class="manage-toolbar">
+            <template v-if="contentFilter === 'mine'">
+              <el-checkbox v-model="selectAll" @change="handleSelectAll">全选</el-checkbox>
+              <el-button
+                v-if="selectedQuestions.length > 0"
+                type="danger"
+                size="small"
+                :icon="Delete"
+                @click="handleBatchDelete"
+              >
+                删除选中 ({{ selectedQuestions.length }})
+              </el-button>
+            </template>
+            <template v-else>
+              <el-checkbox v-model="selectAllFavorites" @change="handleSelectAllFavorites">全选</el-checkbox>
+              <el-button
+                v-if="selectedFavorites.length > 0"
+                type="danger"
+                size="small"
+                :icon="Delete"
+                @click="handleBatchDeleteFavorites"
+              >
+                取消收藏 ({{ selectedFavorites.length }})
+              </el-button>
+            </template>
+          </div>
+
+          <!-- 我的问题列表 -->
+          <div v-if="contentFilter === 'mine'" class="my-questions-list main-manage-list">
+            <div v-for="question in paginatedManageItems" :key="question.id || question._id" class="my-question-item">
+              <el-checkbox
+                :model-value="selectedQuestions.includes(question.id || question._id)"
+                @change="(val) => handleQuestionCheck(val, question.id || question._id)"
+              />
+              <div class="my-question-content" @click="handleQuestionDetail(question)">
+                <div class="my-question-title">{{ question.title }}</div>
+                <div class="my-question-meta">
+                  <el-tag size="small" :type="question.solved ? 'success' : 'warning'">
+                    {{ question.solved ? '已解决' : '待解决' }}
+                  </el-tag>
+                  <span>{{ question.answerCount || 0 }} 个回答</span>
+                  <span>{{ formatTime(question.createTime) }}</span>
+                </div>
+              </div>
+              <div class="my-question-actions">
+                <el-button
+                  v-if="!question.solved"
+                  type="success"
+                  size="small"
+                  @click.stop="handleMarkSolved(question.id || question._id)"
+                >
+                  标记已解决
+                </el-button>
+                <el-button
+                  type="danger"
+                  size="small"
+                  @click.stop="handleDeleteQuestion(question.id || question._id)"
+                >
+                  删除
+                </el-button>
+              </div>
+            </div>
+            <el-empty v-if="manageListItems.length === 0 && !loading" description="暂无疑问" :image-size="100" />
+          </div>
+
+          <!-- 我的收藏列表 -->
+          <div v-else-if="contentFilter === 'favorites'" class="favorites-manage-list main-manage-list">
+            <div v-for="question in paginatedManageItems" :key="question.id || question._id" class="favorite-manage-item">
+              <el-checkbox
+                :model-value="selectedFavorites.includes(question.id || question._id)"
+                @change="(val) => handleFavoriteCheck(val, question.id || question._id)"
+              />
+              <div class="favorite-manage-content" @click="handleQuestionDetail(question)">
+                <div class="favorite-manage-title">{{ question.title }}</div>
+                <div class="favorite-manage-meta">
+                  <span>{{ question.userName }}</span>
+                  <el-tag size="small" :type="question.solved ? 'success' : 'warning'">
+                    {{ question.solved ? '已解决' : '待解决' }}
+                  </el-tag>
+                  <span>{{ formatTime(question.createTime) }}</span>
+                </div>
+              </div>
+              <el-button
+                type="danger"
+                size="small"
+                @click.stop="removeFavorite(question.id || question._id)"
+              >
+                取消收藏
+              </el-button>
+            </div>
+            <el-empty v-if="manageListItems.length === 0 && !loading" description="暂无收藏" :image-size="100" />
+          </div>
+
+          <!-- 普通问题流 -->
+          <div v-else class="questions-feed">
             <div 
               v-for="question in paginatedQuestions" 
               :key="question.id || question._id"
@@ -182,7 +295,6 @@
                   :is-mutual="question.isMutual"
                   size="small"
                   @follow-change="handleFollowChange"
-                  @click.stop
                 />
                 <el-icon 
                   :size="22" 
@@ -256,19 +368,19 @@
             </div>
           </div>
           
-          <!-- 空状态 -->
-          <div v-if="filteredQuestions.length === 0 && !loading" class="empty-state">
+          <!-- 空状态（普通列表） -->
+          <div v-if="!isManageMode && filteredQuestions.length === 0 && !loading" class="empty-state">
             <el-icon :size="80" color="#d1d5db"><DocumentDelete /></el-icon>
             <div class="empty-text">暂无问题</div>
-            <div class="empty-hint">试试调整筛选条件或发起新问题</div>
+            <div class="empty-hint">{{ tagFilter ? `#${tagFilter} 下暂无问题，试试其他话题` : '试试调整筛选条件或发起新问题' }}</div>
           </div>
           
           <!-- 分页 -->
-          <div class="pagination-wrapper" v-if="filteredQuestions.length > pageSize">
+          <div class="pagination-wrapper" v-if="listTotalCount > pageSize">
             <el-pagination
               v-model:current-page="currentPage"
               :page-size="pageSize"
-              :total="filteredQuestions.length"
+              :total="listTotalCount"
               layout="prev, pager, next"
               @current-change="handlePageChange"
               background
@@ -281,6 +393,7 @@
     <!-- AI 助手面板 -->
     <AIAssistantPanel
       ref="aiAssistantRef"
+      :active-tag="tagFilter"
       @question-click="handleAIQuestionClick"
       @topic-click="handleTopicClick"
       @update:collapsed="aiPanelCollapsed = $event"
@@ -291,6 +404,7 @@
       v-model="showUserProfileDialog"
       :user-id="selectedUserId"
       @question-click="handleProfileQuestionClick"
+      @follow-change="handleFollowChange"
     />
 
     <!-- 关注列表对话框 -->
@@ -371,7 +485,7 @@
           <el-input v-model="askForm.content" type="textarea" rows="6" placeholder="请详细描述你的问题" maxlength="500" show-word-limit />
         </el-form-item>
         <el-form-item label="相关标签" prop="tags">
-          <el-select v-model="askForm.tags" multiple placeholder="请选择标签（最多2个）" :multiple-limit="2">
+          <el-select v-model="askForm.tags" multiple placeholder="请选择标签（最多4个）" :multiple-limit="4">
             <el-option v-for="subject in userSubjects" :key="subject" :label="subject" :value="subject" />
             <el-option label="作业" value="作业" />
             <el-option label="考试" value="考试" />
@@ -477,145 +591,38 @@
           </div>
 
           <div class="answer-input-section">
-            <el-input 
-              v-model="answerPlaceholder"
-              placeholder="写下你的回答..."
-              readonly
-              @click="showAnswerDialog = true"
-            />
-          </div>
-        </div>
-      </div>
-    </el-dialog>
-
-    <!-- 回答输入对话框 -->
-    <el-dialog
-      v-model="showAnswerDialog"
-      title="写回答"
-      width="700px"
-      center
-      class="blue-border-dialog"
-    >
-      <el-input 
-        v-model="answerContent"
-        type="textarea"
-        rows="8"
-        placeholder="请输入你的回答（支持Markdown格式）"
-        maxlength="500"
-        show-word-limit
-      />
-      <template #footer>
-        <el-button @click="showAnswerDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmitAnswer">提交回答</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 管理我的疑问对话框 -->
-    <el-dialog
-      v-model="showManageDialog"
-      title="管理我的疑问"
-      width="900px"
-      center
-      class="blue-border-dialog"
-    >
-      <div class="manage-toolbar">
-        <el-checkbox v-model="selectAll" @change="handleSelectAll">全选</el-checkbox>
-        <el-button 
-          v-if="selectedQuestions.length > 0"
-          type="danger" 
-          size="small"
-          :icon="Delete"
-          @click="handleBatchDelete"
-        >
-          删除选中 ({{ selectedQuestions.length }})
-        </el-button>
-      </div>
-      
-      <div class="my-questions-list">
-        <div v-for="question in myQuestions" :key="question.id" class="my-question-item">
-          <el-checkbox 
-            :model-value="selectedQuestions.includes(question.id)"
-            @change="(val) => handleQuestionCheck(val, question.id)"
-          />
-          <div class="my-question-content" @click="handleQuestionDetail(question)">
-            <div class="my-question-title">{{ question.title }}</div>
-            <div class="my-question-meta">
-              <el-tag size="small" :type="question.solved ? 'success' : 'warning'">
-                {{ question.solved ? '已解决' : '待解决' }}
-              </el-tag>
-              <span>{{ question.answerCount }} 个回答</span>
-              <span>{{ formatTime(question.createTime) }}</span>
-            </div>
-          </div>
-          <div class="my-question-actions">
-            <el-button 
-              v-if="!question.solved"
-              type="success" 
-              size="small"
-              @click="handleMarkSolved(question.id)"
-            >
-              标记已解决
-            </el-button>
-            <el-button 
-              type="danger" 
-              size="small"
-              @click="handleDeleteQuestion(question.id)"
-            >
-              删除
-            </el-button>
-          </div>
-        </div>
-        <el-empty v-if="myQuestions.length === 0" description="暂无疑问" :image-size="100" />
-      </div>
-    </el-dialog>
-
-    <!-- 收藏管理对话框 -->
-    <el-dialog
-      v-model="showFavoritesDialog"
-      title="收藏管理"
-      width="900px"
-      center
-      class="blue-border-dialog"
-    >
-      <div class="manage-toolbar">
-        <el-checkbox v-model="selectAllFavorites" @change="handleSelectAllFavorites">全选</el-checkbox>
-        <el-button 
-          v-if="selectedFavorites.length > 0"
-          type="danger" 
-          size="small"
-          :icon="Delete"
-          @click="handleBatchDeleteFavorites"
-        >
-          删除选中 ({{ selectedFavorites.length }})
-        </el-button>
-      </div>
-      
-      <div class="favorites-manage-list">
-        <div v-for="fav in myFavorites" :key="fav.id" class="favorite-manage-item">
-          <el-checkbox 
-            :model-value="selectedFavorites.includes(fav.id)"
-            @change="(val) => handleFavoriteCheck(val, fav.id)"
-          />
-          <div class="favorite-manage-content" @click="handleQuestionDetail(fav)">
-            <div class="favorite-manage-title">{{ fav.title }}</div>
-            <div class="favorite-manage-meta">
-              <span>{{ fav.userName }}</span>
-              <span>{{ formatTime(fav.createTime) }}</span>
+            <div class="answer-input-bar">
+              <el-input
+                v-model="answerContent"
+                type="textarea"
+                :autosize="{ minRows: 2, maxRows: 6 }"
+                placeholder="写下你的回答，Enter 发送"
+                maxlength="500"
+                show-word-limit
+                @keydown.enter.exact.prevent="handleSubmitAnswer"
+              />
+              <el-button
+                type="primary"
+                :disabled="!answerContent.trim()"
+                @click="handleSubmitAnswer"
+              >
+                发送
+              </el-button>
             </div>
           </div>
         </div>
-        <el-empty v-if="myFavorites.length === 0" description="暂无收藏" :image-size="100" />
       </div>
     </el-dialog>
+
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
-  Plus, Setting, Delete, Star, Medal, ChatDotRound, 
+  Plus, Delete, Star, Medal, ChatDotRound, 
   DataAnalysis, DArrowLeft, DArrowRight, View, CircleCheck, 
   Clock, TrendCharts, DocumentDelete, List, UserFilled, User, MagicStick
 } from '@element-plus/icons-vue';
@@ -646,8 +653,9 @@ const userSubjects = ref([]);
 
 // 问题列表
 const questions = ref([]);
-const contentFilter = ref('all'); // all, following, mine, ai-recommend
+const contentFilter = ref('all'); // all, following, mine, favorites, ai-recommend
 const questionStatusFilter = ref('');
+const tagFilter = ref(''); // 热门话题标签筛选
 const currentPage = ref(1);
 const pageSize = ref(6); // 单列布局，每页显示6条
 
@@ -670,20 +678,16 @@ const showFollowersDialog = ref(false);
 // AI 助手
 const aiAssistantRef = ref(null);
 
-// 我的收藏
-const myFavorites = ref([]);
+// 我的收藏（问题 ID 列表）
+const favoriteQuestionIds = ref([]);
 
 // 对话框控制
 const showAskDialog = ref(false);
 const showDetailDialog = ref(false);
-const showAnswerDialog = ref(false);
-const showManageDialog = ref(false);
-const showFavoritesDialog = ref(false);
 
 // 当前问题和回答
 const currentQuestion = ref(null);
 const answers = ref([]);
-const answerPlaceholder = ref('');
 const answerContent = ref('');
 
 // 表单
@@ -711,33 +715,84 @@ const selectAll = ref(false);
 const selectedFavorites = ref([]);
 const selectAllFavorites = ref(false);
 
-// 筛选后的问题列表
+const isManageMode = computed(() =>
+  contentFilter.value === 'mine' || contentFilter.value === 'favorites'
+);
+
+const pageTitle = computed(() => {
+  const titles = {
+    all: '学习社区',
+    following: '关注的人',
+    mine: '我的问题',
+    favorites: '我的收藏',
+    'ai-recommend': '为你推荐'
+  };
+  return titles[contentFilter.value] || '学习社区';
+});
+
+const favoriteQuestions = computed(() => {
+  if (!Array.isArray(questions.value) || !favoriteQuestionIds.value.length) return [];
+  const idSet = new Set(favoriteQuestionIds.value.map(String));
+  return questions.value.filter((q) => idSet.has(String(q.id || q._id)));
+});
+
+function applyStatusAndTagFilters(list) {
+  let result = list;
+  if (questionStatusFilter.value === 'unsolved') {
+    result = result.filter((q) => !q.solved);
+  } else if (questionStatusFilter.value === 'solved') {
+    result = result.filter((q) => q.solved);
+  }
+  if (tagFilter.value) {
+    result = result.filter((q) => (q.tags || []).includes(tagFilter.value));
+  }
+  return result;
+}
+
+const manageListItems = computed(() => {
+  if (contentFilter.value === 'mine') {
+    return applyStatusAndTagFilters(myQuestions.value);
+  }
+  if (contentFilter.value === 'favorites') {
+    return applyStatusAndTagFilters(favoriteQuestions.value);
+  }
+  return [];
+});
+
+const paginatedManageItems = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return manageListItems.value.slice(start, end);
+});
+
+// 筛选后的问题列表（普通浏览模式）
 const filteredQuestions = computed(() => {
   if (!Array.isArray(questions.value)) return [];
   
   let result = questions.value;
   
-  // 内容筛选
   if (contentFilter.value === 'following') {
-    // 只显示关注的人的问题
     result = result.filter(q => q.isFollowing);
-  } else if (contentFilter.value === 'mine') {
-    // 只显示我的问题
-    result = result.filter(q => q.userId === userId.value);
   } else if (contentFilter.value === 'ai-recommend') {
-    // AI 推荐的问题（这里简化处理，实际应该从 AI 接口获取）
     result = result.slice(0, 10);
   }
   
-  // 状态筛选
   if (questionStatusFilter.value === 'unsolved') {
     result = result.filter(q => !q.solved);
   } else if (questionStatusFilter.value === 'solved') {
     result = result.filter(q => q.solved);
   }
+
+  if (tagFilter.value) {
+    result = result.filter(q => (q.tags || []).includes(tagFilter.value));
+  }
   
   return result;
 });
+
+const listTotalCount = computed(() =>
+  isManageMode.value ? manageListItems.value.length : filteredQuestions.value.length
+);
 
 // 分页后的问题列表
 const paginatedQuestions = computed(() => {
@@ -765,16 +820,23 @@ function toggleStatusFilter(status) {
 // 设置内容筛选
 function setContentFilter(filter) {
   contentFilter.value = filter;
+  if (filter === 'all') {
+    tagFilter.value = '';
+  }
+  selectedQuestions.value = [];
+  selectedFavorites.value = [];
+  selectAll.value = false;
+  selectAllFavorites.value = false;
   currentPage.value = 1;
   
-  // 如果选择关注的人，需要加载关注的人的问题
   if (filter === 'following') {
     loadFollowingQuestions();
   } else if (filter === 'ai-recommend') {
-    // 刷新 AI 推荐
     if (aiAssistantRef.value) {
       aiAssistantRef.value.refresh();
     }
+  } else if (filter === 'favorites') {
+    loadMyFavorites();
   }
 }
 
@@ -796,23 +858,84 @@ async function loadFollowData() {
     followerCount.value = followersList.value.length;
     
     // 检查每个问题的关注状态
-    await checkQuestionsFollowStatus();
+    checkQuestionsFollowStatus();
   } catch (error) {
     console.error('加载关注数据失败：', error);
   }
 }
 
+// 统一用户 ID 格式，避免 ObjectId 与字符串比较失败
+function normalizeUserId(id) {
+  if (id === null || id === undefined) return '';
+  return String(id);
+}
+
 // 检查问题的关注状态
-async function checkQuestionsFollowStatus() {
+function checkQuestionsFollowStatus() {
   if (!Array.isArray(questions.value)) return;
-  
-  const followingIds = followingList.value.map(u => u.id);
-  
-  questions.value.forEach(q => {
-    q.isFollowing = followingIds.includes(q.userId);
-    // 检查是否互相关注（需要额外查询，这里简化处理）
-    q.isMutual = false;
+
+  const followingIds = new Set(
+    followingList.value.map((u) => normalizeUserId(u.id || u._id))
+  );
+  const followerIds = new Set(
+    followersList.value.map((u) => normalizeUserId(u.id || u._id))
+  );
+
+  questions.value = questions.value.map((q) => {
+    const qUserId = normalizeUserId(q.userId);
+    const isFollowing = followingIds.has(qUserId);
+    return {
+      ...q,
+      isFollowing,
+      isMutual: isFollowing && followerIds.has(qUserId)
+    };
   });
+}
+
+// 本地即时更新关注状态（无需刷新页面）
+function updateLocalFollowState(targetUserId, isFollowing) {
+  const uid = normalizeUserId(targetUserId);
+  if (!uid) return;
+
+  questions.value = questions.value.map((q) => {
+    if (normalizeUserId(q.userId) !== uid) return q;
+    return {
+      ...q,
+      isFollowing,
+      isMutual: isFollowing ? q.isMutual : false
+    };
+  });
+
+  if (isFollowing) {
+    const exists = followingList.value.some(
+      (u) => normalizeUserId(u.id || u._id) === uid
+    );
+    if (!exists) {
+      const question = questions.value.find(
+        (q) => normalizeUserId(q.userId) === uid
+      );
+      if (question) {
+        followingList.value = [
+          {
+            id: uid,
+            nickname: question.userName,
+            avatar: question.userAvatar,
+            school: question.userSchool || '',
+            grade: question.userGrade || ''
+          },
+          ...followingList.value
+        ];
+      }
+    }
+    followingCount.value = followingList.value.length;
+  } else {
+    followingList.value = followingList.value.filter(
+      (u) => normalizeUserId(u.id || u._id) !== uid
+    );
+    followingCount.value = followingList.value.length;
+  }
+
+  checkQuestionsFollowStatus();
 }
 
 // 加载关注的人的问题
@@ -823,7 +946,7 @@ async function loadFollowingQuestions() {
       params: { userId: userId.value }
     });
     questions.value = res.data.data || [];
-    await checkQuestionsFollowStatus();
+    checkQuestionsFollowStatus();
   } catch (error) {
     console.error('加载关注的人的问题失败：', error);
     ElMessage.error('加载失败');
@@ -847,12 +970,10 @@ function handleViewMyProfile() {
   router.push({ path: '/profile', query: { edit: '1' } });
 }
 
-// 关注状态变化
-async function handleFollowChange() {
-  // 重新加载关注数据
+// 关注状态变化：先本地更新，再同步服务端数据
+async function handleFollowChange(isFollowing, targetUserId) {
+  updateLocalFollowState(targetUserId, isFollowing);
   await loadFollowData();
-  // 刷新问题列表
-  await loadQuestions();
 }
 
 // AI 推荐的问题点击
@@ -863,18 +984,32 @@ function handleAIQuestionClick(questionId) {
   }
 }
 
-// 话题点击
-function handleTopicClick(tag) {
-  // 筛选该标签的问题
+function clearTagFilter() {
+  tagFilter.value = '';
+  currentPage.value = 1;
+}
+
+// 话题点击：按标签筛选问题列表
+async function handleTopicClick(tag) {
+  if (tagFilter.value === tag) {
+    clearTagFilter();
+    ElMessage.info(`已取消 #${tag} 筛选`);
+    return;
+  }
+
+  tagFilter.value = tag;
   contentFilter.value = 'all';
   questionStatusFilter.value = '';
   currentPage.value = 1;
-  
-  // 简单实现：滚动到顶部并提示
-  ElMessage.info(`筛选话题：#${tag}`);
-  
-  // 实际应该添加标签筛选功能
-  // 这里可以扩展一个 tagFilter 状态
+
+  await nextTick();
+  const listEl = document.querySelector('.questions-list');
+  if (listEl) {
+    listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  const count = filteredQuestions.value.length;
+  ElMessage.success(count > 0 ? `已筛选 #${tag}，共 ${count} 个问题` : `#${tag} 下暂无问题`);
 }
 
 // 用户主页问题点击
@@ -918,8 +1053,7 @@ function renderMarkdown(content) {
 
 // 判断是否已收藏
 function isFavorited(questionId) {
-  if (!Array.isArray(myFavorites.value)) return false;
-  return myFavorites.value.some(fav => fav.id === questionId);
+  return favoriteQuestionIds.value.map(String).includes(String(questionId));
 }
 
 // 切换收藏
@@ -957,6 +1091,7 @@ async function loadQuestions() {
       params: { userId: userId.value }
     });
     questions.value = res.data.data || [];
+    checkQuestionsFollowStatus();
   } catch (error) {
     console.error('加载问题列表失败：', error);
     ElMessage.error('加载问题列表失败');
@@ -971,7 +1106,7 @@ async function loadMyFavorites() {
     const res = await axios.get('http://localhost:3001/api/community/favorites', {
       params: { userId: userId.value }
     });
-    myFavorites.value = res.data.data || [];
+    favoriteQuestionIds.value = res.data.data || [];
   } catch (error) {
     console.error('加载收藏失败：', error);
   }
@@ -1010,6 +1145,7 @@ async function handleSubmitQuestion() {
 // 查看问题详情
 async function handleQuestionDetail(question) {
   currentQuestion.value = question;
+  answerContent.value = '';
   showDetailDialog.value = true;
   
   try {
@@ -1050,7 +1186,6 @@ async function handleSubmitAnswer() {
     );
     
     ElMessage.success('回答成功');
-    showAnswerDialog.value = false;
     answerContent.value = '';
     
     // 重新加载回答列表
@@ -1109,7 +1244,6 @@ async function handleMarkSolved(questionId) {
     
     ElMessage.success('已标记为已解决');
     showDetailDialog.value = false;
-    showManageDialog.value = false;
     await loadQuestions();
   } catch (error) {
     console.error('标记失败：', error);
@@ -1155,7 +1289,7 @@ async function handleDeleteQuestion(questionId) {
 // 全选/取消全选问题
 function handleSelectAll(val) {
   if (val) {
-    selectedQuestions.value = myQuestions.value.map(q => q.id);
+    selectedQuestions.value = manageListItems.value.map((q) => q.id || q._id);
   } else {
     selectedQuestions.value = [];
   }
@@ -1198,7 +1332,6 @@ async function handleBatchDelete() {
     ElMessage.success(`成功删除 ${selectedQuestions.value.length} 个问题`);
     selectedQuestions.value = [];
     selectAll.value = false;
-    showManageDialog.value = false;
     await loadQuestions();
   } catch (error) {
     if (error !== 'cancel') {
@@ -1211,7 +1344,7 @@ async function handleBatchDelete() {
 // 全选/取消全选收藏
 function handleSelectAllFavorites(val) {
   if (val) {
-    selectedFavorites.value = myFavorites.value.map(f => f.id);
+    selectedFavorites.value = favoriteQuestions.value.map((q) => q.id || q._id);
   } else {
     selectedFavorites.value = [];
   }
@@ -1231,7 +1364,21 @@ function handleFavoriteCheck(checked, favoriteId) {
   }
 }
 
-// 批量删除收藏
+// 取消单个收藏
+async function removeFavorite(questionId) {
+  try {
+    await axios.delete(`http://localhost:3001/api/community/favorites/${questionId}`, {
+      data: { userId: userId.value }
+    });
+    ElMessage.success('已取消收藏');
+    await loadMyFavorites();
+  } catch (error) {
+    console.error('取消收藏失败：', error);
+    ElMessage.error('操作失败');
+  }
+}
+
+// 批量取消收藏
 async function handleBatchDeleteFavorites() {
   if (selectedFavorites.value.length === 0) {
     ElMessage.warning('请选择要删除的收藏');
@@ -1266,9 +1413,9 @@ async function handleBatchDeleteFavorites() {
 // 生命周期
 onMounted(async () => {
   userSubjects.value = await getUserSubjects();
+  await loadFollowData();
   await loadQuestions();
   await loadMyFavorites();
-  await loadFollowData();
 });
 </script>
 
@@ -1697,6 +1844,27 @@ onMounted(async () => {
   height: 100%;
 }
 
+.tag-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: #f0f7ff;
+  border-bottom: 1px solid #dbeafe;
+  flex-shrink: 0;
+}
+
+.tag-filter-label {
+  font-size: 13px;
+  color: #606266;
+}
+
+.tag-filter-count {
+  font-size: 12px;
+  color: #909399;
+  margin-left: auto;
+}
+
 .editor-header {
   display: flex;
   align-items: center;
@@ -1724,16 +1892,20 @@ onMounted(async () => {
   overflow-y: auto;
   padding: 0;
   background: #f9fafb;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 极简社交流式布局 */
 .questions-feed {
-  max-width: 720px;
+  width: 100%;
+  max-width: 960px;
   margin: 0 auto;
-  padding: 24px 20px;
+  padding: 24px 32px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  box-sizing: border-box;
 }
 
 /* 极简问题卡片 */
@@ -2153,7 +2325,25 @@ onMounted(async () => {
   margin-top: 20px;
 }
 
-/* 管理对话框 */
+.answer-input-bar {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.answer-input-bar :deep(.el-textarea) {
+  flex: 1;
+}
+
+.answer-input-bar :deep(.el-textarea__inner) {
+  resize: none;
+}
+
+.answer-input-bar .el-button {
+  flex-shrink: 0;
+  min-width: 72px;
+}
+
 .manage-toolbar {
   display: flex;
   justify-content: space-between;
@@ -2161,7 +2351,21 @@ onMounted(async () => {
   padding: 12px 16px;
   background: #f8f9fa;
   border-radius: 8px;
-  margin-bottom: 16px;
+  width: calc(100% - 64px);
+  max-width: 960px;
+  margin: 0 auto 16px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.main-manage-list {
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 32px 20px;
+  box-sizing: border-box;
 }
 
 .my-questions-list,
@@ -2169,8 +2373,6 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 500px;
-  overflow-y: auto;
 }
 
 .my-question-item,

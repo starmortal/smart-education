@@ -72,6 +72,7 @@
             v-for="topic in hotTopics.slice(0, 8)"
             :key="topic.tag"
             class="topic-item"
+            :class="{ active: activeTag === topic.tag }"
             @click="$emit('topicClick', topic.tag)"
           >
             <span class="topic-tag">#{{ topic.tag }}</span>
@@ -114,6 +115,13 @@ import {
   DArrowLeft, DArrowRight
 } from '@element-plus/icons-vue';
 import axios from 'axios';
+
+defineProps({
+  activeTag: {
+    type: String,
+    default: ''
+  }
+});
 
 const emit = defineEmits(['questionClick', 'topicClick', 'update:collapsed']);
 
@@ -416,6 +424,11 @@ defineExpose({
 .topic-item:hover {
   background: #e8f4ff;
   transform: translateY(-2px);
+}
+
+.topic-item.active {
+  background: #dbeafe;
+  box-shadow: 0 0 0 1px #3b82f6;
 }
 
 .topic-tag {
