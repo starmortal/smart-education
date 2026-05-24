@@ -342,7 +342,14 @@
         </div>
       </div>
       <template #footer>
-        <el-button @click="showPlanDetailDialog = false">关闭</el-button>
+        <div class="detail-dialog-footer">
+          <el-button type="danger" plain :icon="Delete" @click="handleDeleteFromDetail">
+            删除计划
+          </el-button>
+          <div class="detail-footer-spacer"></div>
+          <el-button @click="showPlanDetailDialog = false">关闭</el-button>
+          <el-button type="primary" :icon="Edit" @click="handleEditFromDetail">编辑</el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -956,8 +963,27 @@ async function togglePlanCompletion(plan) {
     );
   }
 }
-function handleDeletePlan(id) {
-  ElMessageBox.confirm("确定删除？", "危险提示", { type: "error" })
+function handleEditFromDetail() {
+  if (!currentPlanDetail.value) return;
+  showPlanDetailDialog.value = false;
+  handleEditPlan(currentPlanDetail.value);
+}
+
+function handleDeleteFromDetail() {
+  if (!currentPlanDetail.value?.id) return;
+  const planId = currentPlanDetail.value.id;
+  handleDeletePlan(planId, () => {
+    showPlanDetailDialog.value = false;
+    currentPlanDetail.value = null;
+  });
+}
+
+function handleDeletePlan(id, onSuccess) {
+  ElMessageBox.confirm("确定删除该计划？删除后无法恢复。", "删除确认", {
+    type: "warning",
+    confirmButtonText: "确定删除",
+    cancelButtonText: "取消",
+  })
     .then(async () => {
       try {
         loading.value = true;
@@ -967,9 +993,9 @@ function handleDeletePlan(id) {
           { timeout: 10000 }
         );
         ElMessage.success("删除成功");
-        // 重新加载全局统计和计划列表
         await loadGlobalStats();
         loadPlanList();
+        onSuccess?.();
       } catch (error) {
         console.error("删除学习计划失败：", error);
         ElMessage.error(
@@ -1313,7 +1339,7 @@ function formatDateTime(dateStr) {
   min-height: 0;
   overflow-y: auto;
   padding: 20px;
-  background: #f9fafb;
+  background: linear-gradient(180deg, #f4faf7 0%, #eef5f1 100%);
 }
 
 /* 计划网格布局（2行4列，每个占1/8） */
@@ -1641,6 +1667,17 @@ function formatDateTime(dateStr) {
 
 .detail-content-box::-webkit-scrollbar-thumb:hover {
   background: #c0c4cc;
+}
+
+.detail-dialog-footer {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+}
+
+.detail-footer-spacer {
+  flex: 1;
 }
 
 .filter-hint {
