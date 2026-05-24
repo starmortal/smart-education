@@ -1,34 +1,6 @@
 <!-- AdminFeedback.vue :: 管理员反馈管理页面 -->
 <template>
-  <div class="admin-feedback-container">
-    <!-- 顶部导航 -->
-    <header class="admin-header">
-      <div class="header-left">
-        <!-- Logo区域 -->
-        <div class="logo-section" @click="goToHome">
-          <img src="@/assets/logo.png" alt="智慧教育平台" class="nav-logo" />
-          <span class="logo-text">智慧教育</span>
-        </div>
-      </div>
-      
-      <!-- 居中的页面标题 -->
-      <div class="header-center">
-        <div class="page-title-section">
-          <el-icon size="20" color="#0969da"><Management /></el-icon>
-          <span class="header-title">反馈管理系统</span>
-        </div>
-      </div>
-      
-      <div class="header-right">
-        <span class="admin-info">{{ adminEmail }}</span>
-        <el-button size="small" @click="handleLogout" :icon="SwitchButton">
-          退出登录
-        </el-button>
-      </div>
-    </header>
-
-    <!-- 主内容区 -->
-    <div class="admin-content">
+  <div class="admin-feedback-page">
       <el-card class="feedback-management-card">
         <template #header>
           <div class="card-header">
@@ -140,7 +112,6 @@
           />
         </div>
       </el-card>
-    </div>
 
     <!-- 回复对话框 -->
     <el-dialog
@@ -271,18 +242,9 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { 
-  Management,
-  RefreshRight,
-  ChatDotRound,
-  SwitchButton,
-  View
-} from '@element-plus/icons-vue';
-import axios from 'axios';
-
-const router = useRouter();
+import { RefreshRight, ChatDotRound, View } from '@element-plus/icons-vue';
+import { getAdminFeedbackList, replyAdminFeedback } from '@/api/admin';
 const loading = ref(false);
 const replyLoading = ref(false);
 const replyDialogVisible = ref(false);
@@ -295,7 +257,6 @@ const total = ref(0);
 
 const feedbackList = ref([]);
 const currentFeedback = ref(null);
-const adminEmail = ref('');
 const previewImageUrl = ref('');
 
 const replyForm = reactive({
@@ -303,16 +264,6 @@ const replyForm = reactive({
 });
 
 onMounted(() => {
-  // 检查管理员登录状态
-  const token = localStorage.getItem('admin-token');
-  const email = localStorage.getItem('admin-email');
-  
-  if (!token || token !== 'admin-authenticated') {
-    router.push('/admin/login');
-    return;
-  }
-  
-  adminEmail.value = email;
   loadFeedbacks();
 });
 
@@ -326,18 +277,14 @@ const loadFeedbacks = async () => {
       status: statusFilter.value
     });
     
-    const res = await axios.get('http://localhost:3001/api/feedback/admin/list', {
-      params: {
-        page: currentPage.value,
-        limit: pageSize.value,
-        status: statusFilter.value
-      }
+    const res = await getAdminFeedbackList({
+      page: currentPage.value,
+      limit: pageSize.value,
+      status: statusFilter.value,
     });
-    
-    console.log('反馈列表加载成功：', res.data);
-    
-    feedbackList.value = res.data.list || [];
-    total.value = res.data.total || 0;
+
+    feedbackList.value = res.data?.list || [];
+    total.value = res.data?.total || 0;
   } catch (error) {
     console.error('加载反馈列表失败：', error);
     ElMessage.error('加载反馈列表失败: ' + (error.response?.data?.message || error.message));
@@ -381,11 +328,7 @@ const submitReply = async () => {
 
   replyLoading.value = true;
   try {
-    await axios.post('http://localhost:3001/api/feedback/reply', {
-      feedbackId: currentFeedback.value._id,
-      reply: replyForm.reply,
-      adminId: 'admin'
-    });
+    await replyAdminFeedback(currentFeedback.value._id, replyForm.reply);
     
     ElMessage.success('回复成功');
     replyDialogVisible.value = false;
@@ -397,18 +340,6 @@ const submitReply = async () => {
   } finally {
     replyLoading.value = false;
   }
-};
-
-// 退出登录
-const handleLogout = () => {
-  localStorage.removeItem('admin-token');
-  localStorage.removeItem('admin-email');
-  router.push('/admin/login');
-};
-
-// 回到首页
-const goToHome = () => {
-  router.push('/ai-chat');
 };
 
 // 获取类型标签样式
@@ -458,104 +389,14 @@ const formatDate = (dateStr) => {
 </script>
 
 <style scoped>
-.admin-feedback-container {
-  min-height: 100vh;
-  background: #f5f7fa;
-}
-
-.admin-header {
-  height: 60px;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  min-width: 200px;
-}
-
-.header-center {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  min-width: 200px;
-  justify-content: flex-end;
-}
-
-.logo-section {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
-  transition: all 0.3s;
-}
-
-.logo-section:hover {
-  background: rgba(9, 105, 218, 0.1);
-}
-
-.nav-logo {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  object-fit: contain;
-}
-
-.logo-text {
-  font-size: 16px;
-  font-weight: 700;
-  color: #0969da;
-  letter-spacing: 0.5px;
-}
-
-.page-title-section {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.header-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #0969da;
-}
-
-.admin-info {
-  font-size: 14px;
-  color: #666;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.admin-info {
-  font-size: 14px;
-  color: #666;
-}
-
-.admin-content {
-  padding: 24px;
+.admin-feedback-page {
+  max-width: 1100px;
+  font-size: 13px;
 }
 
 .feedback-management-card {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
 }
 
 .card-header {
@@ -567,8 +408,8 @@ const formatDate = (dateStr) => {
 .header-info {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 16px;
+  gap: 8px;
+  font-size: 13px;
   font-weight: 600;
   color: #333;
 }
@@ -576,19 +417,19 @@ const formatDate = (dateStr) => {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .feedback-list {
-  padding: 20px;
+  padding: 12px;
 }
 
 .feedback-item {
-  padding: 20px;
-  margin-bottom: 16px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
   background: #f5f7fa;
-  border-radius: 8px;
-  border-left: 3px solid #0969da;
+  border-radius: 6px;
+  border-left: 2px solid #0969da;
   transition: all 0.3s;
 }
 
@@ -601,68 +442,69 @@ const formatDate = (dateStr) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .user-info {
-  font-size: 13px;
+  font-size: 12px;
   color: #666;
-  margin-left: 8px;
+  margin-left: 4px;
 }
 
 .feedback-date {
-  font-size: 13px;
+  font-size: 12px;
   color: #999;
 }
 
 .feedback-content {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .content-text {
-  font-size: 14px;
+  font-size: 13px;
   color: #333;
-  line-height: 1.6;
+  line-height: 1.5;
   word-break: break-all;
 }
 
 .admin-reply {
-  margin-bottom: 16px;
-  padding: 12px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
   background: #e8f5e8;
   border-radius: 6px;
-  border-left: 3px solid #67c23a;
+  border-left: 2px solid #67c23a;
 }
 
 .reply-label {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 4px;
+  font-size: 12px;
   color: #67c23a;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .reply-content {
-  font-size: 14px;
+  font-size: 13px;
   color: #333;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .feedback-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .pagination {
-  margin-top: 20px;
+  margin-top: 12px;
   display: flex;
   justify-content: center;
 }
@@ -692,13 +534,13 @@ const formatDate = (dateStr) => {
 }
 
 .screenshots-section {
-  margin-top: 16px;
+  margin-top: 10px;
 }
 
 .screenshots-label {
-  font-size: 13px;
+  font-size: 12px;
   color: #666;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-weight: 600;
 }
 
@@ -709,8 +551,8 @@ const formatDate = (dateStr) => {
 }
 
 .screenshot-item {
-  width: 60px;
-  height: 60px;
+  width: 48px;
+  height: 48px;
   border-radius: 4px;
   overflow: hidden;
   cursor: pointer;
@@ -735,21 +577,21 @@ const formatDate = (dateStr) => {
 }
 
 .detail-section {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .detail-section h4 {
-  margin: 0 0 12px 0;
+  margin: 0 0 8px 0;
   color: #0969da;
-  font-size: 16px;
+  font-size: 13px;
   border-bottom: 1px solid #e4e7ed;
-  padding-bottom: 8px;
+  padding-bottom: 6px;
 }
 
 .detail-info {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 8px;
 }
 
 .info-item {
@@ -761,11 +603,13 @@ const formatDate = (dateStr) => {
 .info-item .label {
   font-weight: 600;
   color: #666;
-  min-width: 80px;
+  min-width: 70px;
+  font-size: 12px;
 }
 
 .info-item .value {
   color: #333;
+  font-size: 12px;
 }
 
 .feedback-text {

@@ -110,17 +110,36 @@ const routes = [
     meta: { title: "通知中心 - 智慧教育平台", requiresAuth: true }
   },
   // 管理员路由
-  { 
-    path: "/admin/login", 
-    component: () => import("../views/AdminLogin.vue"), 
+  {
+    path: "/admin/login",
+    component: () => import("../views/AdminLogin.vue"),
     name: "管理员登录",
-    meta: { title: "管理员登录 - 智慧教育平台" }
+    meta: { title: "管理员登录 - 智慧教育平台" },
   },
-  { 
-    path: "/admin/feedback", 
-    component: () => import("../views/AdminFeedback.vue"), 
-    name: "反馈管理",
-    meta: { title: "反馈管理 - 智慧教育平台" }
+  {
+    path: "/admin",
+    component: () => import("../layouts/AdminLayout.vue"),
+    redirect: "/admin/dashboard",
+    children: [
+      {
+        path: "dashboard",
+        component: () => import("../views/admin/AdminOverview.vue"),
+        name: "管理概览",
+        meta: { title: "数据概览 - 管理后台", requiresAdmin: true },
+      },
+      {
+        path: "feedback",
+        component: () => import("../views/AdminFeedback.vue"),
+        name: "反馈管理",
+        meta: { title: "反馈管理 - 管理后台", requiresAdmin: true },
+      },
+      {
+        path: "announcement",
+        component: () => import("../views/admin/AdminBroadcast.vue"),
+        name: "系统公告",
+        meta: { title: "系统公告 - 管理后台", requiresAdmin: true },
+      },
+    ],
   },
 ];
 
@@ -143,6 +162,22 @@ router.beforeEach((to, from, next) => {
     if (!userId) {
       // 未登录，跳转到登录页
       next('/login');
+      return;
+    }
+  }
+
+  if (to.meta.requiresAdmin) {
+    const adminToken = localStorage.getItem('admin-token');
+    if (!adminToken || adminToken !== 'admin-authenticated') {
+      next('/admin/login');
+      return;
+    }
+  }
+
+  if (to.path === '/admin/login') {
+    const adminToken = localStorage.getItem('admin-token');
+    if (adminToken === 'admin-authenticated') {
+      next('/admin/dashboard');
       return;
     }
   }

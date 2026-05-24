@@ -7,7 +7,7 @@
           <img src="@/assets/logo.png" alt="智慧教育平台" class="login-logo" />
           <div class="logo-info">
             <h2>管理员登录</h2>
-            <p>智慧教育平台 - 反馈管理系统</p>
+            <p>智慧教育平台 - 管理控制台</p>
           </div>
         </div>
       </div>
@@ -19,12 +19,12 @@
         class="login-form"
         @submit.prevent="handleLogin"
       >
-        <el-form-item prop="email">
+        <el-form-item prop="username">
           <el-input
-            v-model="loginForm.email"
-            placeholder="管理员邮箱"
+            v-model="loginForm.username"
+            placeholder="管理员账号"
             size="large"
-            :prefix-icon="Message"
+            :prefix-icon="User"
           />
         </el-form-item>
 
@@ -64,21 +64,21 @@
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { Lock, Message } from '@element-plus/icons-vue';
+import { Lock, User } from '@element-plus/icons-vue';
+import { adminLogin } from '@/api/admin';
 
 const router = useRouter();
 const loginFormRef = ref(null);
 const loginLoading = ref(false);
 
 const loginForm = reactive({
-  email: '',
+  username: '',
   password: ''
 });
 
 const loginRules = {
-  email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  username: [
+    { required: true, message: '请输入管理员账号', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
@@ -94,17 +94,12 @@ const handleLogin = async () => {
     
     loginLoading.value = true;
     
-    // 验证管理员账号
-    if (loginForm.email === '2492592700@qq.com' && loginForm.password === '147258369po') {
-      // 设置管理员登录状态
-      localStorage.setItem('admin-token', 'admin-authenticated');
-      localStorage.setItem('admin-email', loginForm.email);
-      
-      ElMessage.success('登录成功');
-      router.push('/admin/feedback');
-    } else {
-      ElMessage.error('邮箱或密码错误');
-    }
+    const res = await adminLogin(loginForm.username, loginForm.password);
+    const { token, username } = res.data || {};
+    localStorage.setItem('admin-token', token || 'admin-authenticated');
+    localStorage.setItem('admin-username', username || loginForm.username);
+    ElMessage.success('登录成功');
+    router.push('/admin/dashboard');
   } catch (error) {
     console.error('登录失败：', error);
   } finally {
@@ -116,7 +111,7 @@ const handleLogin = async () => {
 <style scoped>
 .admin-login-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #3b82f6 100%);
   display: flex;
   align-items: center;
   justify-content: center;

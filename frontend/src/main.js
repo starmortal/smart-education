@@ -36,6 +36,10 @@ app.use(router).use(ElementPlus, {
 });
 
 // 挂载到页面的#app元素
+app.config.errorHandler = (err) => {
+  console.error('[Vue Error]', err);
+};
+
 app.mount("#app");
 
 // 初始化 Socket.IO 连接（登录后）

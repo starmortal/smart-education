@@ -79,7 +79,7 @@
         </div>
         <div class="notification-content">
           <div class="notification-title">{{ notification.title }}</div>
-          <div class="notification-text">{{ notification.content }}</div>
+          <div class="notification-text">{{ formatPreview(notification.content) }}</div>
           <div class="notification-time">{{ formatTime(notification.createTime) }}</div>
         </div>
         <div class="notification-actions">
@@ -122,6 +122,26 @@
         />
       </div>
     </div>
+
+    <!-- 系统公告详情 -->
+    <el-dialog
+      v-model="detailVisible"
+      :title="currentDetail?.title || '系统公告'"
+      width="520px"
+      class="announcement-detail-dialog"
+      destroy-on-close
+    >
+      <div v-if="currentDetail" class="announcement-detail">
+        <el-tag type="primary" size="small" effect="plain" class="detail-tag">系统公告</el-tag>
+        <div class="detail-content" v-html="currentDetail.content"></div>
+        <div class="detail-time">
+          发布时间：{{ formatDetailTime(currentDetail.createTime) }}
+        </div>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="detailVisible = false">知道了</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 设置抽屉 -->
     <el-drawer
@@ -201,6 +221,8 @@ const unreadCount = ref(0);
 
 // 设置
 const showSettings = ref(false);
+const detailVisible = ref(false);
+const currentDetail = ref(null);
 const settingsLoading = ref(false);
 const settings = ref({
   emailEnabled: true,
@@ -237,6 +259,27 @@ const getNotificationIcon = (type) => {
     aiPlan: '📅',
   };
   return icons[type] || '📬';
+};
+
+// 格式化详情时间
+const formatDetailTime = (time) => {
+  if (!time) return '';
+  return new Date(time).toLocaleString('zh-CN');
+};
+
+// 列表摘要（去掉 HTML 标签）
+const formatPreview = (content) => {
+  if (!content) return '';
+  return content
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .trim();
+};
+
+// 是否为系统公告
+const isSystemAnnouncement = (notification) => {
+  return notification.type === 'system'
+    || notification.relatedData?.source === 'admin_broadcast';
 };
 
 // 格式化时间
@@ -403,6 +446,16 @@ const handleClearAll = async () => {
 
 // 点击通知
 const handleNotificationClick = async (notification) => {
+  // 系统公告：弹窗查看详情
+  if (isSystemAnnouncement(notification)) {
+    if (!notification.isRead) {
+      await handleMarkRead(notification._id);
+    }
+    currentDetail.value = notification;
+    detailVisible.value = true;
+    return;
+  }
+
   // 如果未读，先标记为已读
   if (!notification.isRead) {
     await handleMarkRead(notification._id);
@@ -419,7 +472,7 @@ const handleNotificationClick = async (notification) => {
     });
   } else if (notification.relatedType === 'question' && notification.relatedData?.questionId) {
     router.push('/study-community');
-  } else if (notification.relatedType === 'user') {
+  } else if (notification.type === 'follow' && notification.relatedType === 'user') {
     router.push('/profile');
   }
 };
@@ -649,6 +702,29 @@ onBeforeUnmount(() => {
   font-weight: 600;
   color: #333;
   margin-bottom: 16px;
+}
+
+.announcement-detail {
+  padding: 4px 0;
+}
+
+.detail-tag {
+  margin-bottom: 12px;
+}
+
+.detail-content {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #333;
+  word-break: break-word;
+}
+
+.detail-time {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #ebeef5;
+  font-size: 12px;
+  color: #909399;
 }
 
 @media (max-width: 768px) {

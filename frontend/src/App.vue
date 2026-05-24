@@ -17,11 +17,9 @@ import SideNavBar from '@/components/SideNavBar.vue';
 
 const route = useRoute();
 
-// 不显示侧边栏的页面
-const noSidebarPages = ['/login', '/register', '/admin/login'];
-
 const showSideNav = computed(() => {
-  return !noSidebarPages.includes(route.path);
+  if (route.path.startsWith('/admin')) return false;
+  return !['/login', '/register'].includes(route.path);
 });
 </script>
 
