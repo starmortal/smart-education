@@ -79,23 +79,23 @@ const routes = [
     name: "更新日志",
     meta: { title: "更新日志 - 智慧教育平台" }
   },
-  { 
-    path: "/privacy-policy", 
-    component: () => import("../views/PrivacyPolicy.vue"), 
-    name: "隐私政策",
-    meta: { title: "隐私政策 - 智慧教育平台" }
+  {
+    path: "/platform-docs",
+    component: () => import("../views/PlatformDocsPage.vue"),
+    name: "平台文档",
+    meta: { title: "平台文档 - 智慧教育平台" },
   },
-  { 
-    path: "/terms-of-service", 
-    component: () => import("../views/TermsOfService.vue"), 
-    name: "服务条款",
-    meta: { title: "服务条款 - 智慧教育平台" }
+  {
+    path: "/privacy-policy",
+    redirect: (to) => ({ path: "/platform-docs", query: { doc: "privacy-policy", ...to.query } }),
   },
-  { 
-    path: "/user-guide", 
-    component: () => import("../views/UserGuide.vue"), 
-    name: "使用文档",
-    meta: { title: "使用文档 - 智慧教育平台" }
+  {
+    path: "/terms-of-service",
+    redirect: (to) => ({ path: "/platform-docs", query: { doc: "terms-of-service", ...to.query } }),
+  },
+  {
+    path: "/user-guide",
+    redirect: (to) => ({ path: "/platform-docs", query: { doc: "user-guide", ...to.query } }),
   },
   { 
     path: "/profile", 

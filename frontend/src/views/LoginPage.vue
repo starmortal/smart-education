@@ -721,6 +721,11 @@ function scrollToFeatures() {
 
 // 页面跳转
 function goToPage(path) {
+  const platformDocs = ['privacy-policy', 'terms-of-service', 'user-guide'];
+  if (platformDocs.includes(path)) {
+    router.push({ path: '/platform-docs', query: { doc: path } });
+    return;
+  }
   router.push('/' + path);
 }
 
