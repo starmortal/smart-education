@@ -115,21 +115,54 @@
           </el-button>
         </div>
         
-        <!-- 时间轴视图 -->
+        <!-- 时间轴：左滑查看详情 / 内联编辑 -->
         <div class="plan-timeline-wrapper" v-loading="loading">
-          <TimelineView
-            :plans="planList"
-            @view-details="handlePlanDetail"
-          />
-          <el-empty v-if="planList.length === 0 && !loading" description="暂无学习计划" />
+          <div class="plan-slide-wrapper">
+            <div class="content-slide-viewport" :class="{ 'show-detail': showInlineDetail }">
+              <div class="content-slide-track">
+                <div class="slide-panel slide-panel-list">
+                  <TimelineView
+                    :plans="planList"
+                    :active-plan-id="activePlanId"
+                    @view-details="openPlanDetail"
+                  />
+                  <el-empty v-if="planList.length === 0 && !loading" description="暂无学习计划" />
+                </div>
+
+                <CommunitySlideDetailPanel
+                  back-label="返回计划列表"
+                  :loading="detailSaving"
+                  @back="closePlanDetail"
+                >
+                  <PlanInlineDetail
+                    v-if="currentPlanDetail"
+                    :plan="currentPlanDetail"
+                    :mode="detailMode"
+                    :subject-options="subjectOptions"
+                    :saving="detailSaving"
+                    :progress-hint="progressStatusHint"
+                    :disabled-past-date="disabledPastDate"
+                    :format-date-time="formatDateTime"
+                    :get-status-text="getStatusText"
+                    :get-status-tag-type="getStatusTagType"
+                    @edit="startEditInDetail"
+                    @delete="handleDeleteFromDetail"
+                    @cancel-edit="cancelEditInDetail"
+                    @save="saveInlineEdit"
+                    @progress-change="handleProgressChange"
+                  />
+                </CommunitySlideDetailPanel>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- ================= 5. 编辑弹框（与上一版完全一致） ================= -->
+    <!-- 新增计划弹窗（仅新增使用） -->
     <el-dialog
       v-model="showPlanDialog"
-      :title="isEdit ? '编辑学习计划' : '新增学习计划'"
+      title="新增学习计划"
       width="700px"
       center
       :close-on-click-modal="true"
@@ -194,7 +227,7 @@
             show-word-limit
           />
         </el-form-item>
-        <el-form-item prop="planStatus" v-if="isEdit">
+        <el-form-item prop="planStatus" v-if="false">
           <template #label>
             <div class="form-label-tag">计划状态</div>
           </template>
@@ -204,7 +237,7 @@
             <el-option label="已完成" value="completed" />
           </el-select>
         </el-form-item>
-        <el-form-item prop="progress" v-if="isEdit">
+        <el-form-item prop="progress" v-if="false">
           <template #label>
             <div class="form-label-tag">当前进度</div>
           </template>
@@ -219,7 +252,7 @@
             {{ progressStatusHint }}
           </div>
         </el-form-item>
-        <el-form-item prop="targetProgress" v-if="isEdit">
+        <el-form-item prop="targetProgress" v-if="false">
           <template #label>
             <div class="form-label-tag">目标进度</div>
           </template>
@@ -291,72 +324,6 @@
         <el-button type="primary" @click="handleFilter">筛选</el-button>
       </template>
     </el-dialog>
-    <!-- ================= 7. 计划详情对话框 ================= -->
-    <el-dialog
-      v-model="showPlanDetailDialog"
-      title="计划详情"
-      width="900px"
-      center
-      :close-on-click-modal="true"
-      class="blue-border-dialog"
-    >
-      <div v-if="currentPlanDetail" class="plan-detail-content">
-        <!-- 第一行：计划标题 -->
-        <div class="detail-row-single">
-          <span class="detail-label">计划标题：</span>
-          <span class="detail-value">{{ currentPlanDetail.planTitle }}</span>
-        </div>
-        
-        <!-- 第二行：关联科目、计划状态、当前进度 -->
-        <div class="detail-row-multi">
-          <div class="detail-item-inline">
-            <span class="detail-label">关联科目：</span>
-            <span class="detail-value">{{ getSubjectText(currentPlanDetail.subject) }}</span>
-          </div>
-          <div class="detail-item-inline">
-            <span class="detail-label">计划状态：</span>
-            <span class="detail-value">{{ getStatusText(currentPlanDetail.planStatus) }}</span>
-          </div>
-          <div class="detail-item-inline">
-            <span class="detail-label">当前进度：</span>
-            <span class="detail-value">{{ currentPlanDetail.progress }}%</span>
-          </div>
-        </div>
-        
-        <!-- 第三行：开始时间、结束时间 -->
-        <div class="detail-row-multi">
-          <div class="detail-item-inline">
-            <span class="detail-label">开始时间：</span>
-            <span class="detail-value">{{ formatDateTime(currentPlanDetail.startTime) }}</span>
-          </div>
-          <div class="detail-item-inline">
-            <span class="detail-label">结束时间：</span>
-            <span class="detail-value">{{ formatDateTime(currentPlanDetail.endTime) }}</span>
-          </div>
-        </div>
-        
-        <!-- 计划描述 -->
-        <div class="detail-section">
-          <div class="detail-label">计划描述：</div>
-          <div class="detail-content-box">{{ currentPlanDetail.description }}</div>
-        </div>
-
-        <div v-if="currentPlanDetail.aiReason" class="detail-section ai-reason-section">
-          <div class="detail-label">AI制定理由：</div>
-          <p class="detail-ai-reason">{{ currentPlanDetail.aiReason }}</p>
-        </div>
-      </div>
-      <template #footer>
-        <div class="detail-dialog-footer">
-          <el-button type="danger" plain :icon="Delete" @click="handleDeleteFromDetail">
-            删除计划
-          </el-button>
-          <div class="detail-footer-spacer"></div>
-          <el-button @click="showPlanDetailDialog = false">关闭</el-button>
-          <el-button type="primary" :icon="Edit" @click="handleEditFromDetail">编辑</el-button>
-        </div>
-      </template>
-    </el-dialog>
 
     <!-- ================= 8. 管理计划对话框 ================= -->
     <el-dialog
@@ -398,7 +365,7 @@
               :model-value="selectedPlans.includes(plan.id)"
               @change="(val) => handlePlanCheckChange(val, plan.id)"
             />
-            <div class="plan-manage-content" @click="handlePlanDetail(plan)">
+            <div class="plan-manage-content" @click="openPlanDetail(plan)">
               <div class="plan-manage-title">{{ plan.planTitle }}</div>
               <div class="plan-manage-meta">
                 <el-tag size="small" type="primary">
@@ -415,7 +382,7 @@
               <el-button 
                 type="primary" 
                 size="small"
-                @click="handleEditPlan(plan)"
+                @click.stop="openPlanDetailInEdit(plan)"
               >
                 编辑
               </el-button>
@@ -447,9 +414,9 @@
 <script setup>
 /* ============== 依赖引入（与上一版完全一致） ============== */
 import { ref, reactive, onMounted, computed, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { Plus, Calendar, Edit, Setting, Delete, DArrowLeft, DArrowRight, MagicStick } from "@element-plus/icons-vue";
+import { Plus, Calendar, Setting, Delete, DArrowLeft, DArrowRight, MagicStick } from "@element-plus/icons-vue";
 import SideNavBar from '@/components/SideNavBar.vue';
 import AiPlanGeneratorDrawer from '@/components/plan/AiPlanGeneratorDrawer.vue';
 // 【新增】引入 axios，对接后端接口
@@ -457,20 +424,28 @@ import axios from "axios";
 // 【新增】引入用户科目工具
 import { getUserSubjects, generateSubjectOptions, hasUserSubjects, getSubjectCode } from "@/utils/userSubjects";
 import TimelineView from '@/components/plan/TimelineView.vue';
+import PlanInlineDetail from '@/components/plan/PlanInlineDetail.vue';
+import CommunitySlideDetailPanel from '@/components/community/CommunitySlideDetailPanel.vue';
 import dayjs from 'dayjs';
 
 /* ============== 基础变量（与上一版完全一致） ============== */
 const router = useRouter();
+const route = useRoute();
 const loading = ref(false);
+// 左滑详情 / 内联编辑
+const showInlineDetail = ref(false);
+const detailMode = ref('view');
+const detailSaving = ref(false);
+const currentPlanDetail = ref(null);
+const activePlanId = computed(() => currentPlanDetail.value?.id ?? null);
+
+// 新增计划弹窗
 const showPlanDialog = ref(false);
 const isEdit = ref(false);
 const planFormRef = ref(null);
 const sidebarCollapsed = ref(false);
 
-// 查看计划详情
-const showPlanDetailDialog = ref(false);
-const currentPlanDetail = ref(null);
-
+// 查看计划详情（左滑，不再使用弹窗）
 // 管理计划对话框
 const showManagePlanDialog = ref(false);
 const selectedPlans = ref([]);
@@ -635,13 +610,21 @@ async function handleAiPlansImported() {
 }
 
 onMounted(async () => {
-  // 先加载用户科目
   userSubjects.value = await getUserSubjects();
-  // 加载全局统计数据
   await loadGlobalStats();
-  // 再加载计划列表
-  loadPlanList();
+  await loadPlanList();
+  await tryOpenPlanFromRoute();
 });
+
+watch(
+  () => route.query.planId,
+  async (planId) => {
+    if (planId) {
+      await openPlanById(String(planId));
+      router.replace({ path: route.path, query: {} });
+    }
+  }
+);
 
 /* 核心业务（已对接真实后端接口） */
 // 【新增】加载全局统计数据
@@ -783,11 +766,107 @@ function refreshPlanList() {
   loadPlanList();
   ElMessage.info("已刷新");
 }
-function handlePlanDetail(row) {
-  // 点击卡片只显示内容详情
-  currentPlanDetail.value = row;
-  showPlanDetailDialog.value = true;
+function openPlanDetail(plan) {
+  showManagePlanDialog.value = false;
+  currentPlanDetail.value = plan;
+  detailMode.value = 'view';
+  showInlineDetail.value = true;
 }
+
+async function openPlanById(planId) {
+  if (!planId) return;
+  const matchId = String(planId);
+  let plan = planList.value.find(
+    (p) => String(p.id) === matchId || String(p.planId) === matchId
+  );
+  if (!plan) {
+    await loadPlanList();
+    plan = planList.value.find(
+      (p) => String(p.id) === matchId || String(p.planId) === matchId
+    );
+  }
+  if (plan) {
+    openPlanDetail(plan);
+  } else {
+    ElMessage.warning('未找到该学习计划，可能已被删除');
+  }
+}
+
+async function tryOpenPlanFromRoute() {
+  const planId = route.query.planId;
+  if (!planId) return;
+  await openPlanById(String(planId));
+  router.replace({ path: route.path, query: {} });
+}
+
+function openPlanDetailInEdit(plan) {
+  showManagePlanDialog.value = false;
+  currentPlanDetail.value = plan;
+  detailMode.value = 'edit';
+  showInlineDetail.value = true;
+  progressStatusHint.value = '';
+}
+
+function closePlanDetail() {
+  showInlineDetail.value = false;
+  detailMode.value = 'view';
+  currentPlanDetail.value = null;
+  progressStatusHint.value = '';
+}
+
+function startEditInDetail() {
+  if (!currentPlanDetail.value) return;
+  detailMode.value = 'edit';
+  progressStatusHint.value = '';
+}
+
+function cancelEditInDetail() {
+  detailMode.value = 'view';
+  progressStatusHint.value = '';
+}
+
+async function saveInlineEdit(formData) {
+  if (!formData?.id) return;
+
+  let autoStatus = formData.planStatus;
+  if (formData.progress === 0) autoStatus = 'not_started';
+  else if (formData.progress === 100) autoStatus = 'completed';
+  else if (formData.progress > 0 && formData.progress < 100) autoStatus = 'in_progress';
+
+  const userId = localStorage.getItem('edu-user-id') || 'default-user';
+  const planData = {
+    userId,
+    planTitle: formData.planTitle,
+    subject: formData.subject,
+    startTime: formData.timeRange[0],
+    endTime: formData.timeRange[1],
+    description: formData.description || '',
+    planStatus: autoStatus,
+    progress: formData.progress || 0,
+    targetProgress: formData.targetProgress || 100,
+  };
+
+  detailSaving.value = true;
+  try {
+    await axios.put(
+      `http://localhost:3001/api/study-plan/update/${formData.id}`,
+      planData,
+      { timeout: 10000 }
+    );
+    ElMessage.success('保存成功');
+    await loadGlobalStats();
+    await loadPlanList();
+    const updated = planList.value.find((p) => p.id === formData.id);
+    if (updated) currentPlanDetail.value = updated;
+    detailMode.value = 'view';
+  } catch (error) {
+    console.error('保存学习计划失败：', error);
+    ElMessage.error(error.response?.data?.message || '保存失败，请重试');
+  } finally {
+    detailSaving.value = false;
+  }
+}
+
 function handleAddPlan() {
   isEdit.value = false;
   Object.assign(planForm, {
@@ -802,54 +881,28 @@ function handleAddPlan() {
   });
   showPlanDialog.value = true;
 }
+
 function handleEditPlan(row) {
-  isEdit.value = true;
-  Object.assign(planForm, {
-    id: row.id,
-    planTitle: row.planTitle,
-    subject: row.subject,
-    timeRange: [new Date(row.startTime), new Date(row.endTime)],
-    description: row.description,
-    planStatus: row.planStatus,
-    progress: row.progress,
-    targetProgress: row.targetProgress,
-  });
-  showPlanDialog.value = true;
+  openPlanDetailInEdit(row);
 }
 async function handleSavePlan() {
   try {
-    // 表单验证
     await planFormRef.value.validate();
     
-    // 验证时间范围
     if (!planForm.timeRange || planForm.timeRange.length !== 2) {
       ElMessage.error("请选择计划周期");
       return;
     }
     
-    // 验证科目是否已选择
     if (!planForm.subject) {
       ElMessage.warning("请选择关联科目");
       return;
-    }
-    
-    // 【新增】根据进度自动调整计划状态
-    let autoStatus = planForm.planStatus;
-    if (isEdit.value && planForm.progress !== undefined) {
-      if (planForm.progress === 0) {
-        autoStatus = 'not_started';
-      } else if (planForm.progress === 100) {
-        autoStatus = 'completed';
-      } else if (planForm.progress > 0 && planForm.progress < 100) {
-        autoStatus = 'in_progress';
-      }
     }
     
     loading.value = true;
     
     const userId = localStorage.getItem("edu-user-id") || "default-user";
     
-    // 构建提交数据
     const planData = {
       userId,
       planTitle: planForm.planTitle,
@@ -857,40 +910,19 @@ async function handleSavePlan() {
       startTime: planForm.timeRange[0],
       endTime: planForm.timeRange[1],
       description: planForm.description || "",
-      planStatus: autoStatus, // 使用自动调整后的状态
-      progress: planForm.progress || 0,
-      targetProgress: planForm.targetProgress || 0,
+      planStatus: "not_started",
+      progress: 0,
+      targetProgress: planForm.targetProgress || 100,
     };
     
-    console.log("=== 学习计划提交数据 ===");
-    console.log("科目值:", planData.subject);
-    console.log("原始状态:", planForm.planStatus);
-    console.log("自动调整状态:", autoStatus);
-    console.log("进度:", planData.progress);
-    console.log("完整数据:", planData);
-    
-    if (isEdit.value) {
-      // 【真实接口】PUT /api/study-plan/update/:id
-      const response = await axios.put(
-        `http://localhost:3001/api/study-plan/update/${planForm.id}`,
-        planData,
-        { timeout: 10000 }
-      );
-      console.log("编辑响应:", response.data);
-      ElMessage.success("编辑成功");
-    } else {
-      // 【真实接口】POST /api/study-plan/add
-      const response = await axios.post(
-        "http://localhost:3001/api/study-plan/add",
-        planData,
-        { timeout: 10000 }
-      );
-      console.log("新增响应:", response.data);
-      ElMessage.success("新增成功");
-    }
+    await axios.post(
+      "http://localhost:3001/api/study-plan/add",
+      planData,
+      { timeout: 10000 }
+    );
+    ElMessage.success("新增成功");
     
     showPlanDialog.value = false;
-    // 重新加载全局统计和计划列表
     await loadGlobalStats();
     loadPlanList();
   } catch (error) {
@@ -968,18 +1000,11 @@ async function togglePlanCompletion(plan) {
     );
   }
 }
-function handleEditFromDetail() {
-  if (!currentPlanDetail.value) return;
-  showPlanDetailDialog.value = false;
-  handleEditPlan(currentPlanDetail.value);
-}
-
 function handleDeleteFromDetail() {
   if (!currentPlanDetail.value?.id) return;
   const planId = currentPlanDetail.value.id;
   handleDeletePlan(planId, () => {
-    showPlanDetailDialog.value = false;
-    currentPlanDetail.value = null;
+    closePlanDetail();
   });
 }
 
@@ -1338,13 +1363,59 @@ function formatDateTime(dateStr) {
   flex: 1;
 }
 
-/* 时间轴列表区域 */
+/* 时间轴列表区域 + 左滑详情 */
 .plan-timeline-wrapper {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 20px;
   background: linear-gradient(180deg, #f4faf7 0%, #eef5f1 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-slide-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.plan-slide-wrapper .content-slide-viewport {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.plan-slide-wrapper .content-slide-track {
+  display: flex;
+  width: 200%;
+  height: 100%;
+  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.plan-slide-wrapper .content-slide-viewport.show-detail .content-slide-track {
+  transform: translateX(-50%);
+}
+
+.plan-slide-wrapper .slide-panel {
+  width: 50%;
+  height: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.plan-slide-wrapper .slide-panel-list {
+  overflow-y: auto;
+}
+
+.plan-slide-wrapper .slide-panel-detail {
+  background: #f4faf7;
 }
 
 /* 计划网格布局（2行4列，每个占1/8） */

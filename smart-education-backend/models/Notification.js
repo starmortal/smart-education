@@ -26,7 +26,7 @@ const notificationSchema = new mongoose.Schema({
   },
   relatedType: {
     type: String,
-    enum: ["question", "answer", "user", null],
+    enum: ["question", "answer", "user", "studyPlan", null],
     default: null,
   },
   relatedData: {
@@ -34,6 +34,11 @@ const notificationSchema = new mongoose.Schema({
     userAvatar: String,
     questionTitle: String,
     questionId: String,
+    planId: String,
+    planIds: [String],
+    source: String,
+    planCount: Number,
+    summary: String,
   },
   isRead: {
     type: Boolean,

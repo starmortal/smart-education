@@ -1,5 +1,5 @@
 <template>
-  <div class="plan-card-enhanced" :class="urgencyClass" @click="handleViewDetails">
+  <div class="plan-card-enhanced" :class="[urgencyClass, { active: active }]" @click="handleViewDetails">
     <div class="card-header">
       <div class="header-left">
         <span class="urgency-icon">{{ urgencyIcon }}</span>
@@ -58,6 +58,10 @@ const props = defineProps({
   plan: {
     type: Object,
     required: true
+  },
+  active: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -154,6 +158,11 @@ function handleViewDetails() {
   transition: all 0.3s ease;
   border-left: 4px solid #409eff;
   cursor: pointer;
+}
+
+.plan-card-enhanced.active {
+  border-color: #3d9b6a;
+  box-shadow: 0 0 0 2px rgba(61, 155, 106, 0.2);
 }
 
 .plan-card-enhanced:hover {

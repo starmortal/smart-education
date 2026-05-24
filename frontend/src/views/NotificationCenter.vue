@@ -410,7 +410,13 @@ const handleNotificationClick = async (notification) => {
   
   // 根据通知类型跳转
   if (notification.type === 'aiPlan' || notification.relatedData?.source === 'ai_schedule') {
-    router.push('/study-plan');
+    const planId =
+      notification.relatedData?.planId ||
+      (notification.relatedData?.planIds && notification.relatedData.planIds[0]);
+    router.push({
+      path: '/study-plan',
+      query: planId ? { planId: String(planId) } : {},
+    });
   } else if (notification.relatedType === 'question' && notification.relatedData?.questionId) {
     router.push('/study-community');
   } else if (notification.relatedType === 'user') {

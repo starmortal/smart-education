@@ -56,13 +56,20 @@ async function sendScheduleNotification(userId, result) {
   const title = '📅 AI 已自动生成学习计划';
   const content = `已根据你的学习数据自动生成 ${result.count} 条计划并加入时间轴。${result.summary ? `\n${result.summary}` : ''}${planTitles ? `\n计划：${planTitles}` : ''}`;
 
+  const planIds = (result.plans || [])
+    .map((p) => String(p.planId))
+    .filter(Boolean);
+  const primaryPlanId = planIds[0] || null;
+
   try {
     await notificationService.sendNotification(userId, 'aiPlan', title, content.replace(/\n/g, '<br>'), {
-      relatedType: 'user',
+      relatedType: 'studyPlan',
       relatedData: {
         planCount: result.count,
         summary: result.summary,
         source: 'ai_schedule',
+        planIds,
+        planId: primaryPlanId,
       },
     });
   } catch (error) {

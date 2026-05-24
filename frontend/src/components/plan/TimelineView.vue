@@ -24,6 +24,7 @@
               v-for="plan in section.plans"
               :key="plan.id"
               :plan="plan"
+              :active="activePlanId != null && String(plan.id) === String(activePlanId)"
               @view-details="handleViewDetails"
             />
             <el-empty
@@ -60,6 +61,10 @@ const props = defineProps({
   plans: {
     type: Array,
     required: true
+  },
+  activePlanId: {
+    type: [String, Number],
+    default: null
   }
 });
 
@@ -345,6 +350,11 @@ function handleViewDetails(plan) {
 .section-content :deep(.ai-reason-label) {
   color: #2d8a5e;
   background: #e8f5ee;
+}
+
+.section-content :deep(.plan-card-enhanced.active) {
+  border-color: #3d9b6a;
+  box-shadow: 0 0 0 2px rgba(61, 155, 106, 0.25);
 }
 
 .section-empty :deep(.el-empty__description) {
