@@ -72,7 +72,7 @@
               >
                 已回复
               </el-tag>
-              <span class="item-time">{{ formatTime(item.date) }}</span>
+              <span class="item-time">{{ formatTime(item.createTime || item.date) }}</span>
             </div>
           </div>
         </div>
@@ -217,7 +217,7 @@
           >
             已回复
           </el-tag>
-          <span class="detail-time">{{ selectedFeedback.date }}</span>
+          <span class="detail-time">{{ formatTime(selectedFeedback.createTime || selectedFeedback.date) }}</span>
           <el-button 
             text 
             @click="selectedFeedback = null"
@@ -281,7 +281,7 @@ import {
   ChatLineRound
 } from '@element-plus/icons-vue';
 import SideNavBar from '@/components/SideNavBar.vue';
-import axios from 'axios';
+import { submitFeedback as submitFeedbackApi, getFeedbackHistory } from '@/api/feedback';
 
 // 数据状态
 const feedbackFormRef = ref(null);
@@ -458,27 +458,25 @@ async function submitFeedback() {
     const userId = localStorage.getItem('edu-user-id');
     const nickname = localStorage.getItem('edu-nickname') || '匿名用户';
     
-    const response = await axios.post('http://localhost:3001/api/feedback/submit', {
+    const res = await submitFeedbackApi({
       userId,
       nickname,
       type: feedbackForm.type,
       content: feedbackForm.content,
       screenshots: feedbackForm.screenshots.filter(s => s !== null)
     });
-    
-    ElMessage.success('感谢您的反馈！我们会认真处理');
-    
-    resetForm();
-    loadFeedbackHistory();
+
+    if (res.code === 200) {
+      ElMessage.success(res.message || '感谢您的反馈！我们会认真处理');
+      resetForm();
+      loadFeedbackHistory();
+    }
   } catch (error) {
     console.error('提交反馈失败：', error);
-    
-    if (error && typeof error === 'object' && !error.response) {
-      return;
-    }
-    
     const errorMsg = error.response?.data?.message || error.message || '提交失败，请重试';
-    ElMessage.error(errorMsg);
+    if (errorMsg && !errorMsg.includes('cancel')) {
+      ElMessage.error(errorMsg);
+    }
   } finally {
     feedbackLoading.value = false;
   }
@@ -497,13 +495,16 @@ async function loadFeedbackHistory() {
   historyLoading.value = true;
   try {
     const userId = localStorage.getItem('edu-user-id');
-    const res = await axios.get('http://localhost:3001/api/feedback/history', {
-      params: { userId }
-    });
-    
-    feedbackHistory.value = res.data.list || [];
+    if (!userId) {
+      feedbackHistory.value = [];
+      return;
+    }
+
+    const res = await getFeedbackHistory(userId);
+    feedbackHistory.value = res.data?.list || [];
   } catch (error) {
     console.error('加载反馈历史失败：', error);
+    ElMessage.error('加载反馈历史失败');
   } finally {
     historyLoading.value = false;
   }

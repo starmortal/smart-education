@@ -34,24 +34,20 @@ router.post("/submit", asyncHandler(async (req, res) => {
     status: "submitted",
   });
 
-  // 发送邮件通知到管理员邮箱
-  try {
-    await sendFeedbackNotification({
-      feedbackId: feedback._id,
-      nickname,
-      type,
-      content,
-      createTime: feedback.createTime,
-    });
-    logger.info(`反馈通知邮件已发送`);
-  } catch (emailError) {
-    logger.error("发送反馈通知邮件失败", emailError);
-    // 邮件发送失败不影响反馈提交
-  }
+  // 邮件通知异步发送，不阻塞接口响应（避免前端长时间 loading）
+  sendFeedbackNotification({
+    feedbackId: feedback._id,
+    nickname,
+    type,
+    content,
+    createTime: feedback.createTime,
+  }).catch((emailError) => {
+    logger.error('发送反馈通知邮件失败', emailError);
+  });
 
   Response.success(res, {
     feedbackId: feedback._id,
-  }, "反馈提交成功，感谢您的宝贵意见！");
+  }, '反馈提交成功，感谢您的宝贵意见！');
 }));
 
 // 获取用户的反馈历史
@@ -68,17 +64,19 @@ router.get("/history", asyncHandler(async (req, res) => {
   const feedbacks = await Feedback.find({ userId })
     .sort({ createTime: -1 })
     .limit(20)
-    .select("type content status reply createTime")
+    .select("type content status reply createTime screenshots")
     .lean();
 
   // 格式化返回数据
   const list = feedbacks.map((item) => ({
-    id: item._id,
+    id: String(item._id),
     type: item.type,
-    content: item.content.length > 50 ? item.content.substring(0, 50) + "..." : item.content,
+    content: item.content,
     status: item.status,
-    reply: item.reply || "",
-    date: item.createTime.toISOString().split("T")[0],
+    reply: item.reply || '',
+    screenshots: item.screenshots || [],
+    createTime: item.createTime,
+    date: item.createTime,
   }));
 
   // 统计反馈总数
