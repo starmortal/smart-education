@@ -80,6 +80,7 @@ const LEGACY_DOC_MAP = {
   'privacy-policy': 'privacy-policy',
   'terms-of-service': 'terms-of-service',
   'user-guide': 'user-guide',
+  'development-roadmap': 'development-roadmap',
 };
 
 function goHome() {

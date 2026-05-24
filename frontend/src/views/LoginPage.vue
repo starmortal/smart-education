@@ -199,7 +199,7 @@
               <h4>支持</h4>
               <a @click="handleFeedbackClick()">反馈建议</a>
               <a @click="goToPage('changelog')">更新日志</a>
-              <a @click="handleContactClick()">联系我们</a>
+              <a @click="goToPage('development-roadmap')">发展规划</a>
             </div>
           </div>
         </div>
@@ -721,7 +721,7 @@ function scrollToFeatures() {
 
 // 页面跳转
 function goToPage(path) {
-  const platformDocs = ['privacy-policy', 'terms-of-service', 'user-guide'];
+  const platformDocs = ['privacy-policy', 'terms-of-service', 'user-guide', 'development-roadmap'];
   if (platformDocs.includes(path)) {
     router.push({ path: '/platform-docs', query: { doc: path } });
     return;
@@ -740,16 +740,6 @@ function handleFeedbackClick() {
   ElMessage({
     message: '请登录后使用反馈功能',
     type: 'warning',
-    duration: 3000,
-    showClose: true
-  });
-}
-
-// 处理联系我们点击
-function handleContactClick() {
-  ElMessage({
-    message: '联系邮箱：2169702639@qq.com',
-    type: 'success',
     duration: 3000,
     showClose: true
   });

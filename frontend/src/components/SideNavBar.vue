@@ -129,6 +129,7 @@ const handleLogout = () => {
   localStorage.removeItem('edu-user-id');
   localStorage.removeItem('edu-nickname');
   localStorage.removeItem('edu-avatar');
+  socketClient.disconnect();
   router.push('/login');
 };
 </script>

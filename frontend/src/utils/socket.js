@@ -8,7 +8,20 @@ class SocketClient {
   constructor() {
     this.socket = null;
     this.connected = false;
+    this.userId = null;
     this.listeners = new Map();
+  }
+
+  /**
+   * 清理当前 socket 实例，避免 disconnect 后旧连接事件仍触发
+   */
+  _teardownSocket() {
+    if (!this.socket) return;
+    const socket = this.socket;
+    this.socket = null;
+    this.connected = false;
+    socket.removeAllListeners();
+    socket.disconnect();
   }
 
   /**
@@ -16,44 +29,58 @@ class SocketClient {
    * @param {String} userId - 用户ID
    */
   connect(userId) {
-    if (this.socket && this.connected) {
-      console.log('Socket.IO 已连接，跳过重复连接');
+    if (!userId) return;
+
+    this.userId = userId;
+
+    if (this.socket?.connected) {
+      this.socket.emit('register', userId);
       return;
     }
 
+    this._teardownSocket();
+
     const serverUrl = process.env.VUE_APP_API_BASE_URL || 'http://localhost:3001';
-    
-    this.socket = io(serverUrl, {
+    const socket = io(serverUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
     });
 
-    this.socket.on('connect', () => {
-      console.log('✅ Socket.IO 连接成功:', this.socket.id);
+    this.socket = socket;
+
+    socket.on('connect', () => {
+      if (this.socket !== socket) return;
+
       this.connected = true;
-      
-      // 注册用户ID
-      if (userId) {
-        this.socket.emit('register', userId);
-        console.log('📝 注册用户ID:', userId);
+      const socketId = socket.id;
+      if (socketId) {
+        console.log('✅ Socket.IO 连接成功:', socketId);
+      }
+
+      if (this.userId) {
+        socket.emit('register', this.userId);
+        console.log('📝 注册用户ID:', this.userId);
       }
     });
 
-    this.socket.on('disconnect', (reason) => {
+    socket.on('disconnect', (reason) => {
+      if (this.socket !== socket) return;
       console.log('❌ Socket.IO 断开连接:', reason);
       this.connected = false;
     });
 
-    this.socket.on('connect_error', (error) => {
+    socket.on('connect_error', (error) => {
+      if (this.socket !== socket) return;
       console.error('Socket.IO 连接错误:', error);
     });
 
-    this.socket.on('reconnect', (attemptNumber) => {
+    socket.on('reconnect', (attemptNumber) => {
+      if (this.socket !== socket) return;
       console.log('🔄 Socket.IO 重新连接成功，尝试次数:', attemptNumber);
-      if (userId) {
-        this.socket.emit('register', userId);
+      if (this.userId) {
+        socket.emit('register', this.userId);
       }
     });
   }
@@ -62,13 +89,10 @@ class SocketClient {
    * 断开连接
    */
   disconnect() {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-      this.connected = false;
-      this.listeners.clear();
-      console.log('Socket.IO 已断开');
-    }
+    this.userId = null;
+    this._teardownSocket();
+    this.listeners.clear();
+    console.log('Socket.IO 已断开');
   }
 
   /**
@@ -83,8 +107,7 @@ class SocketClient {
     }
 
     this.socket.on(event, callback);
-    
-    // 保存监听器引用
+
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
     }
@@ -101,8 +124,7 @@ class SocketClient {
 
     if (callback) {
       this.socket.off(event, callback);
-      
-      // 从监听器列表中移除
+
       const listeners = this.listeners.get(event);
       if (listeners) {
         const index = listeners.indexOf(callback);
@@ -122,7 +144,7 @@ class SocketClient {
    * @param {*} data - 数据
    */
   emit(event, data) {
-    if (!this.socket || !this.connected) {
+    if (!this.socket?.connected) {
       console.warn('Socket.IO 未连接，无法发送事件');
       return;
     }
@@ -134,9 +156,8 @@ class SocketClient {
    * 检查连接状态
    */
   isConnected() {
-    return this.connected;
+    return Boolean(this.socket?.connected && this.connected);
   }
 }
 
-// 导出单例
 export default new SocketClient();

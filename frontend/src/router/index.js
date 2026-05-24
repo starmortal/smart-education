@@ -97,6 +97,10 @@ const routes = [
     path: "/user-guide",
     redirect: (to) => ({ path: "/platform-docs", query: { doc: "user-guide", ...to.query } }),
   },
+  {
+    path: "/development-roadmap",
+    redirect: (to) => ({ path: "/platform-docs", query: { doc: "development-roadmap", ...to.query } }),
+  },
   { 
     path: "/profile", 
     component: () => import("../views/ProfilePage.vue"), 

@@ -26,6 +26,13 @@ const PLATFORM_DOCS = [
     file: 'guide/user-guide.md',
     order: 3,
   },
+  {
+    slug: 'development-roadmap',
+    label: '发展规划',
+    category: 'guide',
+    file: 'guide/development-roadmap.md',
+    order: 4,
+  },
 ];
 
 function listPlatformDocs() {
