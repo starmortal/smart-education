@@ -1,0 +1,125 @@
+/**
+ * AI 分析报告 Markdown 样式（成绩分析 / 错题分析共用）
+ * 使用全局选择器，确保 v-html 渲染内容能正确应用
+ */
+
+.ai-analysis-content .markdown-content {
+  line-height: 1.8;
+  color: #333;
+  font-size: 14px;
+}
+
+/* 一级 / 二级标题：蓝色 + 底部分割线 */
+.ai-analysis-content .markdown-content h1,
+.ai-analysis-content .markdown-content h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #0969da;
+  margin: 24px 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e4e7ed;
+}
+
+.ai-analysis-content .markdown-content h1:first-child,
+.ai-analysis-content .markdown-content h2:first-child {
+  margin-top: 0;
+}
+
+/* 三级标题：与二级同风格（错题分析常用 ###） */
+.ai-analysis-content .markdown-content h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0969da;
+  margin: 20px 0 12px 0;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #e8eef5;
+}
+
+.ai-analysis-content .markdown-content h3:first-child {
+  margin-top: 0;
+}
+
+.ai-analysis-content .markdown-content h4 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0969da;
+  margin: 16px 0 10px 0;
+}
+
+.ai-analysis-content .markdown-content p {
+  margin: 12px 0;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #333;
+}
+
+/* 单独一行的加粗标题（AI 偶发 **标题** 格式） */
+.ai-analysis-content .markdown-content p > strong:only-child {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0969da;
+  margin: 20px 0 10px 0;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #e8eef5;
+}
+
+.ai-analysis-content .markdown-content ul,
+.ai-analysis-content .markdown-content ol {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.ai-analysis-content .markdown-content li {
+  margin: 8px 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #444;
+}
+
+.ai-analysis-content .markdown-content li::marker {
+  color: #0969da;
+}
+
+.ai-analysis-content .markdown-content strong {
+  font-weight: 600;
+  color: #0969da;
+}
+
+.ai-analysis-content .markdown-content em {
+  color: #606266;
+  font-style: italic;
+}
+
+.ai-analysis-content .markdown-content code {
+  background: #f0f7ff;
+  color: #0969da;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 13px;
+}
+
+.ai-analysis-content .markdown-content blockquote {
+  border-left: 4px solid #0969da;
+  padding: 12px 16px;
+  margin: 16px 0;
+  color: #666;
+  background: #f5f9ff;
+  border-radius: 4px;
+}
+
+.ai-analysis-content .markdown-content hr {
+  border: none;
+  border-top: 1px solid #e4e7ed;
+  margin: 20px 0;
+}
+
+.ai-analysis-content .markdown-content a {
+  color: #0969da;
+  text-decoration: none;
+}
+
+.ai-analysis-content .markdown-content a:hover {
+  text-decoration: underline;
+}

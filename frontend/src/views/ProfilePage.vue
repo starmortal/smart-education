@@ -789,6 +789,9 @@ import * as echarts from 'echarts';
 import eventBus from '@/utils/eventBus';
 import { CHART_TOOLTIP_BASE } from '@/constants/tooltip';
 import { marked } from 'marked';
+import '@/styles/ai-analysis-markdown.css';
+
+marked.use({ gfm: true, breaks: true });
 
 const apiClient = axios.create({
   baseURL: 'http://localhost:3001/api',
@@ -2828,62 +2831,7 @@ onBeforeUnmount(() => {
   color: #333;
 }
 
-.markdown-content :deep(h2) {
-  font-size: 18px;
-  font-weight: 600;
-  color: #0969da;
-  margin: 24px 0 16px 0;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #e4e7ed;
-}
-
-.markdown-content :deep(h3) {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-  margin: 20px 0 12px 0;
-}
-
-.markdown-content :deep(p) {
-  margin: 12px 0;
-  font-size: 14px;
-  line-height: 1.8;
-}
-
-.markdown-content :deep(ul),
-.markdown-content :deep(ol) {
-  margin: 12px 0;
-  padding-left: 24px;
-}
-
-.markdown-content :deep(li) {
-  margin: 8px 0;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.markdown-content :deep(strong) {
-  font-weight: 600;
-  color: #0969da;
-}
-
-.markdown-content :deep(code) {
-  background: #f5f7fa;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  font-size: 13px;
-}
-
-.markdown-content :deep(blockquote) {
-  border-left: 4px solid #0969da;
-  padding-left: 16px;
-  margin: 16px 0;
-  color: #666;
-  background: #f5f7fa;
-  padding: 12px 16px;
-  border-radius: 4px;
-}
+/* Markdown 正文样式见 @/styles/ai-analysis-markdown.css（与错题分析共用） */
 
 /* 响应式 */
 @media (max-width: 1200px) {

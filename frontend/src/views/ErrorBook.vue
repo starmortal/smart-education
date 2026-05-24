@@ -631,7 +631,11 @@
           description="暂无分析数据"
           :image-size="80"
         />
-        <div v-if="aiAnalysisResult" class="markdown-content" v-html="renderedAnalysis"></div>
+        <div
+          v-if="aiAnalysisResult"
+          class="markdown-content ai-analysis-markdown-body"
+          v-html="renderedAnalysis"
+        />
         <div v-if="aiLoading" class="streaming-indicator">
           <el-icon class="is-loading"><Loading /></el-icon>
           <span>{{ aiAnalysisResult ? 'AI 正在继续分析...' : 'AI 正在分析您的错题数据...' }}</span>
@@ -659,6 +663,9 @@ import { getUserSubjects, generateSubjectOptions, hasUserSubjects, getSubjectCod
 import dayjs from 'dayjs';
 // 【v3.4.4新增】引入 marked 用于渲染 AI 回复
 import { marked } from 'marked';
+import '@/styles/ai-analysis-markdown.css';
+
+marked.use({ gfm: true, breaks: true });
 
 /* ============== 基础变量（与上一版完全一致） ============== */
 const router = useRouter();
@@ -2724,88 +2731,5 @@ async function batchDeleteErrors() {
 
 .streaming-indicator .el-icon {
   font-size: 18px;
-}
-
-.markdown-content {
-  line-height: 1.8;
-  color: #333;
-}
-
-.markdown-content :deep(h1) {
-  font-size: 20px;
-  font-weight: 600;
-  color: #0969da;
-  margin: 0 0 20px 0;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #e4e7ed;
-}
-
-.markdown-content :deep(h2) {
-  font-size: 18px;
-  font-weight: 600;
-  color: #0969da;
-  margin: 24px 0 16px 0;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #e4e7ed;
-}
-
-.markdown-content :deep(h3) {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-  margin: 20px 0 12px 0;
-}
-
-.markdown-content :deep(h4) {
-  font-size: 15px;
-  font-weight: 600;
-  color: #0969da;
-  margin: 16px 0 10px 0;
-}
-
-.markdown-content :deep(p) {
-  margin: 12px 0;
-  font-size: 14px;
-  line-height: 1.8;
-}
-
-.markdown-content :deep(ul),
-.markdown-content :deep(ol) {
-  margin: 12px 0;
-  padding-left: 24px;
-}
-
-.markdown-content :deep(li) {
-  margin: 8px 0;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.markdown-content :deep(strong) {
-  font-weight: 600;
-  color: #0969da;
-}
-
-.markdown-content :deep(code) {
-  background: #f5f7fa;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  font-size: 13px;
-}
-
-.markdown-content :deep(blockquote) {
-  border-left: 4px solid #0969da;
-  padding: 12px 16px;
-  margin: 16px 0;
-  color: #666;
-  background: #f5f7fa;
-  border-radius: 4px;
-}
-
-.markdown-content :deep(hr) {
-  border: none;
-  border-top: 1px solid #e4e7ed;
-  margin: 20px 0;
 }
 </style>
