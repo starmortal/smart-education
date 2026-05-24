@@ -126,6 +126,7 @@ app.use("/api/chat", chatRouter);
 app.use("/api/knowledge", knowledgeRouter);
 app.use("/api/notification", notificationRouter);
 app.use("/api/admin", require("./routes/admin"));
+app.use("/api/changelog", require("./routes/changelog"));
 
 // 健康检查接口
 app.get("/api/test", (req, res) => {

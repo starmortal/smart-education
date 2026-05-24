@@ -19,6 +19,7 @@ const route = useRoute();
 
 const showSideNav = computed(() => {
   if (route.path.startsWith('/admin')) return false;
+  if (route.path === '/changelog') return false;
   return !['/login', '/register'].includes(route.path);
 });
 </script>
