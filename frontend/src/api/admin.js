@@ -75,4 +75,16 @@ export function replyAdminFeedback(feedbackId, reply) {
   return adminService.post('/api/admin/feedback/reply', { feedbackId, reply });
 }
 
+export function getDemoSeedStatus() {
+  return adminService.get('/api/admin/demo-seed/status');
+}
+
+export function importDemoSeed() {
+  return adminService.post('/api/admin/demo-seed/import');
+}
+
+export function removeDemoSeed() {
+  return adminService.delete('/api/admin/demo-seed');
+}
+
 export default adminService;

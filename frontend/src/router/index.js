@@ -139,6 +139,12 @@ const routes = [
         name: "系统公告",
         meta: { title: "系统公告 - 管理后台", requiresAdmin: true },
       },
+      {
+        path: "demo-data",
+        component: () => import("../views/admin/AdminDemoData.vue"),
+        name: "演示数据",
+        meta: { title: "演示数据 - 管理后台", requiresAdmin: true },
+      },
     ],
   },
 ];

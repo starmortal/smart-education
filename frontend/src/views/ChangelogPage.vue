@@ -5,7 +5,7 @@
         <img class="logo" src="@/assets/logo.png" alt="logo" />
         <span class="brand">智慧教育平台</span>
       </div>
-      <el-button text @click="goBack">返回</el-button>
+        <el-button text @click="goBack">返回</el-button>
     </header>
 
     <div class="changelog-doc-body" v-loading="listLoading">

@@ -1,0 +1,283 @@
+{
+  "meta": {
+    "packId": "demo-v4.3.2",
+    "name": "智慧教育演示数据包",
+    "version": "4.3.2",
+    "description": "覆盖 AI 助手、知识库、错题集、学习计划、笔记、社区、反馈、通知、个人中心等模块的丰富演示数据，便于展示与答辩。",
+    "accounts": [
+      { "email": "demo_xiaoming@qq.com", "password": "Demo@1234", "nickname": "演示-小明", "tip": "主演示账号，数据最全" },
+      { "email": "demo_xiaohong@qq.com", "password": "Demo@1234", "nickname": "演示-小红", "tip": "化学/语文，社区活跃" },
+      { "email": "demo_xiaogang@qq.com", "password": "Demo@1234", "nickname": "演示-小刚", "tip": "物理/数学，擅长解答" },
+      { "email": "demo_xiaoli@qq.com", "password": "Demo@1234", "nickname": "演示-小丽", "tip": "英语/生物，社区互动" }
+    ]
+  },
+  "users": [
+    { "key": "xiaoming", "email": "demo_xiaoming@qq.com", "password": "Demo@1234", "nickname": "演示-小明", "avatarChar": "明", "avatarColor": "#2563eb", "grade": "grade10", "school": "智慧示范中学", "subjects": ["数学", "物理", "英语"], "subjectFullScores": { "数学": 150, "物理": 100, "英语": 150 }, "emailVerified": true, "createTime": "2026-04-01T08:00:00.000Z" },
+    { "key": "xiaohong", "email": "demo_xiaohong@qq.com", "password": "Demo@1234", "nickname": "演示-小红", "avatarChar": "红", "avatarColor": "#e11d48", "grade": "grade10", "school": "智慧示范中学", "subjects": ["数学", "化学", "语文"], "subjectFullScores": { "数学": 150, "化学": 100, "语文": 150 }, "emailVerified": true, "createTime": "2026-04-05T09:00:00.000Z" },
+    { "key": "xiaogang", "email": "demo_xiaogang@qq.com", "password": "Demo@1234", "nickname": "演示-小刚", "avatarChar": "刚", "avatarColor": "#059669", "grade": "grade11", "school": "智慧示范中学", "subjects": ["数学", "物理", "化学"], "subjectFullScores": { "数学": 150, "物理": 100, "化学": 100 }, "emailVerified": true, "createTime": "2026-04-08T10:00:00.000Z" },
+    { "key": "xiaoli", "email": "demo_xiaoli@qq.com", "password": "Demo@1234", "nickname": "演示-小丽", "avatarChar": "丽", "avatarColor": "#7c3aed", "grade": "grade10", "school": "智慧示范中学", "subjects": ["英语", "生物", "地理"], "subjectFullScores": { "英语": 150, "生物": 100, "地理": 100 }, "emailVerified": true, "createTime": "2026-04-10T11:00:00.000Z" }
+  ],
+  "exams": [
+    { "userKey": "xiaoming", "examName": "2026 春季月考", "examDate": "2026-04-15", "scores": [{ "subject": "数学", "score": 118, "fullScore": 150 }, { "subject": "物理", "score": 82, "fullScore": 100 }, { "subject": "英语", "score": 125, "fullScore": 150 }], "totalScore": 325, "totalFullScore": 400 },
+    { "userKey": "xiaoming", "examName": "期中模拟考", "examDate": "2026-05-10", "scores": [{ "subject": "数学", "score": 128, "fullScore": 150 }, { "subject": "物理", "score": 88, "fullScore": 100 }, { "subject": "英语", "score": 132, "fullScore": 150 }], "totalScore": 348, "totalFullScore": 400 },
+    { "userKey": "xiaoming", "examName": "五月周测", "examDate": "2026-05-20", "scores": [{ "subject": "数学", "score": 135, "fullScore": 150 }, { "subject": "物理", "score": 91, "fullScore": 100 }, { "subject": "英语", "score": 128, "fullScore": 150 }], "totalScore": 354, "totalFullScore": 400 },
+    { "userKey": "xiaoming", "examName": "六月摸底测验", "examDate": "2026-05-22", "scores": [{ "subject": "数学", "score": 140, "fullScore": 150 }, { "subject": "物理", "score": 93, "fullScore": 100 }, { "subject": "英语", "score": 130, "fullScore": 150 }], "totalScore": 363, "totalFullScore": 400 }
+  ],
+  "studyPlans": [
+    { "userKey": "xiaoming", "planId": 9001, "planTitle": "函数与导数专项突破", "subject": "math", "startTime": "2026-05-18T00:00:00.000Z", "endTime": "2026-05-25T23:59:59.000Z", "description": "复习函数图像、导数应用与压轴题型", "planStatus": "in_progress", "progress": 45, "aiReason": "根据月考数学失分点，建议集中突破导数应用题" },
+    { "userKey": "xiaoming", "planId": 9002, "planTitle": "牛顿运动定律巩固", "subject": "physics", "startTime": "2026-05-20T00:00:00.000Z", "endTime": "2026-05-28T23:59:59.000Z", "description": "完成力学综合题 10 道", "planStatus": "not_started", "progress": 0, "aiReason": "物理力学是近期错题集中区域" },
+    { "userKey": "xiaoming", "planId": 9003, "planTitle": "英语阅读理解精练", "subject": "english", "startTime": "2026-05-01T00:00:00.000Z", "endTime": "2026-05-15T23:59:59.000Z", "description": "每天 2 篇阅读 + 生词整理", "planStatus": "completed", "progress": 100, "aiReason": "英语阅读稳定提升，已完成阶段目标" },
+    { "userKey": "xiaoming", "planId": 9004, "planTitle": "错题本周回顾", "subject": "math", "startTime": "2026-05-22T00:00:00.000Z", "endTime": "2026-05-23T23:59:59.000Z", "description": "复习未掌握错题 8 道", "planStatus": "in_progress", "progress": 60 },
+    { "userKey": "xiaoming", "planId": 9005, "planTitle": "三角函数图像变换", "subject": "math", "startTime": "2026-05-24T00:00:00.000Z", "endTime": "2026-05-31T23:59:59.000Z", "description": "掌握平移、伸缩与相位变换规律", "planStatus": "in_progress", "progress": 30, "aiReason": "三角恒等变换错题较多，需配合图像理解" },
+    { "userKey": "xiaoming", "planId": 9006, "planTitle": "电磁感应综合训练", "subject": "physics", "startTime": "2026-05-26T00:00:00.000Z", "endTime": "2026-06-02T23:59:59.000Z", "description": "法拉第定律与楞次定律综合 6 题", "planStatus": "not_started", "progress": 0, "aiReason": "期中物理电磁部分得分率偏低" },
+    { "userKey": "xiaoming", "planId": 9007, "planTitle": "作文素材积累", "subject": "english", "startTime": "2026-05-19T00:00:00.000Z", "endTime": "2026-05-26T23:59:59.000Z", "description": "整理 20 个高分句型与 5 篇范文提纲", "planStatus": "in_progress", "progress": 75 },
+    { "userKey": "xiaoming", "planId": 9008, "planTitle": "立体几何空间想象", "subject": "math", "startTime": "2026-05-10T00:00:00.000Z", "endTime": "2026-05-17T23:59:59.000Z", "description": "三视图与截面问题专项", "planStatus": "completed", "progress": 100 },
+    { "userKey": "xiaoming", "planId": 9009, "planTitle": "概率统计大题突破", "subject": "math", "startTime": "2026-05-27T00:00:00.000Z", "endTime": "2026-06-05T23:59:59.000Z", "description": "条件概率、分布列与期望综合 5 题", "planStatus": "in_progress", "progress": 20, "aiReason": "概率题正确率波动，需系统梳理" },
+    { "userKey": "xiaoming", "planId": 9010, "planTitle": "考前错题清零行动", "subject": "physics", "startTime": "2026-05-28T00:00:00.000Z", "endTime": "2026-06-01T23:59:59.000Z", "description": "集中攻克未掌握错题 6 道并二次验证", "planStatus": "not_started", "progress": 0, "aiReason": "距模拟考还有一周，建议优先清零薄弱项" },
+    { "userKey": "xiaohong", "planId": 9101, "planTitle": "有机化学命名规则", "subject": "chemistry", "startTime": "2026-05-21T00:00:00.000Z", "endTime": "2026-05-28T23:59:59.000Z", "description": "烷烃、烯烃、炔烃系统命名练习", "planStatus": "in_progress", "progress": 40 },
+    { "userKey": "xiaogang", "planId": 9201, "planTitle": "动量守恒定律应用", "subject": "physics", "startTime": "2026-05-22T00:00:00.000Z", "endTime": "2026-05-29T23:59:59.000Z", "description": "碰撞与爆炸模型 8 题", "planStatus": "in_progress", "progress": 55 }
+  ],
+  "errorQuestions": [
+    { "userKey": "xiaoming", "questionTitle": "已知函数 f(x)=x³-3x，求极值点", "subject": "math", "questionType": "calculation", "masteryStatus": "unmastered", "wrongReason": "求导后未讨论单调区间", "knowledgePoints": ["导数", "极值"], "correctAnalysis": "f'(x)=3x²-3，令 f'(x)=0 得 x=±1，列表分析可得极大值 x=-1，极小值 x=1" },
+    { "userKey": "xiaoming", "questionTitle": "物体在粗糙斜面上的受力分析", "subject": "physics", "questionType": "short_answer", "masteryStatus": "mastering", "wrongReason": "漏画摩擦力方向", "knowledgePoints": ["力学", "受力分析"], "correctAnalysis": "沿斜面分解重力，静摩擦/滑动摩擦方向与相对运动趋势相反" },
+    { "userKey": "xiaoming", "questionTitle": "完形填空：上下文逻辑推断", "subject": "english", "questionType": "single_choice", "masteryStatus": "mastered", "wrongReason": "未联系后文提示", "knowledgePoints": ["阅读理解"], "correctAnalysis": "通过 however 转折与后文 example 确定答案" },
+    { "userKey": "xiaoming", "questionTitle": "三角恒等变换化简", "subject": "math", "questionType": "calculation", "masteryStatus": "unmastered", "wrongReason": "公式记混", "knowledgePoints": ["三角函数"], "correctAnalysis": "使用 sin²+cos²=1 与倍角公式逐步化简" },
+    { "userKey": "xiaoming", "questionTitle": "数列求和：错位相减法", "subject": "math", "questionType": "calculation", "masteryStatus": "mastering", "wrongReason": "末项系数计算错误", "knowledgePoints": ["数列", "求和"], "correctAnalysis": "写出 S_n 与 q·S_n 两式相减，注意首项与末项对应关系" },
+    { "userKey": "xiaoming", "questionTitle": "平抛运动时间计算", "subject": "physics", "questionType": "calculation", "masteryStatus": "unmastered", "wrongReason": "混淆水平与竖直方向独立性", "knowledgePoints": ["平抛运动"], "correctAnalysis": "竖直方向 h=½gt² 求 t，水平方向 x=v₀t" },
+    { "userKey": "xiaoming", "questionTitle": "定语从句关系代词选择", "subject": "english", "questionType": "single_choice", "masteryStatus": "mastering", "wrongReason": "which/that 混用", "knowledgePoints": ["语法", "定语从句"], "correctAnalysis": "先行词为物且从句缺主语/宾语时用 which/that；非限制性从句用 which" },
+    { "userKey": "xiaoming", "questionTitle": "概率：条件概率公式", "subject": "math", "questionType": "calculation", "masteryStatus": "unmastered", "wrongReason": "样本空间划分不完整", "knowledgePoints": ["概率", "条件概率"], "correctAnalysis": "P(A|B)=P(AB)/P(B)，先明确事件再列式" },
+    { "userKey": "xiaoming", "questionTitle": "电路：闭合欧姆定律", "subject": "physics", "questionType": "calculation", "masteryStatus": "mastered", "wrongReason": "内阻未计入", "knowledgePoints": ["电路"], "correctAnalysis": "I=E/(R+r)，路端电压 U=E-Ir" },
+    { "userKey": "xiaoming", "questionTitle": "七选五：段落衔接", "subject": "english", "questionType": "single_choice", "masteryStatus": "unmastered", "wrongReason": "未找代词指代", "knowledgePoints": ["阅读理解"], "correctAnalysis": "关注 this/these 等指代词与逻辑连接词" },
+    { "userKey": "xiaoming", "questionTitle": "圆锥曲线：椭圆标准方程", "subject": "math", "questionType": "calculation", "masteryStatus": "mastering", "wrongReason": "焦点坐标符号写反", "knowledgePoints": ["圆锥曲线", "椭圆"], "correctAnalysis": "x²/a²+y²/b²=1(a>b>0)，c²=a²-b²，焦点在 x 轴为 (±c,0)" },
+    { "userKey": "xiaoming", "questionTitle": "动能定理与机械能守恒选择", "subject": "physics", "questionType": "short_answer", "masteryStatus": "unmastered", "wrongReason": "有非保守力做功仍用守恒", "knowledgePoints": ["能量", "动能定理"], "correctAnalysis": "有摩擦等非保守力时用动能定理；仅保守力做功时用机械能守恒" },
+    { "userKey": "xiaoming", "questionTitle": "语法填空：非谓语动词", "subject": "english", "questionType": "blank", "masteryStatus": "mastering", "wrongReason": "done/doing 混淆", "knowledgePoints": ["非谓语"], "correctAnalysis": "逻辑主语与动词关系：主动进行用 doing，被动完成用 done" },
+    { "userKey": "xiaoming", "questionTitle": "立体几何：线面平行证明", "subject": "math", "questionType": "short_answer", "masteryStatus": "unmastered", "wrongReason": "未找到面内对应直线", "knowledgePoints": ["立体几何"], "correctAnalysis": "线面平行：若平面外直线与面内某直线平行，则线面平行" },
+    { "userKey": "xiaohong", "questionTitle": "苯的取代反应机理", "subject": "chemistry", "questionType": "short_answer", "masteryStatus": "mastering", "wrongReason": "催化剂写错", "knowledgePoints": ["有机化学"], "correctAnalysis": "苯环亲电取代，FeBr3 作催化剂" },
+    { "userKey": "xiaogang", "questionTitle": "圆周运动向心力来源", "subject": "physics", "questionType": "short_answer", "masteryStatus": "mastered", "wrongReason": "误把向心力当作额外力", "knowledgePoints": ["圆周运动"], "correctAnalysis": "向心力由合外力指向圆心的分力提供" }
+  ],
+  "notes": [
+    { "key": "folder_math", "userKey": "xiaoming", "noteTitle": "数学笔记", "isFolder": true, "parentId": null, "noteTags": [] },
+    { "key": "folder_physics", "userKey": "xiaoming", "noteTitle": "物理笔记", "isFolder": true, "parentId": null, "noteTags": [] },
+    { "key": "folder_english", "userKey": "xiaoming", "noteTitle": "英语笔记", "isFolder": true, "parentId": null, "noteTags": [] },
+    { "key": "note_deriv", "userKey": "xiaoming", "noteTitle": "导数公式速记", "isFolder": false, "parentKey": "folder_math", "noteTags": ["数学", "导数"], "noteContent": "## 常用求导\n\n- (x^n)' = nx^{n-1}\n- (sin x)' = cos x\n- (e^x)' = e^x\n\n> 做题前先判断定义域" },
+    { "key": "note_trig", "userKey": "xiaoming", "noteTitle": "三角函数图像变换", "isFolder": false, "parentKey": "folder_math", "noteTags": ["数学", "三角"], "noteContent": "### 变换顺序\n\n1. 相位\n2. 周期\n3. 振幅\n\n口诀：左加右减，上加下减" },
+    { "key": "note_sequence", "userKey": "xiaoming", "noteTitle": "数列求和方法汇总", "isFolder": false, "parentKey": "folder_math", "noteTags": ["数学", "数列"], "noteContent": "- 公式法\n- 错位相减\n- 裂项相消\n- 分组求和" },
+    { "key": "note_physics", "userKey": "xiaoming", "noteTitle": "力学实验要点", "isFolder": false, "parentKey": "folder_physics", "noteTags": ["物理"], "noteContent": "1. 平衡条件\n2. 图像斜率物理意义\n3. 误差分析记录" },
+    { "key": "note_em", "userKey": "xiaoming", "noteTitle": "电磁感应笔记", "isFolder": false, "parentKey": "folder_physics", "noteTags": ["物理", "电磁"], "noteContent": "## 法拉第定律\n\n磁通变化产生感应电动势\n\n## 楞次定律\n\n感应电流磁场阻碍原磁通变化" },
+    { "key": "note_reading", "userKey": "xiaoming", "noteTitle": "阅读生词本", "isFolder": false, "parentKey": "folder_english", "noteTags": ["英语"], "noteContent": "nevertheless - 然而\nsignificant - 重要的\nacknowledge - 承认" },
+    { "key": "note_writing", "userKey": "xiaoming", "noteTitle": "作文高分句型", "isFolder": false, "parentKey": "folder_english", "noteTags": ["英语", "写作"], "noteContent": "1. It is widely acknowledged that...\n2. Not only... but also...\n3. There is no denying that..." },
+    { "key": "note_weekly", "userKey": "xiaoming", "noteTitle": "本周学习复盘", "isFolder": false, "parentId": null, "noteTags": ["复盘"], "noteContent": "本周完成：数学导数3题、物理力学2题、英语阅读4篇。下周重点：电磁感应。" },
+    { "key": "note_conic", "userKey": "xiaoming", "noteTitle": "圆锥曲线要点", "isFolder": false, "parentKey": "folder_math", "noteTags": ["数学", "圆锥曲线"], "noteContent": "## 椭圆\n\n标准方程、焦点、离心率\n\n## 双曲线\n\n渐近线方程 y=±(b/a)x" },
+    { "key": "note_energy", "userKey": "xiaoming", "noteTitle": "能量守恒判断", "isFolder": false, "parentKey": "folder_physics", "noteTags": ["物理", "能量"], "noteContent": "1. 只有重力/弹力做功 → 机械能守恒\n2. 有摩擦 → 用动能定理\n3. 注意零势能面选取" },
+    { "key": "note_cloze", "userKey": "xiaoming", "noteTitle": "完形填空技巧", "isFolder": false, "parentKey": "folder_english", "noteTags": ["英语", "技巧"], "noteContent": "先通读全文把握主旨\n关注复现词与情感色彩\n最后检查代词指代是否一致" },
+    { "key": "note_exam", "userKey": "xiaoming", "noteTitle": "五月考试反思", "isFolder": false, "parentId": null, "noteTags": ["考试", "复盘"], "noteContent": "数学：导数大题步骤分拿满\n物理：实验题读数要估读\n英语：听力预读题干关键词" }
+  ],
+  "knowledgeBases": [
+    {
+      "key": "kb_math",
+      "userKey": "xiaoming",
+      "name": "高中数学公式库",
+      "description": "函数、导数、三角核心公式",
+      "subject": "math",
+      "files": [
+        { "name": "导数基础.md", "type": "text", "source": "text", "content": "# 导数基础\n\n导数表示函数在某点的瞬时变化率。\n\n## 常见公式\n- 幂函数求导\n- 三角函数求导", "status": "completed" },
+        { "name": "三角恒等式.md", "type": "text", "source": "text", "content": "# 三角恒等式\n\n- sin²α+cos²α=1\n- sin(α±β)=sinαcosβ±cosαsinβ", "status": "completed" },
+        { "name": "数列求和.md", "type": "text", "source": "text", "content": "# 数列求和\n\n## 等差数列\nS_n = n(a1+an)/2\n\n## 错位相减\n适用于等差×等比型", "status": "completed" },
+        { "name": "圆锥曲线.md", "type": "text", "source": "text", "content": "# 圆锥曲线\n\n椭圆：x²/a²+y²/b²=1\n双曲线：x²/a²-y²/b²=1\n抛物线：y²=2px", "status": "completed" }
+      ]
+    },
+    {
+      "key": "kb_physics",
+      "userKey": "xiaoming",
+      "name": "高中物理知识点",
+      "description": "力学与电磁学核心概念",
+      "subject": "physics",
+      "files": [
+        { "name": "牛顿定律.md", "type": "text", "source": "text", "content": "# 牛顿三定律\n\n1. 惯性定律\n2. F=ma\n3. 作用力与反作用力", "status": "completed" },
+        { "name": "电磁感应.md", "type": "text", "source": "text", "content": "# 电磁感应\n\n感应电动势与磁通变化率相关\n\n楞次定律：阻碍磁通变化", "status": "completed" },
+        { "name": "能量守恒.md", "type": "text", "source": "text", "content": "# 机械能守恒\n\n条件：只有保守力做功\n表达式：E_k1+E_p1=E_k2+E_p2", "status": "completed" }
+      ]
+    },
+    {
+      "key": "kb_english",
+      "userKey": "xiaoming",
+      "name": "英语语法与写作",
+      "description": "语法要点与写作模板",
+      "subject": "english",
+      "files": [
+        { "name": "定语从句.md", "type": "text", "source": "text", "content": "# 定语从句\n\n关系代词：who/whom/which/that\n关系副词：when/where/why", "status": "completed" },
+        { "name": "写作模板.md", "type": "text", "source": "text", "content": "# 应用文模板\n\n## 建议信\nDear Sir/Madam,\nI am writing to...", "status": "completed" },
+        { "name": "阅读理解技巧.md", "type": "text", "source": "text", "content": "# 阅读技巧\n\n1. 主旨题看首尾段\n2. 细节题定位关键词\n3. 推断题勿过度推理", "status": "completed" }
+      ]
+    }
+  ],
+  "assistants": [
+    { "key": "asst_math", "userKey": "xiaoming", "name": "数学小助手", "prompt": "你是一位耐心的高中数学老师，擅长分步讲解，回答时使用 Markdown。", "subject": "math", "isSystem": false, "knowledgeBaseKey": "kb_math" },
+    { "key": "asst_physics", "userKey": "xiaoming", "name": "物理答疑官", "prompt": "你是高中物理老师，讲解力学与电磁问题时注重受力分析与公式适用条件。", "subject": "physics", "isSystem": false, "knowledgeBaseKey": "kb_physics" },
+    { "key": "asst_english", "userKey": "xiaoming", "name": "英语写作教练", "prompt": "你是高中英语教练，擅长阅读与写作指导，回答简洁并给出可模仿的例句。", "subject": "english", "isSystem": false, "knowledgeBaseKey": "kb_english" }
+  ],
+  "topics": [
+    {
+      "key": "topic1",
+      "userKey": "xiaoming",
+      "assistantKey": "asst_math",
+      "title": "导数应用题讨论",
+      "messages": [
+        { "role": "user", "content": "老师好，如何求函数 f(x)=x³-3x 的极值？" },
+        { "role": "assistant", "content": "你好！第一步求导：f'(x)=3x²-3。令 f'(x)=0，得 x=±1。第二步用单调性列表：x<-1 时 f'>0 递增，-1<x<1 时 f'<0 递减，x>1 时 f'>0 递增。所以 x=-1 是极大值点，x=1 是极小值点。" },
+        { "role": "user", "content": "如果定义域是 [0,2] 呢？还要比较端点吗？" },
+        { "role": "assistant", "content": "对的。闭区间上求最值要比较：端点 f(0)=0、f(2)=2，以及区间内极值点 f(1)=-2。所以在 [0,2] 上最大值为 2（x=2），最小值为 -2（x=1）。" },
+        { "role": "user", "content": "那 f(x) 在 [-2,2] 上的最大值呢？" },
+        { "role": "assistant", "content": "计算 f(-2)=-2+6=4，f(2)=2，f(-1)=2，f(1)=-2。最大值是 4，在 x=-2 取得。这类题建议列表格，避免漏算端点。" },
+        { "role": "user", "content": "明白了，我去练两道类似的。" },
+        { "role": "assistant", "content": "很好！建议练含参数或分段函数的变式，考试常考。有题随时来问。" }
+      ]
+    },
+    {
+      "key": "topic2",
+      "userKey": "xiaoming",
+      "assistantKey": "asst_math",
+      "title": "三角函数化简",
+      "messages": [
+        { "role": "user", "content": "sin²x + sinxcosx 怎么化简？考试总卡在这一步。" },
+        { "role": "assistant", "content": "可以先提取公因式：sinx(sinx+cosx)。若需进一步统一，可用二倍角：sin²x=(1-cos2x)/2，sinxcosx=sin2x/2，合并后得到 (1-cos2x+sin2x)/2。" },
+        { "role": "user", "content": "有没有更直观的办法？" },
+        { "role": "assistant", "content": "也可以写成 √2/2·sinx·sin(x+π/4) 的形式，便于看周期与最值。但考试写提取公因式或二倍角一般就够。" },
+        { "role": "user", "content": "好的，我记第二种二倍角写法。" },
+        { "role": "assistant", "content": "建议配套画 y=sin²x+sinxcosx 的图像，化简结果和图像峰值能互相验证。" }
+      ]
+    },
+    {
+      "key": "topic3",
+      "userKey": "xiaoming",
+      "assistantKey": "asst_math",
+      "title": "数列求和思路",
+      "messages": [
+        { "role": "user", "content": "等差×等比型数列怎么求和？比如 n·2ⁿ。" },
+        { "role": "assistant", "content": "用错位相减法。设 S=1·2+2·2²+…+n·2ⁿ，则 2S=1·2²+2·2³+…+n·2ⁿ⁺¹，两式相减得 S=n·2ⁿ⁺¹-(2+2²+…+2ⁿ)，后面是等比求和。" },
+        { "role": "user", "content": "相减后中间项为什么能消掉？" },
+        { "role": "assistant", "content": "因为 2S 每项比 S 多乘一个 2，逐项对齐后，2·2² 与 2·2² 抵消，只剩首项未对齐和末项多出的一项。" },
+        { "role": "user", "content": "最后化简有什么要注意的？" },
+        { "role": "assistant", "content": "等比部分用 S_n=a1(1-q^n)/(1-q)，注意 q=2 不等于 1。结果常形如 (n-1)*2^(n+1)+常数，建议代入 n=1,2 验算。" },
+        { "role": "user", "content": "懂了，谢谢！" },
+        { "role": "assistant", "content": "不客气。裂项相消和分组求和也可以对比学，三种方法在选择题里常用来排错。" }
+      ]
+    },
+    {
+      "key": "topic4",
+      "userKey": "xiaoming",
+      "assistantKey": "asst_physics",
+      "title": "斜面受力分析",
+      "messages": [
+        { "role": "user", "content": "质量 2kg 的物体放在 30° 光滑斜面上，求支持力和加速度。" },
+        { "role": "assistant", "content": "光滑则无摩擦。沿斜面：mg sin30°=ma，a=g sin30°=5 m/s²。垂直斜面：N=mg cos30°=2×10×√3/2≈17.3 N。" },
+        { "role": "user", "content": "如果动摩擦系数 μ=0.2，物体沿斜面向下匀速呢？" },
+        { "role": "assistant", "content": "匀速则沿斜面合力为零：mg sin30°=μmg cos30°，可反解 μ 或验证已知 μ 是否满足。若求摩擦力 f=μN=μmg cosθ。" },
+        { "role": "user", "content": "受力图要先画重力再分解吗？" },
+        { "role": "assistant", "content": "建议：画重力 G，再分解为沿斜面 Gsinθ 和垂直斜面 Gcosθ，然后标 N、f。正方向取沿斜面向下或向上均可，全程一致即可。" },
+        { "role": "user", "content": "明白了，我去做实验题。" },
+        { "role": "assistant", "content": "好。斜面题还可结合动能定理，有摩擦时优先想 W_f=fd。" }
+      ]
+    },
+    {
+      "key": "topic5",
+      "userKey": "xiaoming",
+      "assistantKey": "asst_physics",
+      "title": "电磁感应方向判断",
+      "messages": [
+        { "role": "user", "content": "条形磁铁 N 极插入线圈，感应电流方向怎么判？" },
+        { "role": "assistant", "content": "楞次定律：感应电流的磁场阻碍磁铁插入，即线圈靠近磁铁一端相当于 N 极。再用右手螺旋定则：拇指指向该极性，四指为电流方向。" },
+        { "role": "user", "content": "拔出时方向相反吗？" },
+        { "role": "assistant", "content": "对。拔出时阻碍离开，线圈产生吸引磁铁的磁场，电流方向与插入时相反。" },
+        { "role": "user", "content": "和法拉第定律怎么配合？" },
+        { "role": "assistant", "content": "法拉第定律算大小：ε=|ΔΦ/Δt|；楞次定律定方向。做题先判增减：Φ 增则感应磁场反向，Φ 减则同向。" },
+        { "role": "user", "content": "考试写步骤有什么模板？" },
+        { "role": "assistant", "content": "建议三步：①原磁通如何变化 ②感应磁场方向（阻碍变化）③右手定则定电流。写清「阻碍」关键词可拿步骤分。" }
+      ]
+    },
+    {
+      "key": "topic6",
+      "userKey": "xiaoming",
+      "assistantKey": "asst_english",
+      "title": "读后续写情节设计",
+      "messages": [
+        { "role": "user", "content": "读后续写第一段总是写不长，有什么结构？" },
+        { "role": "assistant", "content": "常用「情绪+动作+对话」三段式：先写人物心理（ nervous / relieved），再写 1-2 个具体动作，最后加一句对话推进情节。" },
+        { "role": "user", "content": "能举个开头吗？" },
+        { "role": "assistant", "content": "例如：His hands trembled as he opened the letter. \"I can't believe it's finally here,\" he whispered, eyes shining with hope." },
+        { "role": "user", "content": "第二段要和第一段怎么衔接？" },
+        { "role": "assistant", "content": "用时间或因果连接：Minutes later / With this discovery；并回应原文伏笔，让主题（如 kindness、perseverance）自然升华。" },
+        { "role": "user", "content": "词汇怕重复怎么办？" },
+        { "role": "assistant", "content": "准备同义替换表：said→ murmured/exclaimed；happy→ thrilled/overjoyed。但准确优先，不要为用而用。" },
+        { "role": "user", "content": "好的，我按这个练两篇。" },
+        { "role": "assistant", "content": "练完可以对照原文情节线检查：人物性格是否一致、结尾是否点题。需要批改随时发我。" }
+      ]
+    }
+  ],
+  "questions": [
+    { "key": "q1", "userKey": "xiaoming", "title": "二次函数图像与判别式关系", "content": "Δ>0、Δ=0、Δ<0 时图像分别有什么特点？能否举例子？", "tags": ["数学", "函数"], "solved": true, "viewCount": 86, "answerCount": 3 },
+    { "key": "q2", "userKey": "xiaoming", "title": "物理实验：测重力加速度", "content": "单摆法测 g 时，哪些操作会引入系统误差？", "tags": ["物理", "实验"], "solved": false, "viewCount": 45, "answerCount": 2 },
+    { "key": "q3", "userKey": "xiaohong", "title": "有机化学：如何区分醛和酮？", "content": "除了银镜反应，还有哪些简便鉴别方法？", "tags": ["化学", "有机"], "solved": true, "viewCount": 62, "answerCount": 2 },
+    { "key": "q4", "userKey": "xiaogang", "title": "动量守恒在什么情况下不适用？", "content": "系统有外力时一定不能用吗？有没有例外？", "tags": ["物理", "动量"], "solved": false, "viewCount": 38, "answerCount": 3 },
+    { "key": "q5", "userKey": "xiaoli", "title": "英语七选五有什么解题技巧？", "content": "总错在最后两个空，如何快速找线索？", "tags": ["英语", "阅读"], "solved": true, "viewCount": 71, "answerCount": 2 },
+    { "key": "q6", "userKey": "xiaoming", "title": "AI 学习计划怎么设置更合理？", "content": "希望结合错题和考试数据，有没有推荐的数据源勾选？", "tags": ["平台", "学习计划"], "solved": false, "viewCount": 29, "answerCount": 2 },
+    { "key": "q7", "userKey": "xiaohong", "title": "文言文虚词「之」有哪些用法？", "content": "经常搞混代词和结构助词，求总结。", "tags": ["语文", "文言文"], "solved": false, "viewCount": 33, "answerCount": 3 },
+    { "key": "q8", "userKey": "xiaoli", "title": "生物：有丝分裂各时期特点", "content": "前期、中期、后期染色体行为总记混，有没有口诀？", "tags": ["生物", "细胞"], "solved": true, "viewCount": 52, "answerCount": 3 },
+    { "key": "q9", "userKey": "xiaogang", "title": "数学：导数证明不等式常用方法", "content": "构造函数、放缩、凹凸性这几类怎么选？", "tags": ["数学", "导数"], "solved": false, "viewCount": 67, "answerCount": 4 },
+    { "key": "q10", "userKey": "xiaohong", "title": "平台功能：错题本如何批量标注？", "content": "错题多了想统一加知识点标签，有没有快捷操作？", "tags": ["平台", "错题集"], "solved": true, "viewCount": 41, "answerCount": 2 }
+  ],
+  "answers": [
+    { "questionKey": "q1", "userKey": "xiaohong", "content": "Δ>0 两个交点，Δ=0 相切一个交点，Δ<0 无交点。例如 y=x²-1 与 x 轴两交点。", "likeCount": 5, "isBest": true },
+    { "questionKey": "q1", "userKey": "xiaogang", "content": "补充：Δ=0 时顶点在 x 轴上；Δ<0 图像全在 x 轴上方或下方，看 a 的符号。", "likeCount": 3, "isBest": false },
+    { "questionKey": "q1", "userKey": "xiaoli", "content": "可以画三个草图对比，答辩展示时更直观。", "likeCount": 2, "isBest": false },
+    { "questionKey": "q2", "userKey": "xiaohong", "content": "摆角过大、摆线弹性、计时误差都会影响结果，建议小角度近似并多次测量取平均。", "likeCount": 2, "isBest": false },
+    { "questionKey": "q2", "userKey": "xiaogang", "content": "还要考虑空气阻力；用光电门计时比手动停表更准确。", "likeCount": 4, "isBest": true },
+    { "questionKey": "q3", "userKey": "xiaoming", "content": "醛能发生银镜反应和斐林反应，酮不能；2,4-二硝基苯肼也能生成不同现象。", "likeCount": 3, "isBest": true },
+    { "questionKey": "q3", "userKey": "xiaoli", "content": "闻气味不可靠，实验操作要在通风橱进行。", "likeCount": 1, "isBest": false },
+    { "questionKey": "q4", "userKey": "xiaoming", "content": "合外力为零或外力冲量可忽略时可用；例如爆炸问题内力远大于外力。", "likeCount": 4, "isBest": true },
+    { "questionKey": "q4", "userKey": "xiaohong", "content": "碰撞时间极短时，重力冲量可忽略，近似动量守恒。", "likeCount": 2, "isBest": false },
+    { "questionKey": "q4", "userKey": "xiaoli", "content": "建议画受力图区分内力和外力，考试写清近似条件。", "likeCount": 1, "isBest": false },
+    { "questionKey": "q5", "userKey": "xiaoming", "content": "先看代词指代和逻辑词 however/therefore；首尾句常考主旨与衔接。", "likeCount": 6, "isBest": true },
+    { "questionKey": "q5", "userKey": "xiaogang", "content": "选项先排除明显重复或话题跳跃的句子。", "likeCount": 2, "isBest": false },
+    { "questionKey": "q6", "userKey": "xiaohong", "content": "建议勾选 profile、exam、errorBook、studyPlan，计划周期 7 天较合适。", "likeCount": 3, "isBest": false },
+    { "questionKey": "q6", "userKey": "xiaoli", "content": "开启定时生成后，每周一早上会自动推送，演示效果很好。", "likeCount": 2, "isBest": true },
+    { "questionKey": "q7", "userKey": "xiaoming", "content": "之 常见：代词（他/它）、结构助词（的）、取独（主谓之间）、动词（往/到）。", "likeCount": 2, "isBest": false },
+    { "questionKey": "q7", "userKey": "xiaoli", "content": "补一例：「师道之不传也久矣」中「之」是取独，取消句子独立性。", "likeCount": 4, "isBest": true },
+    { "questionKey": "q7", "userKey": "xiaogang", "content": "做题先找前后能否加「的」，能加多半是结构助词。", "likeCount": 1, "isBest": false },
+    { "questionKey": "q8", "userKey": "xiaoming", "content": "口诀：膜仁体（膜消失、染色体排列、着丝点分裂、子细胞形成）对应前中后期。", "likeCount": 5, "isBest": true },
+    { "questionKey": "q8", "userKey": "xiaohong", "content": "中期最好认：着丝点排赤道板，像「赤道板」三个字。", "likeCount": 3, "isBest": false },
+    { "questionKey": "q8", "userKey": "xiaogang", "content": "建议画 4 张简图，答辩展示细胞分裂很直观。", "likeCount": 2, "isBest": false },
+    { "questionKey": "q9", "userKey": "xiaoming", "content": "能一阶导看单调就用构造函数；指数对数混合常取对数或放缩。", "likeCount": 6, "isBest": true },
+    { "questionKey": "q9", "userKey": "xiaohong", "content": "含 e^x 的不等式可构造 f(x)=e^x-x-1 这类经典模型。", "likeCount": 3, "isBest": false },
+    { "questionKey": "q9", "userKey": "xiaoli", "content": "凹凸性适合证 x>ln(x+1) 这类，二阶导判断曲线弯曲方向。", "likeCount": 2, "isBest": false },
+    { "questionKey": "q9", "userKey": "xiaogang", "content": "压轴题常组合：先构造再放缩，步骤写清给分点。", "likeCount": 1, "isBest": false },
+    { "questionKey": "q10", "userKey": "xiaoming", "content": "错题列表勾选后可用 AI 批量标注知识点，一次最多 20 道。", "likeCount": 4, "isBest": true },
+    { "questionKey": "q10", "userKey": "xiaoli", "content": "标注完记得按知识点筛选复习，演示时效果很好。", "likeCount": 2, "isBest": false }
+  ],
+  "feedbacks": [
+    { "userKey": "xiaoming", "type": "suggestion", "content": "希望学习计划时间线支持导出为图片，方便分享给家长。", "status": "replied", "reply": "感谢建议，已纳入后续版本规划。" },
+    { "userKey": "xiaoming", "type": "bug", "content": "移动端侧边栏偶发遮挡内容，横屏时较明显。", "status": "submitted" },
+    { "userKey": "xiaohong", "type": "question", "content": "知识库上传 PDF 后多久能完成向量化？", "status": "replied", "reply": "一般 1-3 分钟，可在文件列表查看状态。" },
+    { "userKey": "xiaogang", "type": "suggestion", "content": "社区问题能否支持按学科筛选？", "status": "submitted" },
+    { "userKey": "xiaoli", "type": "other", "content": "演示数据包很实用，答辩展示效果好。", "status": "replied", "reply": "感谢认可，欢迎继续反馈。" },
+    { "userKey": "xiaoming", "type": "question", "content": "AI 助手能否记住上次对话的上下文？", "status": "submitted" },
+    { "userKey": "xiaoming", "type": "suggestion", "content": "希望错题本支持按「未掌握/掌握中/已掌握」一键筛选导出。", "status": "replied", "reply": "该功能已在规划中，感谢反馈。" },
+    { "userKey": "xiaoming", "type": "other", "content": "答辩演示时建议增加「一键演示模式」引导。", "status": "submitted" }
+  ],
+  "notifications": [
+    { "userKey": "xiaoming", "type": "register", "title": "欢迎加入智慧教育平台", "content": "演示账号已就绪，可在各模块查看示例数据。", "isRead": true },
+    { "userKey": "xiaoming", "type": "reply", "title": "你的问题有了新回答", "content": "演示-小红 回答了你的问题「二次函数图像与判别式关系」", "isRead": false, "relatedType": "question", "questionKey": "q1" },
+    { "userKey": "xiaoming", "type": "reply", "title": "你的问题有了新回答", "content": "演示-小刚 也参与了讨论「物理实验：测重力加速度」", "isRead": false, "relatedType": "question", "questionKey": "q2" },
+    { "userKey": "xiaoming", "type": "system", "title": "演示数据已导入", "content": "管理员已为平台导入演示数据包，便于功能展示。", "isRead": false, "relatedData": { "source": "admin_demo_seed" } },
+    { "userKey": "xiaoming", "type": "aiPlan", "title": "AI 学习计划已生成", "content": "已为你生成 3 条本周学习计划，请前往学习计划页查看。", "isRead": false, "relatedData": { "planCount": 3, "summary": "函数与导数、力学巩固、阅读精练" } },
+    { "userKey": "xiaoming", "type": "login", "title": "欢迎回来", "content": "你已成功登录智慧教育平台，祝你学习愉快！", "isRead": true },
+    { "userKey": "xiaohong", "type": "reply", "title": "你的问题有了新回答", "content": "演示-小明 回答了你的问题「有机化学：如何区分醛和酮？」", "isRead": false, "relatedType": "question", "questionKey": "q3" },
+    { "userKey": "xiaogang", "type": "reply", "title": "你的问题有了新回答", "content": "已有 3 位同学回答「动量守恒在什么情况下不适用？」", "isRead": false, "relatedType": "question", "questionKey": "q4" },
+    { "userKey": "xiaoli", "type": "like", "title": "你的回答收到点赞", "content": "演示-小明 赞了你的回答", "isRead": false },
+    { "userKey": "xiaoming", "type": "system", "title": "反馈已回复", "content": "你提交的建议「学习计划时间线导出」已收到官方回复。", "isRead": false },
+    { "userKey": "xiaoming", "type": "reply", "title": "你的问题有了新回答", "content": "演示-小丽 等 3 位同学回答「导数证明不等式常用方法」", "isRead": false, "relatedType": "question", "questionKey": "q9" },
+    { "userKey": "xiaoming", "type": "like", "title": "你的回答收到点赞", "content": "演示-小红 等 2 位同学赞了你在「有丝分裂各时期特点」下的回答", "isRead": false },
+    { "userKey": "xiaoming", "type": "aiPlan", "title": "AI 学习计划提醒", "content": "「概率统计大题突破」计划进度 20%，建议今日完成 1 道练习。", "isRead": false, "relatedData": { "planCount": 1, "summary": "概率统计大题突破" } },
+    { "userKey": "xiaoming", "type": "system", "title": "错题复习提醒", "content": "你有 6 道未掌握错题超过 7 天未复习，建议今日回顾。", "isRead": false, "relatedData": { "source": "error_book_reminder" } }
+  ]
+}

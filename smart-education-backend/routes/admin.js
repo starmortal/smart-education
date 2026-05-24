@@ -11,6 +11,11 @@ const {
   getDistributionStats,
   broadcastSystemAnnouncement,
 } = require('../services/adminService');
+const {
+  getDemoSeedStatus,
+  importDemoSeed,
+  removeDemoSeed,
+} = require('../services/demoSeedService');
 
 const ADMIN_USERNAME = 'admin';
 const ADMIN_PASSWORD = 'admin123456';
@@ -102,6 +107,21 @@ router.post('/feedback/reply', asyncHandler(async (req, res) => {
 
   logger.info(`管理员回复反馈: ${feedbackId}`);
   Response.success(res, { id: feedback._id, status: feedback.status }, '回复成功');
+}));
+
+router.get('/demo-seed/status', asyncHandler(async (req, res) => {
+  const data = await getDemoSeedStatus();
+  Response.success(res, data, '获取演示数据状态成功');
+}));
+
+router.post('/demo-seed/import', asyncHandler(async (req, res) => {
+  const result = await importDemoSeed();
+  Response.success(res, result, '演示数据导入成功');
+}));
+
+router.delete('/demo-seed', asyncHandler(async (req, res) => {
+  const result = await removeDemoSeed();
+  Response.success(res, result, '演示数据已清除，可重新导入');
 }));
 
 module.exports = router;

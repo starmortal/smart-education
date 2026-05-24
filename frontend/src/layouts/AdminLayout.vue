@@ -29,6 +29,10 @@
           <el-icon><Bell /></el-icon>
           <span>系统公告</span>
         </el-menu-item>
+        <el-menu-item index="/admin/demo-data">
+          <el-icon><Coin /></el-icon>
+          <span>演示数据</span>
+        </el-menu-item>
       </el-menu>
 
       <div class="sidebar-footer">
@@ -60,7 +64,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { DataAnalysis, ChatLineSquare, Bell, SwitchButton } from '@element-plus/icons-vue';
+import { DataAnalysis, ChatLineSquare, Bell, Coin, SwitchButton } from '@element-plus/icons-vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -72,6 +76,7 @@ const pageTitle = computed(() => {
     '/admin/dashboard': '数据概览',
     '/admin/feedback': '反馈管理',
     '/admin/announcement': '系统公告',
+    '/admin/demo-data': '演示数据',
   };
   return map[route.path] || '管理后台';
 });
