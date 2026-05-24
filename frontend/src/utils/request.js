@@ -98,7 +98,13 @@ service.interceptors.response.use(
       }
     } else if (error.request) {
       if (error.code === 'ECONNABORTED') {
-        ElMessage.error("请求超时，请检查网络连接");
+        const isAiRequest = (error.config?.timeout || 0) >= 60000
+          || /ai-generate|ai-schedule|learning-profile/.test(error.config?.url || '');
+        ElMessage.error(
+          isAiRequest
+            ? 'AI 处理时间较长，本次请求已超时。请稍后在「我的计划」查看是否已生成，或稍后重试'
+            : '请求超时，请检查网络连接'
+        );
       } else {
         ElMessage.error("网络错误，请检查后端服务是否启动");
       }

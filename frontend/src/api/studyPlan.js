@@ -2,6 +2,9 @@ import request from '@/utils/request';
 
 const BASE_URL = 'http://localhost:3001';
 
+/** AI 生成/定时任务等耗时较长，单独延长超时（2 分钟） */
+const AI_REQUEST_TIMEOUT = 120000;
+
 /**
  * 获取学习画像
  */
@@ -10,6 +13,7 @@ export function getLearningProfile(params = {}) {
     url: '/api/study-plan/learning-profile',
     method: 'get',
     params,
+    timeout: 30000,
   });
 }
 
@@ -21,6 +25,7 @@ export function previewAiPlans(data) {
     url: '/api/study-plan/ai-generate/preview',
     method: 'post',
     data,
+    timeout: AI_REQUEST_TIMEOUT,
   });
 }
 
@@ -77,6 +82,7 @@ export function confirmAiPlans(data) {
     url: '/api/study-plan/ai-generate/confirm',
     method: 'post',
     data,
+    timeout: 60000,
   });
 }
 
@@ -88,6 +94,7 @@ export function adjustAiPlans(data) {
     url: '/api/study-plan/ai-generate/adjust',
     method: 'post',
     data,
+    timeout: AI_REQUEST_TIMEOUT,
   });
 }
 
@@ -121,5 +128,6 @@ export function runScheduleNow(data = {}) {
     url: '/api/study-plan/ai-schedule/run-now',
     method: 'post',
     data,
+    timeout: AI_REQUEST_TIMEOUT,
   });
 }

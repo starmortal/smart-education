@@ -87,7 +87,7 @@
               :loading="runningSchedule"
               @click="handleRunScheduleNow"
             >
-              立即执行一次
+              {{ runningSchedule ? '生成中（约 1–2 分钟）' : '立即执行一次' }}
             </el-button>
           </template>
         </div>
@@ -526,6 +526,10 @@ async function handleRunScheduleNow() {
     }
   } catch (error) {
     console.error('立即执行定时生成失败：', error);
+    if (error.code === 'ECONNABORTED') {
+      // 全局拦截器已提示；补充引导刷新列表
+      emit('imported');
+    }
   } finally {
     runningSchedule.value = false;
   }
