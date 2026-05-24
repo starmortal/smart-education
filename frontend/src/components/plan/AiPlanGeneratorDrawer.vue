@@ -161,6 +161,12 @@
         <div class="section-card profile-card" v-loading="profileLoading">
           <div class="section-title">学习画像摘要</div>
           <p class="profile-summary">{{ profileSummary || '点击「生成计划草案」后展示 AI 依据' }}</p>
+
+          <div v-if="knowledgeAnalysisText" class="knowledge-analysis-block">
+            <div class="knowledge-analysis-title">知识点分析</div>
+            <p class="knowledge-analysis-text">{{ knowledgeAnalysisText }}</p>
+          </div>
+
           <div v-if="weakKnowledgePoints.length" class="weak-kp-block">
             <span class="weak-kp-label">薄弱知识点：</span>
             <el-tag
@@ -199,9 +205,9 @@
           </el-button>
         </div>
 
-        <div v-if="streamText || generating" class="section-card stream-card">
-          <div class="section-title">AI 生成过程</div>
-          <pre class="stream-text">{{ streamText }}<span v-if="generating" class="cursor">|</span></pre>
+        <div v-if="generating" class="section-card generating-hint">
+          <el-icon class="is-loading"><MagicStick /></el-icon>
+          <span>AI 正在分析学习数据并制定计划，请稍候…</span>
         </div>
 
         <div v-if="aiSummary" class="section-card ai-summary-card">
@@ -230,7 +236,7 @@
                   <span>{{ plan.startTime }} ~ {{ plan.endTime }}</span>
                 </div>
                 <p v-if="plan.reason" class="plan-reason">
-                  <el-icon><InfoFilled /></el-icon>
+                  <span class="plan-reason-label">AI制定理由</span>
                   {{ plan.reason }}
                 </p>
                 <div v-if="plan.dataSources?.length" class="plan-sources">
@@ -279,10 +285,10 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue';
 import { ElMessage } from 'element-plus';
-import { MagicStick, InfoFilled } from '@element-plus/icons-vue';
+import { MagicStick } from '@element-plus/icons-vue';
 import {
   getLearningProfile,
-  previewAiPlansStream,
+  previewAiPlans,
   confirmAiPlans,
   adjustAiPlans,
   getAiPlanSettings,
@@ -311,10 +317,10 @@ const importing = ref(false);
 const adjusting = ref(false);
 const runningSchedule = ref(false);
 const profileSummary = ref('');
+const knowledgeAnalysisText = ref('');
 const enabledSourceLabels = ref([]);
 const weakKnowledgePoints = ref([]);
 const aiSummary = ref('');
-const streamText = ref('');
 const draftPlans = ref([]);
 const selectAll = ref(true);
 const adjustResult = ref(null);
@@ -428,6 +434,17 @@ async function persistSettings() {
   }
 }
 
+function applyProfileData(data) {
+  if (!data) return;
+  profileSummary.value = data.profileSummary || profileSummary.value;
+  enabledSourceLabels.value = data.enabledSourceLabels || enabledSourceLabels.value;
+  knowledgeAnalysisText.value = data.knowledgeAnalysis?.summary || '';
+  weakKnowledgePoints.value =
+    data.knowledgeAnalysis?.weakKnowledgePoints ||
+    data.sections?.errorBook?.weakKnowledgePoints ||
+    [];
+}
+
 async function loadProfilePreview() {
   if (!props.userId) return;
   profileLoading.value = true;
@@ -437,9 +454,7 @@ async function loadProfilePreview() {
       dataSources: form.dataSources.join(','),
     });
     if (res.code === 200 && res.data) {
-      profileSummary.value = res.data.profileSummary || '';
-      enabledSourceLabels.value = res.data.enabledSourceLabels || [];
-      weakKnowledgePoints.value = res.data.sections?.errorBook?.weakKnowledgePoints || [];
+      applyProfileData(res.data);
     }
   } catch (error) {
     console.error('加载学习画像失败：', error);
@@ -459,39 +474,28 @@ async function handleGenerate() {
   }
 
   generating.value = true;
-  streamText.value = '';
   draftPlans.value = [];
   aiSummary.value = '';
 
   try {
-    await previewAiPlansStream(
-      {
-        userId: props.userId,
-        dataSources: form.dataSources,
-        durationDays: form.durationDays,
-        focusSubjects: form.focusSubjects,
-        maxPlans: 8,
-      },
-      (event) => {
-        if (event.type === 'profile') {
-          profileSummary.value = event.data?.profileSummary || profileSummary.value;
-          enabledSourceLabels.value = event.data?.enabledSourceLabels || enabledSourceLabels.value;
-          weakKnowledgePoints.value = event.data?.weakKnowledgePoints || [];
-        } else if (event.type === 'chunk') {
-          streamText.value += event.content || '';
-        } else if (event.type === 'result') {
-          const data = event.data || {};
-          aiSummary.value = data.summary || '';
-          draftPlans.value = (data.plans || []).map((p) => ({
-            ...p,
-            selected: p.selected !== false,
-          }));
-          selectAll.value = draftPlans.value.every((p) => p.selected);
-        } else if (event.type === 'error') {
-          ElMessage.error(event.message || '生成失败');
-        }
-      }
-    );
+    const res = await previewAiPlans({
+      userId: props.userId,
+      dataSources: form.dataSources,
+      durationDays: form.durationDays,
+      focusSubjects: form.focusSubjects,
+      maxPlans: 8,
+    });
+
+    if (res.code === 200 && res.data) {
+      const data = res.data;
+      applyProfileData(data.learningProfile);
+      aiSummary.value = data.summary || '';
+      draftPlans.value = (data.plans || []).map((p) => ({
+        ...p,
+        selected: p.selected !== false,
+      }));
+      selectAll.value = draftPlans.value.every((p) => p.selected);
+    }
 
     if (draftPlans.value.length === 0) {
       ElMessage.warning('未生成计划，请补充学习数据后重试');
@@ -593,7 +597,6 @@ async function handleImport() {
 function handleClosed() {
   draftPlans.value = [];
   aiSummary.value = '';
-  streamText.value = '';
   adjustResult.value = null;
 }
 </script>
@@ -681,31 +684,37 @@ function handleClosed() {
   gap: 10px;
 }
 
-.stream-card {
-  max-height: 180px;
-  overflow: hidden;
+.knowledge-analysis-block {
+  margin: 10px 0;
+  padding: 10px 12px;
+  background: #f0f9f4;
+  border: 1px solid #cce8d6;
+  border-radius: 6px;
 }
 
-.stream-text {
+.knowledge-analysis-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2d8a5e;
+  margin-bottom: 6px;
+}
+
+.knowledge-analysis-text {
   margin: 0;
   font-size: 12px;
-  line-height: 1.5;
-  color: #4b5563;
+  color: #4b6358;
+  line-height: 1.7;
   white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 140px;
-  overflow-y: auto;
-  background: #fff;
-  border-radius: 6px;
-  padding: 8px;
 }
 
-.cursor {
-  animation: blink 1s step-end infinite;
-}
-
-@keyframes blink {
-  50% { opacity: 0; }
+.generating-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #2d8a5e;
+  background: #f0f9f4;
+  border-color: #cce8d6;
 }
 
 .ai-summary-card p {
@@ -751,12 +760,20 @@ function handleClosed() {
 
 .plan-reason {
   margin: 0;
-  font-size: 12px;
-  color: #0969da;
-  display: flex;
-  align-items: flex-start;
-  gap: 4px;
-  line-height: 1.5;
+  font-size: 11px;
+  color: #6b8578;
+  line-height: 1.6;
+}
+
+.plan-reason-label {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: #2d8a5e;
+  background: #e8f5ee;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 .plan-sources {

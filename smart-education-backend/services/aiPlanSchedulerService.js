@@ -57,7 +57,7 @@ async function sendScheduleNotification(userId, result) {
   const content = `已根据你的学习数据自动生成 ${result.count} 条计划并加入时间轴。${result.summary ? `\n${result.summary}` : ''}${planTitles ? `\n计划：${planTitles}` : ''}`;
 
   try {
-    await notificationService.sendNotification(userId, 'system', title, content.replace(/\n/g, '<br>'), {
+    await notificationService.sendNotification(userId, 'aiPlan', title, content.replace(/\n/g, '<br>'), {
       relatedType: 'user',
       relatedData: {
         planCount: result.count,

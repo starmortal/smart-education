@@ -140,6 +140,7 @@ function buildPrompt(learningProfile, options) {
     learningProfile: {
       profile: learningProfile.profile,
       profileSummary: learningProfile.profileSummary,
+      knowledgeAnalysis: learningProfile.knowledgeAnalysis,
       exam: learningProfile.sections.exam,
       errorBook: learningProfile.sections.errorBook,
       studyPlan: learningProfile.sections.studyPlan,
@@ -156,9 +157,10 @@ function buildPrompt(learningProfile, options) {
 2. 不要与 existingPlans 中已有计划重复
 3. subject 必须使用英文代码：math/chinese/english/physics/chemistry/biology/history/geography/politics
 4. startTime/endTime 格式 YYYY-MM-DD，从今天 ${todayStr} 起，跨度不超过 ${durationDays} 天
-5. 优先薄弱科目和错题多的科目
+5. 优先薄弱科目、薄弱知识点（knowledgeAnalysis.weakKnowledgePoints）和错题多的科目
 6. 若 focusSubjects 非空，优先这些科目
 7. 每条计划必须包含 reason（制定依据，说明为何推荐，30字以内）和 dataSources（依据的数据模块）
+8. 制定计划时需结合 knowledgeAnalysis.summary 中的知识点分析结论
 
 请严格只返回 JSON，不要 markdown，格式：
 {
@@ -254,13 +256,14 @@ async function previewAiPlans(userId, options = {}) {
       profileSummary: learningProfile.profileSummary,
       enabledSourceLabels: learningProfile.enabledSourceLabels,
       enabledSources: learningProfile.enabledSources,
+      knowledgeAnalysis: learningProfile.knowledgeAnalysis,
       sections: learningProfile.sections,
     },
   };
 }
 
 /**
- * 流式生成计划预览（SSE）
+ * 流式生成计划预览（SSE，不向前端推送生成过程文本）
  */
 async function previewAiPlansStream(userId, options = {}, emit) {
   const {
@@ -278,6 +281,7 @@ async function previewAiPlansStream(userId, options = {}, emit) {
       profileSummary: learningProfile.profileSummary,
       enabledSourceLabels: learningProfile.enabledSourceLabels,
       enabledSources: learningProfile.enabledSources,
+      knowledgeAnalysis: learningProfile.knowledgeAnalysis,
       weakKnowledgePoints: learningProfile.sections.errorBook?.weakKnowledgePoints || [],
     },
   });
@@ -305,7 +309,6 @@ async function previewAiPlansStream(userId, options = {}, emit) {
       let fullText = '';
       await ai.chatStream(prompt, [systemMsg], (chunk) => {
         fullText += chunk;
-        emit({ type: 'chunk', content: chunk });
       });
 
       const parsed = parseAiJson(fullText);
@@ -318,7 +321,6 @@ async function previewAiPlansStream(userId, options = {}, emit) {
       }
     } catch (error) {
       logger.error('AI 流式生成计划失败，使用兜底方案', error);
-      emit({ type: 'chunk', content: '\n\n（AI 生成异常，已切换为规则推荐）\n' });
     }
   }
 
@@ -338,6 +340,7 @@ async function previewAiPlansStream(userId, options = {}, emit) {
       profileSummary: learningProfile.profileSummary,
       enabledSourceLabels: learningProfile.enabledSourceLabels,
       enabledSources: learningProfile.enabledSources,
+      knowledgeAnalysis: learningProfile.knowledgeAnalysis,
       sections: learningProfile.sections,
     },
   };
@@ -481,6 +484,7 @@ async function confirmAiPlans(userId, plans = []) {
       planStatus: 'not_started',
       progress: 0,
       targetProgress: 100,
+      aiReason: normalized.reason || '',
     });
 
     await doc.save();

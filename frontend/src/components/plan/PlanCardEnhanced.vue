@@ -41,6 +41,10 @@
         </span>
       </div>
 
+      <p v-if="plan.aiReason" class="ai-reason-text">
+        <span class="ai-reason-label">AI制定理由</span>{{ plan.aiReason }}
+      </p>
+
     </div>
   </div>
 </template>
@@ -255,6 +259,23 @@ function handleViewDetails() {
 .remaining-days.overdue {
   background: #fff5f5;
   color: #f56c6c;
+}
+
+.ai-reason-text {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #6b8578;
+  line-height: 1.6;
+}
+
+.ai-reason-label {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: #2d8a5e;
+  background: #e8f5ee;
+  border-radius: 2px;
 }
 
 /* 响应式设计 */

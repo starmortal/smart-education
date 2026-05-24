@@ -36,6 +36,10 @@ const notificationSettingsSchema = new mongoose.Schema({
       type: Boolean,
       default: true,
     },
+    aiPlan: {
+      type: Boolean,
+      default: true,
+    },
   },
   createTime: {
     type: Date,

@@ -338,6 +338,15 @@ function handleViewDetails(plan) {
   background: #e8f2ec;
 }
 
+.section-content :deep(.ai-reason-text) {
+  color: #6b8578;
+}
+
+.section-content :deep(.ai-reason-label) {
+  color: #2d8a5e;
+  background: #e8f5ee;
+}
+
 .section-empty :deep(.el-empty__description) {
   color: #8aa898;
 }

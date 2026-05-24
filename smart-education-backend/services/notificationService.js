@@ -38,7 +38,7 @@ class NotificationService {
     try {
       // 1. 检查用户通知设置
       const settings = await this.getUserSettings(userId);
-      if (!settings.notificationTypes[type]) {
+      if (settings.notificationTypes[type] === false) {
         logger.info(`用户 ${userId} 已关闭 ${type} 类型通知`);
         return null;
       }
@@ -119,6 +119,7 @@ class NotificationService {
           );
           break;
         case "system":
+        case "aiPlan":
           await emailNotificationService.sendSystemEmail(user.email, title, content);
           break;
         default:
@@ -136,11 +137,23 @@ class NotificationService {
     try {
       let settings = await NotificationSettings.findOne({ userId });
       if (!settings) {
-        // 创建默认设置
         settings = new NotificationSettings({ userId });
         await settings.save();
         logger.info(`为用户 ${userId} 创建默认通知设置`);
       }
+
+      const types = settings.notificationTypes?.toObject?.() || settings.notificationTypes || {};
+      settings.notificationTypes = {
+        register: true,
+        login: true,
+        reply: true,
+        like: true,
+        follow: true,
+        system: true,
+        aiPlan: true,
+        ...types,
+      };
+
       return settings;
     } catch (error) {
       logger.error("获取用户通知设置失败", error);

@@ -293,25 +293,144 @@ async function buildCommunitySection(userId) {
 
 function buildProfileSummary(profile, sections, enabledSources) {
   const parts = [];
-  if (enabledSources.includes('profile') && profile.gradeLabel) {
-    parts.push(`${profile.gradeLabel}${profile.school ? ` · ${profile.school}` : ''}`);
+
+  if (enabledSources.includes('profile')) {
+    const gradePart = profile.gradeLabel && profile.gradeLabel !== '未设置' ? profile.gradeLabel : '';
+    const schoolPart = profile.school ? profile.school : '';
+    const subjectPart = profile.subjects?.length ? `学习科目 ${profile.subjects.join('、')}` : '';
+    const base = [gradePart, schoolPart, subjectPart].filter(Boolean).join(' · ');
+    if (base) parts.push(base);
   }
-  if (enabledSources.includes('exam') && sections.exam?.weakSubjects?.length) {
-    parts.push(`成绩薄弱科目：${sections.exam.weakSubjects.join('、')}`);
+
+  if (enabledSources.includes('exam') && sections.exam) {
+    const { recentExams, trends, weakSubjects } = sections.exam;
+    if (recentExams) {
+      parts.push(`近期考试 ${recentExams} 次`);
+    }
+    if (weakSubjects?.length) {
+      parts.push(`成绩相对薄弱：${weakSubjects.join('、')}`);
+    }
+    const declining = (trends || []).filter((t) => t.trend === 'down');
+    if (declining.length) {
+      parts.push(`成绩下滑趋势：${declining.map((t) => t.subjectName).join('、')}`);
+    }
+    const improving = (trends || []).filter((t) => t.trend === 'up');
+    if (improving.length) {
+      parts.push(`成绩提升科目：${improving.map((t) => t.subjectName).join('、')}`);
+    }
   }
+
   if (enabledSources.includes('errorBook') && sections.errorBook?.totalErrors) {
-    parts.push(`错题 ${sections.errorBook.totalErrors} 道`);
+    const eb = sections.errorBook;
+    parts.push(`错题本共 ${eb.totalErrors} 道`);
+    const topSubject = [...(eb.subjectStats || [])].sort((a, b) => b.unmastered - a.unmastered)[0];
+    if (topSubject?.unmastered) {
+      parts.push(`${topSubject.subjectName}未掌握 ${topSubject.unmastered} 道，需优先巩固`);
+    }
+    if (eb.topWrongReasons?.length) {
+      parts.push(`常见错因：${eb.topWrongReasons.slice(0, 3).map((r) => r.reason).join('、')}`);
+    }
   }
+
+  if (enabledSources.includes('studyPlan') && sections.studyPlan?.activeCount) {
+    parts.push(`进行中/未开始计划 ${sections.studyPlan.activeCount} 条`);
+  }
+
   if (enabledSources.includes('chat') && sections.chat?.chatNeeds?.length) {
-    parts.push(`AI 对话需求 ${sections.chat.chatNeeds.length} 条`);
+    parts.push(`近期 AI 对话学习需求 ${sections.chat.chatNeeds.length} 条`);
   }
+
   if (enabledSources.includes('note') && sections.note?.recentCount) {
-    parts.push(`近期笔记 ${sections.note.recentCount} 篇`);
+    const tags = sections.note.tags?.slice(0, 3).join('、');
+    parts.push(`近期笔记 ${sections.note.recentCount} 篇${tags ? `，关注标签：${tags}` : ''}`);
   }
+
   if (enabledSources.includes('community') && sections.community?.questionCount) {
-    parts.push(`社区提问 ${sections.community.questionCount} 条`);
+    const unsolved = sections.community.unsolvedCount;
+    parts.push(`社区提问 ${sections.community.questionCount} 条${unsolved ? `，未解决 ${unsolved} 条` : ''}`);
   }
+
   return parts.join('；') || '数据较少，建议补充错题或进行一次 AI 对话后再生成';
+}
+
+/**
+ * 知识点与学习薄弱项分析
+ */
+function buildKnowledgeAnalysis(profile, sections, enabledSources) {
+  const analysisLines = [];
+  const weakKnowledgePoints = sections.errorBook?.weakKnowledgePoints || [];
+
+  const highRiskSubjects = enabledSources.includes('errorBook')
+    ? [...(sections.errorBook?.subjectStats || [])]
+      .filter((s) => s.unmastered > 0)
+      .sort((a, b) => b.unmasteredRate - a.unmasteredRate)
+      .slice(0, 5)
+      .map((s) => ({
+        subject: s.subject,
+        subjectName: s.subjectName,
+        unmastered: s.unmastered,
+        total: s.total,
+        unmasteredRate: s.unmasteredRate,
+      }))
+    : [];
+
+  const examInsights = enabledSources.includes('exam')
+    ? (sections.exam?.trends || []).map((t) => ({
+      subjectName: t.subjectName,
+      latestScore: t.latestScore,
+      fullScore: t.fullScore,
+      trend: t.trend,
+    }))
+    : [];
+
+  if (enabledSources.includes('profile') && profile.subjects?.length) {
+    analysisLines.push(`基于 ${profile.gradeLabel || '当前年级'} 设置，主要学习 ${profile.subjects.join('、')}。`);
+  }
+
+  if (highRiskSubjects.length) {
+    const subjectText = highRiskSubjects
+      .map((s) => `${s.subjectName}（未掌握 ${s.unmastered}/${s.total} 道，占比 ${Math.round(s.unmasteredRate * 100)}%）`)
+      .join('；');
+    analysisLines.push(`错题分析显示高风险科目：${subjectText}。`);
+  }
+
+  if (weakKnowledgePoints.length) {
+    const kpText = weakKnowledgePoints
+      .slice(0, 6)
+      .map((k) => `${k.point}（出现 ${k.count} 次）`)
+      .join('、');
+    analysisLines.push(`薄弱知识点集中在：${kpText}。`);
+  } else if (enabledSources.includes('errorBook') && sections.errorBook?.totalErrors) {
+    analysisLines.push('错题暂未标注知识点，建议完善错题知识点标签以提升 AI 分析精度。');
+  }
+
+  if (enabledSources.includes('exam') && sections.exam?.weakSubjects?.length) {
+    analysisLines.push(`考试成绩分析：${sections.exam.weakSubjects.join('、')} 相对薄弱，建议分配更多复习时间。`);
+  }
+
+  const learningNeeds = enabledSources.includes('chat')
+    ? (sections.chat?.chatNeeds || []).slice(0, 5)
+    : [];
+  if (learningNeeds.length) {
+    analysisLines.push(`AI 对话反映的学习需求：${learningNeeds.slice(0, 2).map((n) => `「${n.slice(0, 30)}${n.length > 30 ? '…' : ''}」`).join('、')}。`);
+  }
+
+  if (enabledSources.includes('note') && sections.note?.tags?.length) {
+    analysisLines.push(`笔记标签显示关注：${sections.note.tags.slice(0, 5).join('、')}。`);
+  }
+
+  if (analysisLines.length === 0) {
+    analysisLines.push('当前学习数据较少，建议添加错题、考试成绩或进行 AI 对话后再生成更精准的计划。');
+  }
+
+  return {
+    summary: analysisLines.join('\n'),
+    weakKnowledgePoints,
+    highRiskSubjects,
+    examInsights,
+    learningNeeds,
+    topWrongReasons: sections.errorBook?.topWrongReasons || [],
+  };
 }
 
 /**
@@ -334,6 +453,7 @@ async function buildLearningProfile(userId, dataSources = DEFAULT_DATA_SOURCES) 
   await Promise.all(tasks);
 
   const enabledSourceLabels = enabledSources.map((s) => SOURCE_LABELS[s]);
+  const knowledgeAnalysis = buildKnowledgeAnalysis(profile, sections, enabledSources);
 
   return {
     profile,
@@ -341,6 +461,7 @@ async function buildLearningProfile(userId, dataSources = DEFAULT_DATA_SOURCES) 
     enabledSources,
     enabledSourceLabels,
     profileSummary: buildProfileSummary(profile, sections, enabledSources),
+    knowledgeAnalysis,
     generatedAt: new Date().toISOString(),
   };
 }
@@ -349,4 +470,5 @@ module.exports = {
   DEFAULT_DATA_SOURCES,
   SOURCE_LABELS,
   buildLearningProfile,
+  buildKnowledgeAnalysis,
 };

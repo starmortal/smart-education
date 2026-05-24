@@ -340,6 +340,11 @@
           <div class="detail-label">计划描述：</div>
           <div class="detail-content-box">{{ currentPlanDetail.description }}</div>
         </div>
+
+        <div v-if="currentPlanDetail.aiReason" class="detail-section ai-reason-section">
+          <div class="detail-label">AI制定理由：</div>
+          <p class="detail-ai-reason">{{ currentPlanDetail.aiReason }}</p>
+        </div>
       </div>
       <template #footer>
         <div class="detail-dialog-footer">
@@ -1678,6 +1683,21 @@ function formatDateTime(dateStr) {
 
 .detail-footer-spacer {
   flex: 1;
+}
+
+.detail-ai-reason {
+  margin: 0;
+  font-size: 12px;
+  color: #6b8578;
+  line-height: 1.7;
+  padding: 10px 14px;
+  background: #f0f9f4;
+  border: 1px solid #cce8d6;
+  border-radius: 4px;
+}
+
+.ai-reason-section .detail-label {
+  margin-bottom: 8px;
 }
 
 .filter-hint {

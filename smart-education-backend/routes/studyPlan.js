@@ -266,6 +266,7 @@ router.get("/list", asyncHandler(async (req, res) => {
     planStatus: plan.planStatus,
     progress: plan.progress,
     targetProgress: plan.targetProgress,
+    aiReason: plan.aiReason || '',
     createTime: plan.createTime,
     updateTime: plan.updateTime
   }));

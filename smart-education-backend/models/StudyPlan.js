@@ -47,6 +47,11 @@ const studyPlanSchema = new mongoose.Schema({
     type: Number,
     default: 100,
   },
+  aiReason: {
+    type: String,
+    default: "",
+    maxlength: 200,
+  },
   createTime: {
     type: Date,
     default: Date.now,

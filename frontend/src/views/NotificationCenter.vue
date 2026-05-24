@@ -211,6 +211,7 @@ const settings = ref({
     like: true,
     follow: true,
     system: true,
+    aiPlan: true,
   },
 });
 
@@ -221,6 +222,7 @@ const notificationTypes = {
   like: '点赞通知',
   follow: '关注通知',
   system: '系统公告',
+  aiPlan: 'AI 计划生成通知',
 };
 
 // 获取通知图标
@@ -232,6 +234,7 @@ const getNotificationIcon = (type) => {
     like: '❤️',
     follow: '👥',
     system: '📢',
+    aiPlan: '📅',
   };
   return icons[type] || '📬';
 };
@@ -406,7 +409,9 @@ const handleNotificationClick = async (notification) => {
   }
   
   // 根据通知类型跳转
-  if (notification.relatedType === 'question' && notification.relatedData?.questionId) {
+  if (notification.type === 'aiPlan' || notification.relatedData?.source === 'ai_schedule') {
+    router.push('/study-plan');
+  } else if (notification.relatedType === 'question' && notification.relatedData?.questionId) {
     router.push('/study-community');
   } else if (notification.relatedType === 'user') {
     router.push('/profile');
@@ -419,7 +424,20 @@ const loadSettings = async () => {
   try {
     const response = await getNotificationSettings();
     if (response.code === 200) {
-      settings.value = response.data;
+      const data = response.data || {};
+      settings.value = {
+        emailEnabled: data.emailEnabled ?? true,
+        notificationTypes: {
+          register: true,
+          login: true,
+          reply: true,
+          like: true,
+          follow: true,
+          system: true,
+          aiPlan: true,
+          ...(data.notificationTypes || {}),
+        },
+      };
     }
   } catch (error) {
     console.error('加载通知设置失败：', error);
